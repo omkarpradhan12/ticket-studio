@@ -47,17 +47,9 @@ export const DEFAULT_CUSTOM = {
   frame: "#ffffff",
   pa: false,
   tape: "#d8b46b",
-  bs: 0,
-  tt: 0,
-  bd: 0,
-  pf: 0,
-  tc: false,
-  gray: 0,
-  ht: 0,
   grad: false,
   gs: "#0b0b10",
-  gl: 0.45,
-  font: "theme"
+  gl: 0.45
 };
 
 export const CUSTOM = { ...DEFAULT_CUSTOM };
@@ -94,7 +86,6 @@ export const mix = (a, b, t) => {
 
 export function compileCustomTheme(cfg, grp = "Custom") {
   const C = { ...DEFAULT_CUSTOM, ...cfg };
-  const fontObj = TF[C.font] || null;
   const isGrad = Boolean(C.grad);
   const baseBg = isGrad ? (C.gs || C.bg) : C.bg;
 
@@ -117,14 +108,6 @@ export function compileCustomTheme(cfg, grp = "Custom") {
     fixed: C.pa ? undefined : C.acc,
     l: 0.52,
     bt: C.pa ? undefined : (lum(C.acc) > 0.55 ? "#111" : "#fff"),
-    bs: +C.bs || 0,
-    tt: +C.tt || 0,
-    bd: +C.bd || 0,
-    pf: +C.pf || 0,
-    tc: C.tc ? 1 : 0,
-    gray: +C.gray || 0,
-    ht: C.ht ? 1 : 0,
-    ...(fontObj ? { tf: fontObj.f, tw: fontObj.w, ts: fontObj.s, tk: fontObj.k } : {}),
     _raw: C
   };
 }

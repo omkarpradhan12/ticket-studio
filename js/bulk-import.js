@@ -179,12 +179,18 @@ async function importStructuredFile(file) {
       card.img = photo;
       if (/^#[\da-f]{6}$/i.test(item.accent || "")) Object.assign(card, hexToHS(item.accent));
     } else if (typeof photo === "string" && photo.trim()) {
-      try {
-        Object.assign(card, await processImageUrl(photo.trim()));
-      } catch (error) {
-        errors.push(`${title || photo}: ${error.message}`);
+      const photoUrl = photo.trim();
+      if (!/^https?:\/\//i.test(photoUrl)) {
+        errors.push(`${title || photoUrl}: invalid image URL`);
         continue;
       }
+      Object.assign(card, {
+        img: photoUrl,
+        imgUrl: photoUrl,
+        iw: 600,
+        ih: 600,
+        corsLimited: true
+      });
     }
     if (addStaged(card)) added++;
   }
@@ -203,9 +209,20 @@ async function loadUrlBatch() {
   for (const line of selected) {
     const item = parseUrlLine(line);
     try {
-      const image = await processImageUrl(item.url);
       const fallbackName = cleanFilenameToTitle(item.url.split(/[?#]/)[0].split("/").pop());
-      if (addStaged({ ...image, title: item.title || fallbackName, genre: item.genre, loc: item.loc, year: item.year, code: item.code || abbr(item.title || fallbackName) })) added++;
+      if (!/^https?:\/\//i.test(item.url)) throw new Error("Enter a direct http:// or https:// image URL.");
+      if (addStaged({
+        ...blankCard(),
+        title: item.title || fallbackName,
+        genre: item.genre,
+        loc: item.loc,
+        year: item.year,
+        code: item.code || abbr(item.title || fallbackName),
+        img: item.url,
+        imgUrl: item.url,
+        iw: 600,
+        ih: 600
+      })) added++;
     } catch (error) {
       errors.push(`${item.url}: ${error.message}`);
     }
@@ -213,6 +230,22 @@ async function loadUrlBatch() {
   renderStaged();
   const omitted = lines.length - selected.length;
   message(`${added} URL${added === 1 ? "" : "s"} staged${omitted ? `; ${omitted} skipped because the 72-card limit was reached` : ""}${errors.length ? `. ${errors.length} failed: ${errors.slice(0, 3).join("; ")}` : "."}`);
+}
+
+async function parsePastedCardData() {
+  const text = $("card-data-textarea").value.trim();
+  if (!text) {
+    message("Paste card JSON or CSV first.");
+    return;
+  }
+  try {
+    const looksJson = text.startsWith("[") || text.startsWith("{");
+    const mime = looksJson ? "application/json" : "text/csv";
+    const name = looksJson ? "pasted-cards.json" : "pasted-cards.csv";
+    await importStructuredFile(new File([text], name, { type: mime }));
+  } catch (error) {
+    message("Could not parse pasted card data: " + error.message);
+  }
 }
 
 async function pushToSheet(replace) {
@@ -259,6 +292,7 @@ function bind() {
     if (event.dataTransfer?.files?.length) await processFiles(event.dataTransfer.files);
   });
   $("parse-urls-btn").addEventListener("click", loadUrlBatch);
+  $("parse-card-data-btn").addEventListener("click", parsePastedCardData);
   $("import-data-btn").addEventListener("click", () => $("import-data-file").click());
   $("import-data-file").addEventListener("change", async event => {
     const file = event.target.files?.[0];
