@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Theme Studio — Ticket Card Studio</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/studio.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-badge">NFC</span>
+      <span class="brand-title">Ticket Card Studio</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Workspace pages">
+      <a class="nav-tab" href="index.html">Sheet Editor</a>
+      <a class="nav-tab active" href="theme-studio.html">Theme Studio</a>
+      <a class="nav-tab" href="bulk-import.html">Bulk Upload &amp; URLs</a>
+    </nav>
+  </div>
+</header>
+
+<div class="studio-wrap">
+  <div class="studio-grid">
+    <div class="panel">
+      <h1>Theme Studio</h1>
+      <p class="subtitle">Design custom ticket styles, clone any of the 24 built-in themes, and save unlimited presets to your sheet dropdown.</p>
+
+      <details class="sec" open>
+        <summary>Start from Template or Saved Theme</summary>
+        <div class="ctrl-grid">
+          <label class="fld full">
+            <span>Clone Built-in / Saved Preset</span>
+            <div class="theme-nav">
+              <select id="ts_clone"></select>
+              <button class="g" type="button" id="ts_clone_btn">Clone</button>
+            </div>
+          </label>
+        </div>
+      </details>
+
+      <details class="sec" open>
+        <summary>Palette &amp; Gradient</summary>
+        <div class="ctrl-grid">
+          <label class="fld full">
+            <span>Theme Name</span>
+            <input type="text" id="ts_name" data-ts value="My theme" placeholder="e.g. Cyberpunk Gold">
+          </label>
+          <div class="ctrl-flex full">
+            <label class="chk"><input type="color" id="ts_bg" data-ts value="#1f2430"> Paper</label>
+            <label class="chk"><input type="color" id="ts_ink" data-ts value="#ffffff"> Ink</label>
+            <label class="chk"><input type="color" id="ts_acc" data-ts value="#ff5a36"> Accent</label>
+            <label class="chk"><input type="color" id="ts_frame" data-ts value="#ffffff"> Photo Frame</label>
+            <label class="chk"><input type="color" id="ts_tape" data-ts value="#d8b46b"> Tape</label>
+          </div>
+          <label class="chk"><input type="checkbox" id="ts_pa" data-ts> Auto-accent from photo</label>
+          <label class="chk"><input type="checkbox" id="ts_grad" data-ts> Gradient background</label>
+        </div>
+
+        <div class="ctrl-grid" id="grad-opts" style="display:none; margin-top:8px; padding-top:8px; border-top:1px solid var(--line)">
+          <label class="chk"><input type="color" id="ts_gs" data-ts value="#0b0b10"> Gradient Start</label>
+          <label class="fld">
+            <span>Accent Lightness</span>
+            <input type="range" id="ts_gl" data-ts min="0.2" max="0.85" step="0.02" value="0.45">
+          </label>
+        </div>
+      </details>
+
+      <details class="sec" open>
+        <summary>Structure, Mount &amp; Photo Treatment</summary>
+        <div class="ctrl-grid">
+          <label class="fld">
+            <span>Border Frame</span>
+            <select id="ts_bs" data-ts>
+              <option value="0">Double Rule</option>
+              <option value="1">Thick Solid</option>
+              <option value="2">Corner Brackets</option>
+              <option value="3">Dashed</option>
+              <option value="4">Rounded Double</option>
+            </select>
+          </label>
+          <label class="fld">
+            <span>Photo Mount</span>
+            <select id="ts_tt" data-ts>
+              <option value="0">Masking Tape</option>
+              <option value="1">Thumbtack Pins</option>
+              <option value="2">Photo Corners</option>
+              <option value="3">None (Flush)</option>
+            </select>
+          </label>
+          <label class="fld">
+            <span>Year Badge</span>
+            <select id="ts_bd" data-ts>
+              <option value="0">Solid Block</option>
+              <option value="1">Rounded Pill</option>
+              <option value="2">Outline</option>
+            </select>
+          </label>
+          <label class="fld">
+            <span>Tear Perforation</span>
+            <select id="ts_pf" data-ts>
+              <option value="0">Dashed + Notches</option>
+              <option value="1">Dotted + Notches</option>
+              <option value="2">Solid Line (No Notches)</option>
+            </select>
+          </label>
+          <label class="fld">
+            <span>Default Title Font</span>
+            <select id="ts_font" data-ts>
+              <option value="theme">Pirata One (Classic)</option>
+              <option value="playfair">Playfair Display</option>
+              <option value="mont">Montserrat Bold</option>
+              <option value="bebas">Bebas Neue</option>
+              <option value="type">Special Elite</option>
+              <option value="courier">Courier Monospace</option>
+            </select>
+          </label>
+          <label class="fld">
+            <span>Photo Filter</span>
+            <select id="ts_gray" data-ts>
+              <option value="0">Full Colour</option>
+              <option value="1">High-Contrast B&amp;W</option>
+              <option value="2">Vintage Sepia</option>
+            </select>
+          </label>
+          <label class="chk"><input type="checkbox" id="ts_tc" data-ts> Centre-align title &amp; genre</label>
+          <label class="chk"><input type="checkbox" id="ts_ht" data-ts> Newspaper halftone dots</label>
+        </div>
+      </details>
+
+      <div class="ctrl-flex" style="margin:10px 0">
+        <button class="accent" type="button" id="ts_save_btn">Save to Library</button>
+        <button class="g" type="button" id="ts_new_btn">New Draft</button>
+        <button class="g" type="button" id="ts_export_btn">Export Theme JSON</button>
+        <button class="g" type="button" id="ts_import_btn">Import Theme JSON</button>
+        <input type="file" id="ts_import_file" accept=".json,application/json" hidden>
+      </div>
+      <div id="st-msg" class="hint" style="min-height:18px;font-weight:600;color:var(--ink)"></div>
+
+      <div class="cards-header">
+        <h2>Saved Custom Themes</h2>
+      </div>
+      <div class="saved-themes-list" id="saved-list"></div>
+    </div>
+
+    <div class="studio-preview">
+      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <strong>Live Theme Preview</strong>
+        <select id="ts_sample" style="width:auto;min-width:190px" aria-label="Sample card"></select>
+      </div>
+      <div class="preview-card-box" id="ts-preview-svg"></div>
+      <div class="hint" style="text-align:center">Saved themes automatically appear under <b>Saved Custom Themes</b> in the Sheet Editor.</div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/theme-studio.js"></script>
+</body>
+</html>

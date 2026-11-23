@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bulk Upload &amp; URL Importer — Ticket Card Studio</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/studio.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-badge">NFC</span>
+      <span class="brand-title">Ticket Card Studio</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Workspace pages">
+      <a class="nav-tab" href="index.html">Sheet Editor</a>
+      <a class="nav-tab" href="theme-studio.html">Theme Studio</a>
+      <a class="nav-tab active" href="bulk-import.html">Bulk Upload &amp; URLs</a>
+    </nav>
+  </div>
+</header>
+
+<div class="studio-wrap">
+  <div class="panel" style="margin-bottom:18px">
+    <h1>Bulk Photo Upload &amp; Batch URL Importer</h1>
+    <p class="subtitle">Drop up to 72 image files at once or paste direct image URLs—no manual downloading needed. Edit titles/genres on the staging cards below, then send them to your print sheet.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:16px">
+      <!-- Option A: Multi-file Drag & Drop -->
+      <div>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop or select multiple image files">
+          <h3>Drop Image Files Here</h3>
+          <p class="hint" style="margin:0 0 10px">Or click to select up to 72 photos at once. Filenames are cleaned into artist titles automatically.</p>
+          <span class="btn g sm">Choose Files</span>
+          <input type="file" id="file-input" accept="image/*" multiple hidden>
+        </div>
+      </div>
+
+      <!-- Option B: Batch URL Paste -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="fld">
+          <span>Paste Image URLs (one per line)</span>
+          <textarea id="url-textarea" rows="5" placeholder="https://example.com/band1.jpg&#10;Linkin Park | Nu Metal | California | 1996 | https://example.com/lp.jpg"></textarea>
+        </label>
+        <div class="ctrl-flex" style="justify-content:space-between">
+          <span class="hint">Format: <code>URL</code> or <code>Name | Genre | Place | Year | URL</code></span>
+          <button class="g" type="button" id="parse-urls-btn">Fetch URLs to Staging</button>
+        </div>
+        <div class="ctrl-flex">
+          <button class="g" type="button" id="import-data-btn">Import CSV / JSON</button>
+          <input type="file" id="import-data-file" accept=".csv,.json,text/csv,application/json" hidden>
+          <span class="hint">Maps rows with name, year, genre, place and photo / photoUrl columns.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="bi-msg" class="hint" style="margin-top:10px;min-height:18px;font-weight:600;color:var(--ink)"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+      <h2 style="margin:0;font-size:16px">Staged Cards (<span id="staged-count">0</span> / 72)</h2>
+      <div class="ctrl-flex">
+        <button class="g" type="button" id="clear-staged-btn">Clear Staging</button>
+        <button class="g" type="button" id="push-append-btn">Append to Existing Sheet</button>
+        <button class="accent" type="button" id="push-replace-btn">Replace Sheet &amp; Open Editor</button>
+      </div>
+    </div>
+
+    <div class="staging-grid" id="staging-grid"></div>
+  </div>
+</div>
+
+<script type="module" src="js/bulk-import.js"></script>
+</body>
+</html>

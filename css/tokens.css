@@ -1,0 +1,52 @@
+/* Design Tokens & Theme Variables */
+:root {
+  --bg: #f3f1ee;
+  --panel: #ffffff;
+  --subpanel: #faf8f6;
+  --ink: #1c1a19;
+  --mute: #6b6561;
+  --line: #ddd8d3;
+  --btn: #1c1a19;
+  --btnt: #ffffff;
+  --accent: #e8833a;
+  --accent-soft: rgba(232, 131, 58, 0.14);
+  --danger: #d9322f;
+  --success: #1f8a45;
+  --soft-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --radius-sm: 5px;
+  --radius-md: 9px;
+  --radius-lg: 14px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141211;
+    --panel: #1f1c1a;
+    --subpanel: #181614;
+    --ink: #f1ece8;
+    --mute: #9a928c;
+    --line: #35302d;
+    --btn: #f1ece8;
+    --btnt: #141211;
+    --soft-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  }
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 "Montserrat", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

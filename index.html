@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Concert-Ticket NFC Card Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-badge">NFC</span>
+      <span class="brand-title">Ticket Card Studio</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Workspace pages">
+      <a class="nav-tab active" href="index.html">Sheet Editor</a>
+      <a class="nav-tab" href="theme-studio.html">Theme Studio</a>
+      <a class="nav-tab" href="bulk-import.html">Bulk Upload &amp; URLs</a>
+    </nav>
+  </div>
+</header>
+
+<div class="app">
+  <div class="panel">
+    <h1>Concert-ticket card sheet</h1>
+    <p class="subtitle" id="sub-info">Add a band photo or image URL and the accent colour is picked automatically. 9 tickets fit one A4 page.</p>
+
+    <!-- 1. LAYOUT & PAGE SETUP -->
+    <details class="sec" open>
+      <summary>1. Sheet &amp; Card Layout</summary>
+      <div class="ctrl-grid">
+        <label class="fld">
+          <span class="lbl-row"><span>Total Cards</span><span id="pg" class="hint"></span></span>
+          <input type="number" id="count" min="1" max="72" value="9">
+        </label>
+        <label class="fld">
+          <span>Paper Size</span>
+          <select id="paper" data-live>
+            <option value="a4">A4 (210 × 297 mm)</option>
+            <option value="letter">US Letter (8.5 × 11 in)</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span>Card Dimensions</span>
+          <select id="csize" data-live>
+            <option value="ticket">Ticket (60 × 84 mm)</option>
+            <option value="poker">Poker (63.5 × 88.9 mm)</option>
+            <option value="credit">Credit card (54 × 85.6 mm)</option>
+            <option value="mini">Mini (45 × 64 mm)</option>
+            <option value="tarot">Tarot (70 × 120 mm)</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span>Cutter Corner Radius</span>
+          <select id="crad">
+            <option value="0">Square (0 mm)</option>
+            <option value="2">2 mm</option>
+            <option value="3">3 mm</option>
+            <option value="5">5 mm</option>
+          </select>
+        </label>
+        <div class="ctrl-flex full" style="padding-top:4px">
+          <label class="chk"><input type="checkbox" id="marks" checked> Crop marks</label>
+          <label class="chk"><input type="checkbox" id="bleed" checked> 3 mm bleed</label>
+          <label class="chk"><input type="checkbox" id="regmarks"> Plotter reg. marks</label>
+          <label class="chk"><input type="checkbox" id="tpl" checked> Cut template page</label>
+        </div>
+      </div>
+    </details>
+
+    <!-- 2. THEME, TYPOGRAPHY & GLOBAL TEXT -->
+    <details class="sec" open>
+      <summary>2. Theme, Typography &amp; Global Labels</summary>
+      <div class="ctrl-grid">
+        <label class="fld full">
+          <span class="lbl-row">
+            <span>Visual Theme</span>
+            <a href="theme-studio.html" style="color:var(--accent);text-decoration:none;font-size:11px">+ Create / Manage Themes</a>
+          </span>
+          <div class="theme-nav">
+            <button class="g" type="button" id="prev-style" aria-label="Previous theme">‹</button>
+            <select id="style"></select>
+            <button class="g" type="button" id="next-style" aria-label="Next theme">›</button>
+          </div>
+        </label>
+        <label class="fld">
+          <span>Title Font</span>
+          <select id="tfont" data-live>
+            <option value="theme">Theme default</option>
+            <option value="pirata">Pirata One</option>
+            <option value="playfair">Playfair Display</option>
+            <option value="mont">Montserrat</option>
+            <option value="bebas">Bebas Neue</option>
+            <option value="type">Special Elite</option>
+            <option value="courier">Courier</option>
+          </select>
+        </label>
+        <div class="ctrl-flex" style="align-self:end; padding-bottom:4px">
+          <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
+          <label class="chk"><input type="checkbox" id="serial" data-live> Serial №</label>
+        </div>
+        <label class="fld">
+          <span>Top-Right Doors Text</span>
+          <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
+        </label>
+        <label class="fld">
+          <span>Right-Edge Side Text</span>
+          <input type="text" id="gside" placeholder="Side text" value="Dope-Amine">
+        </label>
+      </div>
+
+      <div class="gctl" id="gctl">
+        <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
+          <i id="needle"></i><b></b>
+        </div>
+        <div class="gtxt">
+          <div>Gradient angle <output id="gav">180°</output></div>
+          <label class="fld">
+            <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
+            <input type="range" id="gspread" min="10" max="100" value="32">
+          </label>
+          <div class="hint">Active on gradient themes. Drag dial or use arrow keys.</div>
+        </div>
+      </div>
+    </details>
+
+    <!-- 3. QUICK CUSTOM THEME -->
+    <details class="sec">
+      <summary>3. Quick Custom Theme ("My theme")</summary>
+      <div class="ctrl-grid">
+        <div class="ctrl-flex full">
+          <label class="chk"><input type="color" id="ct_bg" data-ct> Paper</label>
+          <label class="chk"><input type="color" id="ct_ink" data-ct> Text</label>
+          <label class="chk"><input type="color" id="ct_acc" data-ct> Accent</label>
+          <label class="chk"><input type="color" id="ct_tape" data-ct> Tape</label>
+        </div>
+        <label class="chk"><input type="checkbox" id="ct_pa" data-ct> Accent from photo</label>
+        <label class="chk"><input type="checkbox" id="ct_tc" data-ct> Centred title</label>
+        <label class="fld">
+          <span>Border Style</span>
+          <select id="ct_bs" data-ct>
+            <option value="0">Double</option>
+            <option value="1">Thick</option>
+            <option value="2">Brackets</option>
+            <option value="3">Dashed</option>
+            <option value="4">Rounded</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span>Photo Mount</span>
+          <select id="ct_tt" data-ct>
+            <option value="0">Tape</option>
+            <option value="1">Pins</option>
+            <option value="2">Corners</option>
+            <option value="3">None</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span>Year Badge</span>
+          <select id="ct_bd" data-ct>
+            <option value="0">Solid</option>
+            <option value="1">Pill</option>
+            <option value="2">Outline</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span>Tear Line</span>
+          <select id="ct_pf" data-ct>
+            <option value="0">Dashed</option>
+            <option value="1">Dotted</option>
+            <option value="2">Solid Line</option>
+          </select>
+        </label>
+        <div class="hint full">Need gradients, halftone, or multiple saved themes? Open <a href="theme-studio.html" style="color:var(--accent)">Theme Studio</a>.</div>
+      </div>
+    </details>
+
+    <!-- 4. STAMPS, DISTRESS & TEXTURE -->
+    <details class="sec">
+      <summary>4. Stamps, Texture &amp; Wear</summary>
+      <div class="ctrl-grid">
+        <label class="fld">
+          <span>Stamp Shape</span>
+          <select id="sshape">
+            <option value="round">Round</option>
+            <option value="oval">Oval</option>
+            <option value="rect">Rectangle</option>
+            <option value="tri">Triangle</option>
+            <option value="shield">Shield</option>
+            <option value="hex">Hexagon</option>
+            <option value="diamond">Diamond</option>
+            <option value="seal">Seal</option>
+            <option value="mixed">Mixed (random)</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span class="lbl-row"><span>Stamp Size</span><output id="ssv">100%</output></span>
+          <input type="range" id="ssize" min="50" max="250" step="25" value="100" list="sst">
+          <datalist id="sst"><option value="50"></option><option value="100"></option><option value="150"></option><option value="200"></option><option value="250"></option></datalist>
+        </label>
+        <label class="fld">
+          <span>Primary Stamp Text</span>
+          <input type="text" id="gstamp" placeholder="Stamp text" value="Soul Fuel">
+        </label>
+        <label class="fld">
+          <span>Stamp Year</span>
+          <input type="text" id="gsyear" placeholder="Stamp year" value="2026">
+        </label>
+        <label class="fld">
+          <span>Second Stamp (Optional)</span>
+          <input type="text" id="gs2" placeholder="e.g. VIP" data-live>
+        </label>
+        <div class="ctrl-flex" style="align-self:end; padding-bottom:3px">
+          <label class="chk"><input type="color" id="scol" value="#d9322f" data-live> Ink</label>
+          <label class="chk"><input type="checkbox" id="sauto" checked data-live> Use accent</label>
+        </div>
+        <label class="fld">
+          <span>Stamp Ink Wear</span>
+          <input type="range" id="wear" min="0" max="100" value="35">
+        </label>
+        <label class="fld">
+          <span>Border Ink Wear</span>
+          <input type="range" id="bwear" min="0" max="100" value="35">
+        </label>
+        <label class="fld">
+          <span>Paper Grain</span>
+          <input type="range" id="tgr" min="0" max="100" value="15" data-live>
+        </label>
+        <label class="fld">
+          <span>Edge Vignette Wear</span>
+          <input type="range" id="tew" min="0" max="100" value="0" data-live>
+        </label>
+        <label class="fld">
+          <span>Paper Creases</span>
+          <input type="range" id="tcr" min="0" max="100" value="0" data-live>
+        </label>
+        <label class="fld">
+          <span>Surface Scuffs</span>
+          <input type="range" id="tsc" min="0" max="100" value="0" data-live>
+        </label>
+      </div>
+    </details>
+
+    <!-- 5. EXPORT, DATA & ACTIONS -->
+    <details class="sec" open>
+      <summary>5. Export, Batch Tools &amp; JSON Data</summary>
+      <div class="ctrl-flex" style="margin-bottom:8px">
+        <button id="svg" type="button">Download SVG</button>
+        <button class="g" id="print" type="button">Print / save PDF</button>
+        <button class="g" id="png" type="button">PNG (300dpi)</button>
+        <button class="g" id="pdf" type="button">PDF (300dpi)</button>
+        <button class="g" id="cut" type="button">Cutter SVG</button>
+      </div>
+      <div class="ctrl-flex" style="margin-bottom:8px">
+        <a class="btn accent" href="bulk-import.html">Bulk Upload &amp; URLs</a>
+        <button class="g" id="rnd" type="button">Randomise</button>
+        <button class="g" id="smp" type="button">Load Samples</button>
+        <button class="g" id="rst" type="button">Reset All</button>
+      </div>
+      <div class="ctrl-flex">
+        <button class="g" id="imp" type="button">Import JSON</button>
+        <button class="g" id="exp" type="button">Export JSON</button>
+        <span class="tipw">
+          <button class="g" type="button" aria-label="Show JSON format">JSON Help ?</button>
+          <div class="pop" role="tooltip">
+            <pre>[
+ {
+  "name": "Three Days Grace",
+  "year": "1997",
+  "genre": "Alt-Rock",
+  "place": "Canada",
+  "abbreviation": "TDG",
+  "photo": "https://example.com/band.jpg"
+ }
+]</pre>
+            Only <b>name</b> is required. <b>photo</b> accepts both <code>data:image/...</code> and <code>https://...</code> URLs. Extras: <b>accent</b> (#hex), <b>photoZoom</b> (1–3), <b>photoX</b>/<b>photoY</b> (-100 to 100), <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or <b>settings</b> + <b>cards</b>. Max 72 cards.
+          </div>
+        </span>
+      </div>
+
+      <details style="margin-top:8px; font-size:12px">
+        <summary style="cursor:pointer; font-weight:700; color:var(--mute)">Paste raw JSON</summary>
+        <textarea id="jt" rows="5" aria-label="Paste JSON" placeholder='[{"name": "Band Name", "year": "2026", "genre": "Rock", "place": "City", "photo": "https://..."}]'></textarea>
+        <button class="g sm" id="jl" type="button">Load pasted JSON</button>
+      </details>
+
+      <input type="file" id="jf" accept=".json,application/json" hidden>
+    </details>
+
+    <div class="status-bar">
+      <span id="msg" role="status"></span>
+      <span id="sv"></span>
+    </div>
+
+    <!-- CARD LIST -->
+    <div class="cards-header">
+      <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
+      <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
+    </div>
+    <div id="rows"></div>
+  </div>
+
+  <div class="stage">
+    <div id="sheets" style="display:contents"></div>
+  </div>
+</div>
+
+<!-- CARD PREVIEW MODAL -->
+<div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview">
+  <div class="pvbox">
+    <div class="pvbar">
+      <button class="g" id="pvp" aria-label="Previous card">‹</button>
+      <span id="pvt" style="font-weight:700; font-size:13px"></span>
+      <button class="g" id="pvn" aria-label="Next card">›</button>
+      <span style="flex:1"></span>
+      <button class="g" id="pve">Edit</button>
+      <button class="g" id="pvpng">PNG</button>
+      <button class="g" id="pvsvg">SVG</button>
+      <button id="pvx" aria-label="Close">✕</button>
+    </div>
+    <img id="pvi" alt="Card preview">
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
