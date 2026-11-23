@@ -552,6 +552,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   width: 100%;
   max-width: min(100%, 740px);
   height: auto;
+  flex: 0 0 auto;
   box-shadow: 0 5px 22px rgba(0, 0, 0, 0.22);
   background: #fff;
   border-radius: 2px;
