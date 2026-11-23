@@ -1,4 +1,4 @@
-import { BUILTIN_THEMES, DEFAULT_CUSTOM, TF, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js";
+import { BUILTIN_THEMES, DEFAULT_CUSTOM, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js";
 import { SAMPLE_CARDS } from "./storage.js";
 import { computeLayout, renderCard } from "./svg-engine.js";
 import { triggerDownload } from "./export.js";
@@ -7,8 +7,7 @@ import { FONTCSS } from "./fonts.js";
 const $ = id => document.getElementById(id);
 const FIELD_MAP = {
   name: "ts_name", bg: "ts_bg", ink: "ts_ink", acc: "ts_acc", frame: "ts_frame", tape: "ts_tape",
-  pa: "ts_pa", grad: "ts_grad", gs: "ts_gs", gl: "ts_gl", bs: "ts_bs", tt: "ts_tt",
-  bd: "ts_bd", pf: "ts_pf", font: "ts_font", gray: "ts_gray", tc: "ts_tc", ht: "ts_ht"
+  pa: "ts_pa", grad: "ts_grad", gs: "ts_gs", gl: "ts_gl"
 };
 let draft = { ...DEFAULT_CUSTOM };
 let editingId = "";
@@ -28,7 +27,6 @@ function readForm() {
     const element = $(id);
     config[key] = element.type === "checkbox" ? element.checked : element.value;
   }
-  for (const key of ["bs", "tt", "bd", "pf", "gray"]) config[key] = Number(config[key]);
   config.gl = Number(config.gl);
   return config;
 }
@@ -47,10 +45,6 @@ function writeForm(config) {
 
 function configForTheme(key, theme) {
   if (theme._raw) return { ...DEFAULT_CUSTOM, ...theme._raw };
-  const font = Object.keys(TF).find(name => {
-    const item = TF[name];
-    return item.f === theme.tf && item.w === theme.tw && item.s === theme.ts;
-  }) || "theme";
   return {
     ...DEFAULT_CUSTOM,
     name: theme.n || key,
@@ -62,15 +56,7 @@ function configForTheme(key, theme) {
     pa: !theme.fixed,
     grad: Boolean(theme.grad),
     gs: theme.gs || theme.bg,
-    gl: theme.gl ?? .45,
-    bs: theme.bs || 0,
-    tt: theme.tt || 0,
-    bd: theme.bd || 0,
-    pf: theme.pf || 0,
-    font,
-    gray: theme.gray || 0,
-    tc: Boolean(theme.tc),
-    ht: Boolean(theme.ht)
+    gl: theme.gl ?? .45
   };
 }
 
@@ -97,13 +83,21 @@ function renderPreview() {
     stampAuto: true,
     gradientAngle: 180,
     gradientSpread: 32,
-    titleFont: config.font || "theme",
+    titleFont: "pirata",
     grain: 12,
     edgeWear: 0,
     creases: 0,
     scuffs: 0,
     serials: false,
     nfc: true,
+    punchHole: false,
+    borderStyle: 0,
+    yearBadge: 0,
+    tearStyle: 0,
+    photoFilter: 0,
+    photoMounts: [0],
+    centerTitle: false,
+    halftone: false,
     bleed: false,
     cropMarks: false
   });

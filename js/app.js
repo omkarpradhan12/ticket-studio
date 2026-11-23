@@ -12,13 +12,15 @@ const SETTINGS_FIELDS = {
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize", stampShape: "sshape",
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
-  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc"
+  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc",
+  borderStyle: "design-border", yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
 };
 const CHECK_FIELDS = {
   cropMarks: "marks", bleed: "bleed", nfc: "nfc", cutTemplate: "tpl",
-  serials: "serial", stampAuto: "sauto", regMarks: "regmarks"
+  serials: "serial", stampAuto: "sauto", regMarks: "regmarks", punchHole: "punch",
+  centerTitle: "design-center", halftone: "design-halftone"
 };
-const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa", "tc", "bs", "tt", "bd", "pf"];
+const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa"];
 
 let cards = DEFAULT_CARDS.map(c => ({ ...c }));
 let count = cards.length;
@@ -28,9 +30,14 @@ let renderFrame = 0;
 let saveTimer;
 let dragState = null;
 let previewIndex = -1;
-let previewUrl = "";
 let previousFocus = null;
 let gradientAngle = SET0.gradientAngle;
+let activePage = 0;
+let pageThemes = [];
+
+function readPageThemes() {
+  return pageThemes.slice();
+}
 
 function message(text) {
   $("msg").textContent = text;
@@ -45,6 +52,8 @@ function readSettings() {
   for (const [key, id] of Object.entries(CHECK_FIELDS)) settings[key] = $(id).checked;
   settings.gradientAngle = gradientAngle;
   settings.customTheme = { ...CUSTOM };
+  settings.pageThemes = readPageThemes();
+  settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
   return settings;
 }
 
@@ -59,6 +68,14 @@ function applySettings(settings = {}) {
   for (const [key, id] of Object.entries(CHECK_FIELDS)) {
     if (typeof settings[key] === "boolean") $(id).checked = settings[key];
   }
+  if (Array.isArray(settings.photoMounts)) {
+    const savedMounts = settings.photoMounts.slice(0, 2).map(Number);
+    const selectedMounts = savedMounts.includes(3) ? [3] : savedMounts;
+    document.querySelectorAll("[data-quick-mount]").forEach(input => {
+      input.checked = selectedMounts.includes(Number(input.value));
+    });
+    updateMountStatus();
+  }
   if (settings.customTheme && typeof settings.customTheme === "object") {
     Object.assign(CUSTOM, settings.customTheme);
     for (const key of CUSTOM_FIELDS) {
@@ -70,6 +87,7 @@ function applySettings(settings = {}) {
   if (settings.gradientAngle !== undefined && Number.isFinite(+settings.gradientAngle)) {
     gradientAngle = ((+settings.gradientAngle % 360) + 360) % 360;
   }
+  if (Array.isArray(settings.pageThemes)) pageThemes = settings.pageThemes.map(theme => String(theme || ""));
   $("needle").style.transform = `rotate(${gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", gradientAngle);
   $("gav").textContent = gradientAngle + "°";
@@ -105,10 +123,27 @@ function renderConfig(one = false) {
     scuffs: +$("tsc").value,
     serials: $("serial").checked,
     nfc: $("nfc").checked,
+    punchHole: $("punch")?.checked,
+    borderStyle: +$("design-border").value,
+    yearBadge: +$("design-badge").value,
+    tearStyle: +$("design-tear").value,
+    photoFilter: +$("design-filter").value,
+    photoMounts: [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2),
+    centerTitle: $("design-center").checked,
+    halftone: $("design-halftone").checked,
+    pageThemes: readPageThemes(),
     doors: $("gdoors").value,
     side: $("gside").value,
     drag: $("drag").checked
   };
+}
+
+function updateMountStatus() {
+  const names = { "0": "Tape", "1": "Pins", "2": "Corners", "3": "None" };
+  const checked = [...document.querySelectorAll("[data-quick-mount]:checked")];
+  $("quick-mount-status").textContent = checked.length
+    ? `Active mounts: ${checked.map(element => names[element.value]).join(" + ")}`
+    : "Active mounts: None";
 }
 
 function scheduleRender() {
@@ -130,7 +165,8 @@ function render() {
   const height = (currentLayout.H / 2.83465).toFixed(2) + "mm";
   const svgPages = Array.from({ length: pages }, (_, page) => {
     const pageCards = activeCards.slice(page * currentLayout.PER, (page + 1) * currentLayout.PER);
-    return `<svg class="sheet" data-name="ticket-cards-p${page + 1}" width="${width}" height="${height}" viewBox="0 0 ${currentLayout.W} ${currentLayout.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${currentLayout.W}" height="${currentLayout.H}" fill="#fff"/>${regMarksSvg(currentLayout.W, currentLayout.H, cfg.regMarks)}${pageCards.map((card, i) => renderCard(card, page * currentLayout.PER + i, cfg)).join("")}</svg>`;
+    const pageTheme = (cfg.pageThemes?.[page] || "");
+    return `<svg class="sheet" data-name="ticket-cards-p${page + 1}" data-page="${page}" width="${width}" height="${height}" viewBox="0 0 ${currentLayout.W} ${currentLayout.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${currentLayout.W}" height="${currentLayout.H}" fill="#fff"/>${regMarksSvg(currentLayout.W, currentLayout.H, cfg.regMarks)}${pageCards.map((card, i) => renderCard(card, page * currentLayout.PER + i, { ...cfg, style: pageTheme || cfg.style, themeForce: pageTheme || "" })).join("")}</svg>`;
   });
   if ($("tpl").checked) svgPages.push(tplSvg(currentLayout, cfg.regMarks));
   $("sheets").innerHTML = svgPages.join("");
@@ -141,6 +177,7 @@ function render() {
   $("ssv").textContent = cfg.stampSize + "%";
   $("gsv").textContent = cfg.gradientSpread + "%";
   $("gctl").style.opacity = active.grad ? "1" : ".55";
+  syncPageTools(pages);
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === selectedCard);
     if (i === selectedCard) row.setAttribute("aria-current", "true");
@@ -421,6 +458,7 @@ function syncCustomControls() {
     if (el.type === "checkbox") el.checked = Boolean(CUSTOM[key]);
     else el.value = CUSTOM[key];
   }
+  updateMountStatus();
 }
 
 function resetDefaults() {
@@ -476,17 +514,36 @@ function previewSvg(index) {
   const originalIndex = selectedCard;
   selectedCard = index;
   const layout = currentLayout;
-  const cardMarkup = renderCard(cards[index], index, { ...renderConfig(true), lay: layout, one: true, drag: false, cropMarks: false });
+  const baseConfig = renderConfig(true);
+  const page = Math.floor(index / layout.PER);
+  const cardMarkup = renderCard(cards[index], index, {
+    ...baseConfig,
+    lay: layout,
+    one: true,
+    drag: false,
+    cropMarks: false,
+    style: pageThemes[page] || baseConfig.style,
+    themeForce: pageThemes[page] || ""
+  });
   selectedCard = originalIndex;
   const height = Math.max(204, Math.min(309, Math.round((SIZES[$("csize").value] || SIZES.ticket)[1] * 2.83465 / layout.K * 10) / 10));
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${cardMarkup}</svg>`;
 }
 
+function sheetCardPreviewSvg(index) {
+  const source = $("sheets").querySelector(`.sheet [data-ci="${index}"]`);
+  if (!source) return previewSvg(index);
+  const clone = source.cloneNode(true);
+  clone.removeAttribute("class");
+  clone.querySelectorAll(".pp").forEach(node => node.remove());
+  clone.setAttribute("transform", "translate(8 8) scale(1)");
+  const height = currentLayout.CH;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${clone.outerHTML}</svg>`;
+}
+
 function refreshPreview() {
   if (previewIndex < 0 || $("pv").hidden) return;
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
-  previewUrl = URL.createObjectURL(new Blob([previewSvg(previewIndex)], { type: "image/svg+xml" }));
-  $("pvi").src = previewUrl;
+  $("pvi").innerHTML = sheetCardPreviewSvg(previewIndex);
   $("pvt").textContent = `Card ${previewIndex + 1} of ${count}`;
 }
 
@@ -501,26 +558,54 @@ function openPreview(index) {
 function closePreview() {
   $("pv").hidden = true;
   previewIndex = -1;
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
-  previewUrl = "";
+  $("pvi").replaceChildren();
   if (previousFocus?.isConnected) previousFocus.focus();
 }
 
 function downloadCardSvg() {
-  const markup = previewSvg(previewIndex);
+  const markup = sheetCardPreviewSvg(previewIndex);
   triggerDownload(new Blob([markup], { type: "image/svg+xml" }), `card-${previewIndex + 1}.svg`);
 }
 
 function bindEvents() {
   $("count").addEventListener("change", event => setCount(event.target.value));
+  $("page-select")?.addEventListener("change", event => {
+    activePage = +event.target.value;
+    $("page-theme").value = pageThemes[activePage] || "";
+  });
+  $("page-theme")?.addEventListener("change", event => {
+    pageThemes[activePage] = event.target.value;
+    scheduleRender();
+  });
+  $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
   $("rows").addEventListener("click", event => {
     const row = event.target.closest(".row");
     if (row) selectCard(+row.dataset.index);
   });
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "tpl", "regmarks", "drag", "style", "sshape", "sauto"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "drag", "style", "sshape", "sauto", "design-border", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
   ["wear", "bwear", "ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
   ["gdoors", "gside", "gstamp", "gsyear"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  document.querySelectorAll("[data-quick-mount]").forEach(input => {
+    input.addEventListener("change", () => {
+      if (input.value === "3" && input.checked) {
+        document.querySelectorAll("[data-quick-mount]").forEach(other => {
+          if (other !== input) other.checked = false;
+        });
+      } else if (input.checked) {
+        const none = document.querySelector("[data-quick-mount][value='3']");
+        if (none) none.checked = false;
+      }
+      const checked = [...document.querySelectorAll("[data-quick-mount]:checked")];
+      if (checked.length > 2) {
+        input.checked = false;
+        message("Choose no more than 2 photo mounts.");
+        return;
+      }
+      updateMountStatus();
+      scheduleRender();
+    });
+  });
   document.querySelectorAll("[data-ct]").forEach(input => {
     const update = () => {
       CUSTOM[input.id.slice(3)] = input.type === "checkbox" ? input.checked : input.value;
@@ -567,7 +652,7 @@ function bindEvents() {
   $("pvsvg").addEventListener("click", downloadCardSvg);
   $("pvpng").addEventListener("click", async () => {
     try {
-      const canvas = await rasterizeSvg(previewSvg(previewIndex), (CW + 16) * 12, 3400);
+      const canvas = await rasterizeSvg(sheetCardPreviewSvg(previewIndex), (CW + 16) * 12, 3400);
       await new Promise((resolve, reject) => canvas.toBlob(blob => {
         if (!blob) {
           reject(new Error("Canvas export failed."));
@@ -652,6 +737,46 @@ function cycleTheme(direction) {
   const current = options.findIndex(option => option.value === select.value);
   select.value = options[(current + direction + options.length) % options.length].value;
   render();
+}
+
+function syncPageTools(pageCount) {
+  const select = $("page-select");
+  const themeSelect = $("page-theme");
+  if (!select || !themeSelect) return;
+  while (pageThemes.length < pageCount) pageThemes.push("");
+  if (pageThemes.length > pageCount) pageThemes.length = pageCount;
+  activePage = Math.min(activePage, pageCount - 1);
+  select.innerHTML = Array.from({ length: pageCount }, (_, page) =>
+    `<option value="${page}"${page === activePage ? " selected" : ""}>Page ${page + 1}</option>`
+  ).join("");
+  if (!themeSelect.options.length || themeSelect.options.length === 1) {
+    themeSelect.innerHTML = `<option value="">Use global</option>${Object.entries(THEMES).map(([key, theme]) =>
+      `<option value="${key}">${escapeHtml(theme.n)}</option>`
+    ).join("")}`;
+  }
+  themeSelect.value = pageThemes[activePage] || "";
+}
+
+function duplicateActivePage(perPage) {
+  const start = activePage * perPage;
+  const end = Math.min(cards.length, start + perPage);
+  if (start >= cards.length) return;
+  const sourcePage = activePage + 1;
+  const pageCards = cards.slice(start, end).map(card => ({ ...card }));
+  if (cards.length + pageCards.length > MAX_CARDS) {
+    message(`That would exceed the ${MAX_CARDS}-card limit. Remove or duplicate fewer cards first.`);
+    return;
+  }
+  const insertAt = Math.min(cards.length, end);
+  cards.splice(insertAt, 0, ...pageCards);
+  count = Math.min(MAX_CARDS, cards.length);
+  cards.length = count;
+  pageThemes.splice(activePage + 1, 0, pageThemes[activePage] || "");
+  activePage++;
+  $("count").value = count;
+  buildRows();
+  render();
+  message(`Duplicated page ${sourcePage} with ${pageCards.length} card${pageCards.length === 1 ? "" : "s"}.`);
 }
 
 async function init() {

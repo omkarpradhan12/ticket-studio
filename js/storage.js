@@ -44,7 +44,16 @@ export const SET0 = {
   bleed: true,
   regMarks: false,
   nfc: true,
-  cutTemplate: true
+  cutTemplate: true,
+  punchHole: false,
+  pageThemes: [],
+  borderStyle: 0,
+  photoMounts: [0],
+  yearBadge: 0,
+  tearStyle: 0,
+  photoFilter: 0,
+  centerTitle: false,
+  halftone: false
 };
 
 export const blankCard = () => ({

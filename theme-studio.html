@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/main.css?v=2">
 <link rel="stylesheet" href="css/studio.css">
+<link rel="stylesheet" href="css/redesign.css?v=1">
 </head>
 <body>
 <header class="topbar">
@@ -28,7 +29,7 @@
   <div class="studio-grid">
     <div class="panel">
       <h1>Theme Studio</h1>
-      <p class="subtitle">Design custom ticket styles, clone any of the 24 built-in themes, and save unlimited presets to your sheet dropdown.</p>
+      <p class="subtitle">Build colour palettes, clone built-in themes, and save reusable colour presets. Card structure and hardware are configured independently in the Sheet Editor.</p>
 
       <details class="sec" open>
         <summary>Start from Template or Saved Theme</summary>
@@ -70,68 +71,6 @@
         </div>
       </details>
 
-      <details class="sec" open>
-        <summary>Structure, Mount &amp; Photo Treatment</summary>
-        <div class="ctrl-grid">
-          <label class="fld">
-            <span>Border Frame</span>
-            <select id="ts_bs" data-ts>
-              <option value="0">Double Rule</option>
-              <option value="1">Thick Solid</option>
-              <option value="2">Corner Brackets</option>
-              <option value="3">Dashed</option>
-              <option value="4">Rounded Double</option>
-            </select>
-          </label>
-          <label class="fld">
-            <span>Photo Mount</span>
-            <select id="ts_tt" data-ts>
-              <option value="0">Masking Tape</option>
-              <option value="1">Thumbtack Pins</option>
-              <option value="2">Photo Corners</option>
-              <option value="3">None (Flush)</option>
-            </select>
-          </label>
-          <label class="fld">
-            <span>Year Badge</span>
-            <select id="ts_bd" data-ts>
-              <option value="0">Solid Block</option>
-              <option value="1">Rounded Pill</option>
-              <option value="2">Outline</option>
-            </select>
-          </label>
-          <label class="fld">
-            <span>Tear Perforation</span>
-            <select id="ts_pf" data-ts>
-              <option value="0">Dashed + Notches</option>
-              <option value="1">Dotted + Notches</option>
-              <option value="2">Solid Line (No Notches)</option>
-            </select>
-          </label>
-          <label class="fld">
-            <span>Default Title Font</span>
-            <select id="ts_font" data-ts>
-              <option value="theme">Pirata One (Classic)</option>
-              <option value="playfair">Playfair Display</option>
-              <option value="mont">Montserrat Bold</option>
-              <option value="bebas">Bebas Neue</option>
-              <option value="type">Special Elite</option>
-              <option value="courier">Courier Monospace</option>
-            </select>
-          </label>
-          <label class="fld">
-            <span>Photo Filter</span>
-            <select id="ts_gray" data-ts>
-              <option value="0">Full Colour</option>
-              <option value="1">High-Contrast B&amp;W</option>
-              <option value="2">Vintage Sepia</option>
-            </select>
-          </label>
-          <label class="chk"><input type="checkbox" id="ts_tc" data-ts> Centre-align title &amp; genre</label>
-          <label class="chk"><input type="checkbox" id="ts_ht" data-ts> Newspaper halftone dots</label>
-        </div>
-      </details>
-
       <div class="ctrl-flex" style="margin:10px 0">
         <button class="accent" type="button" id="ts_save_btn">Save to Library</button>
         <button class="g" type="button" id="ts_new_btn">New Draft</button>
@@ -158,6 +97,6 @@
   </div>
 </div>
 
-<script type="module" src="js/theme-studio.js"></script>
+<script type="module" src="js/theme-studio.js?v=palette-only-pages-4"></script>
 </body>
 </html>

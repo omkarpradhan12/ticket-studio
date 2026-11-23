@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/main.css?v=2">
+<link rel="stylesheet" href="css/redesign.css?v=1">
 </head>
 <body>
 <header class="topbar">
@@ -30,7 +31,7 @@
     <p class="subtitle" id="sub-info">Add a band photo or image URL and the accent colour is picked automatically. 9 tickets fit one A4 page.</p>
 
     <!-- 1. LAYOUT & PAGE SETUP -->
-    <details class="sec" open>
+    <details class="sec">
       <summary>1. Sheet &amp; Card Layout</summary>
       <div class="ctrl-grid">
         <label class="fld">
@@ -73,7 +74,7 @@
     </details>
 
     <!-- 2. THEME, TYPOGRAPHY & GLOBAL TEXT -->
-    <details class="sec" open>
+    <details class="sec">
       <summary>2. Theme, Typography &amp; Global Labels</summary>
       <div class="ctrl-grid">
         <label class="fld full">
@@ -90,7 +91,7 @@
         <label class="fld">
           <span>Title Font</span>
           <select id="tfont" data-live>
-            <option value="theme">Theme default</option>
+            <option value="theme">Default (Pirata One)</option>
             <option value="pirata">Pirata One</option>
             <option value="playfair">Playfair Display</option>
             <option value="mont">Montserrat</option>
@@ -102,6 +103,7 @@
         <div class="ctrl-flex" style="align-self:end; padding-bottom:4px">
           <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
           <label class="chk"><input type="checkbox" id="serial" data-live> Serial №</label>
+          <label class="chk"><input type="checkbox" id="punch" data-live> NFC punch hole</label>
         </div>
         <label class="fld">
           <span>Top-Right Doors Text</span>
@@ -128,9 +130,9 @@
       </div>
     </details>
 
-    <!-- 3. QUICK CUSTOM THEME -->
+    <!-- 3. QUICK CUSTOM COLOURS -->
     <details class="sec">
-      <summary>3. Quick Custom Theme ("My theme")</summary>
+      <summary>3. Quick Custom Colours</summary>
       <div class="ctrl-grid">
         <div class="ctrl-flex full">
           <label class="chk"><input type="color" id="ct_bg" data-ct> Paper</label>
@@ -139,49 +141,57 @@
           <label class="chk"><input type="color" id="ct_tape" data-ct> Tape</label>
         </div>
         <label class="chk"><input type="checkbox" id="ct_pa" data-ct> Accent from photo</label>
-        <label class="chk"><input type="checkbox" id="ct_tc" data-ct> Centred title</label>
+        <div class="hint full">This palette controls colours only. For gradients or saved palettes, open <a href="theme-studio.html" style="color:var(--accent)">Theme Studio</a>.</div>
+      </div>
+    </details>
+
+    <!-- 4. CARD CONSTRUCTION -->
+    <details class="sec">
+      <summary>4. Card Construction (Independent of Theme)</summary>
+      <div class="ctrl-grid">
         <label class="fld">
           <span>Border Style</span>
-          <select id="ct_bs" data-ct>
-            <option value="0">Double</option>
-            <option value="1">Thick</option>
-            <option value="2">Brackets</option>
-            <option value="3">Dashed</option>
-            <option value="4">Rounded</option>
-          </select>
-        </label>
-        <label class="fld">
-          <span>Photo Mount</span>
-          <select id="ct_tt" data-ct>
-            <option value="0">Tape</option>
-            <option value="1">Pins</option>
-            <option value="2">Corners</option>
-            <option value="3">None</option>
+          <select id="design-border">
+            <option value="0">Double</option><option value="1">Thick</option>
+            <option value="2">Brackets</option><option value="3">Dashed</option><option value="4">Rounded</option>
           </select>
         </label>
         <label class="fld">
           <span>Year Badge</span>
-          <select id="ct_bd" data-ct>
-            <option value="0">Solid</option>
-            <option value="1">Pill</option>
-            <option value="2">Outline</option>
+          <select id="design-badge">
+            <option value="0">Solid</option><option value="1">Pill</option><option value="2">Outline</option>
           </select>
         </label>
         <label class="fld">
           <span>Tear Line</span>
-          <select id="ct_pf" data-ct>
-            <option value="0">Dashed</option>
-            <option value="1">Dotted</option>
-            <option value="2">Solid Line</option>
+          <select id="design-tear">
+            <option value="0">Dashed</option><option value="1">Dotted</option><option value="2">Solid Line</option>
           </select>
         </label>
-        <div class="hint full">Need gradients, halftone, or multiple saved themes? Open <a href="theme-studio.html" style="color:var(--accent)">Theme Studio</a>.</div>
+        <label class="fld">
+          <span>Photo Filter</span>
+          <select id="design-filter">
+            <option value="0">Full Colour</option><option value="1">Black &amp; White</option><option value="2">Sepia</option>
+          </select>
+        </label>
+        <fieldset class="mount-fields full">
+          <legend>Photo mounts — choose up to 2</legend>
+          <label class="chk"><input type="checkbox" data-quick-mount value="0" checked> Tape</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="1"> Pins</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="2"> Corners</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="3"> None</label>
+          <span class="hint full" id="quick-mount-status">Active mounts: Tape</span>
+        </fieldset>
+        <div class="ctrl-flex full">
+          <label class="chk"><input type="checkbox" id="design-center"> Centre title &amp; genre</label>
+          <label class="chk"><input type="checkbox" id="design-halftone"> Halftone photo</label>
+        </div>
       </div>
     </details>
 
-    <!-- 4. STAMPS, DISTRESS & TEXTURE -->
+    <!-- 5. STAMPS, DISTRESS & TEXTURE -->
     <details class="sec">
-      <summary>4. Stamps, Texture &amp; Wear</summary>
+      <summary>5. Stamps, Texture &amp; Wear</summary>
       <div class="ctrl-grid">
         <label class="fld">
           <span>Stamp Shape</span>
@@ -194,6 +204,13 @@
             <option value="hex">Hexagon</option>
             <option value="diamond">Diamond</option>
             <option value="seal">Seal</option>
+            <option value="starburst">Starburst</option>
+            <option value="scallop">Scalloped Seal</option>
+            <option value="ticket">Ticket</option>
+            <option value="arch">Arch</option>
+            <option value="ribbon">Ribbon</option>
+            <option value="burst">Sunburst</option>
+            <option value="cross">Cross</option>
             <option value="mixed">Mixed (random)</option>
             <option value="none">None</option>
           </select>
@@ -246,9 +263,9 @@
       </div>
     </details>
 
-    <!-- 5. EXPORT, DATA & ACTIONS -->
-    <details class="sec" open>
-      <summary>5. Export, Batch Tools &amp; JSON Data</summary>
+    <!-- 6. EXPORT, DATA & ACTIONS -->
+    <details class="sec">
+      <summary>6. Export, Batch Tools &amp; JSON Data</summary>
       <div class="ctrl-flex" style="margin-bottom:8px">
         <button id="svg" type="button">Download SVG</button>
         <button class="g" id="print" type="button">Print / save PDF</button>
@@ -306,6 +323,17 @@
   </div>
 
   <div class="stage">
+    <div class="page-tools" id="page-tools" aria-label="Page tools">
+      <label class="fld page-select">
+        <span>Active page</span>
+        <select id="page-select"></select>
+      </label>
+      <label class="fld page-theme">
+        <span>Page theme</span>
+        <select id="page-theme"><option value="">Use global</option></select>
+      </label>
+      <button class="g" type="button" id="duplicate-page">Duplicate page</button>
+    </div>
     <div id="sheets" style="display:contents"></div>
   </div>
 </div>
@@ -323,10 +351,10 @@
       <button class="g" id="pvsvg">SVG</button>
       <button id="pvx" aria-label="Close">✕</button>
     </div>
-    <img id="pvi" alt="Card preview">
+    <div id="pvi" aria-label="Card preview"></div>
   </div>
 </div>
 
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js?v=palette-only-pages-4"></script>
 </body>
 </html>

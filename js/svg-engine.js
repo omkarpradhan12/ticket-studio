@@ -95,7 +95,14 @@ export const STAMPS = {
   shield:  { o: '<path d="M-14 -15H14V2Q14 12 0 18Q-14 12 -14 2Z" stroke-width="1" stroke-linejoin="round"/><path d="M-11.5 -12.5H11.5V1.5Q11.5 9.5 0 14.8Q-11.5 9.5 -11.5 1.5Z" stroke-width=".5" stroke-linejoin="round"/>', yr: -6, nm: 1, w: 20, r: "M-6 4.5h12" },
   hex:     { o: `<polygon points="${hexp(17)}" stroke-width="1" stroke-linejoin="round"/><polygon points="${hexp(14.5)}" stroke-width=".5" stroke-linejoin="round"/>`, yr: -5, nm: 3, w: 22, r: "M-7 7h14" },
   diamond: { o: '<path d="M0 -19L19 0L0 19L-19 0Z" stroke-width="1" stroke-linejoin="round"/><path d="M0 -15.6L15.6 0L0 15.6L-15.6 0Z" stroke-width=".5" stroke-linejoin="round"/>', yr: -4.5, nm: 2.5, w: 20, r: "M-4.5 6.5h9" },
-  seal:    { o: `<polygon points="${star(16, 17.6, 15.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="12.8" stroke-width=".5"/>`, yr: -4.5, nm: 3, w: 19, r: "M-6 6.5h12" }
+  seal:    { o: `<polygon points="${star(16, 17.6, 15.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="12.8" stroke-width=".5"/>`, yr: -4.5, nm: 3, w: 19, r: "M-6 6.5h12" },
+  starburst: { o: `<polygon points="${star(12, 20, 14.5)}" stroke-width="1" stroke-linejoin="round"/><circle r="12" stroke-width=".5"/>`, yr: -4.5, nm: 3.5, w: 20, r: "M-6.5 7h13" },
+  scallop: { o: `<polygon points="${star(20, 17.8, 16.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="13.5" stroke-width=".5"/>`, yr: -5, nm: 3, w: 20, r: "M-6 7h12" },
+  ticket: { o: '<path d="M-20 -12H20V-7A7 7 0 0 0 20 7V12H-20V7A7 7 0 0 0-20-7Z" stroke-width="1" stroke-linejoin="round"/><rect x="-16.5" y="-8.5" width="33" height="17" rx="2" stroke-width=".5"/><path d="M-12 -5V5M12 -5V5" stroke-width=".5"/>', yr: -3, nm: 5.5, w: 27, r: "M-7 8h14" },
+  arch: { o: '<path d="M-18 13V-3A18 18 0 0 1 18-3V13Z" stroke-width="1" stroke-linejoin="round"/><path d="M-14.5 10V-2A14.5 14.5 0 0 1 14.5-2V10Z" stroke-width=".5"/>', yr: -5, nm: 3, w: 21, r: "M-6 6.5h12" },
+  ribbon: { o: '<path d="M-18 -12H18V8H7L4 14L0 8H-18Z" stroke-width="1" stroke-linejoin="round"/><rect x="-15" y="-9" width="30" height="14" rx="1" stroke-width=".5"/>', yr: -4, nm: 4.5, w: 25, r: "M-7 7h14" },
+  burst: { o: `<polygon points="${star(16, 21, 17)}" stroke-width=".9" stroke-linejoin="round"/><circle r="13" stroke-width=".5"/>`, yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" },
+  cross: { o: '<path d="M-7 -18H7V-7H18V7H7V18H-7V7H-18V-7H-7Z" stroke-width="1" stroke-linejoin="round"/><path d="M-4.5 -14.5H4.5V-4.5H14.5V4.5H4.5V14.5H-4.5V4.5H-14.5V-4.5H-4.5Z" stroke-width=".5"/>', yr: -4.5, nm: 3.5, w: 19, r: "M-5.5 7h11" }
 };
 export const SKINDS = Object.keys(STAMPS);
 
@@ -115,6 +122,15 @@ function frame(i, A, bs, CH, bwear) {
 }
 
 function mount(tt, PX, PY, PS, PB, odd, i, A, T) {
+  if (Array.isArray(T.mounts)) {
+    return T.mounts.slice(0, 2).map((mountType, mountIndex) =>
+      mountSingle(mountType, PX, PY, PS, PB, odd ^ (mountIndex === 1), i + mountIndex * 11, A, T)
+    ).join("");
+  }
+  return mountSingle(tt, PX, PY, PS, PB, odd, i, A, T);
+}
+
+function mountSingle(tt, PX, PY, PS, PB, odd, i, A, T) {
   if (tt === 3) return "";
   if (tt === 1) {
     return [[PX + 5, PY + 5], [PX + PS - 5, PY + 5]].map(([a, b]) =>
@@ -153,7 +169,16 @@ export function renderCard(c0, i, cfg) {
   const bl = cfg.one ? 0 : (cfg.bleed ? 3 / K : 0);
   const D = CH - 239;
 
-  const T = cfg.themeObj || THEMES[c0.theme || cfg.style] || THEMES.cream;
+  const T = cfg.themeObj || THEMES[cfg.themeForce || c0.theme || cfg.style] || THEMES.cream;
+  const design = {
+    borderStyle: cfg.borderStyle ?? 0,
+    photoMounts: Array.isArray(cfg.photoMounts) ? cfg.photoMounts.slice(0, 2) : [0],
+    yearBadge: cfg.yearBadge ?? 0,
+    tearStyle: cfg.tearStyle ?? 0,
+    centerTitle: Boolean(cfg.centerTitle),
+    photoFilter: cfg.photoFilter ?? 0,
+    halftone: Boolean(cfg.halftone)
+  };
   const effS = Math.min(1, Math.max(T.sm || 0, c.s ?? 0.75));
   const effL = T.l || 0.52;
   const A = T.fixed || hsl(c.h ?? 35, effS, effL);
@@ -167,10 +192,10 @@ export function renderCard(c0, i, cfg) {
 
   const b = c.img && fitBox(c, CH);
   const ph = c.img
-    ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="none"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${T.gray ? ` filter="url(#np${i})"` : ""}/></g>`
+    ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="none"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${design.photoFilter ? ` filter="url(#np${i})"` : ""}/></g>`
     : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
 
-  const tp = mount(T.tt | 0, PX, PY, PS, PB, odd, i, A, T);
+  const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
   const ss = (cfg.stampSize || 100) / 100, rr = 17 * ss;
   const rn = k => { const v = Math.sin((i + 1) * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
   const sx = PX + rr * 0.6 + rn(1) * (PS - rr * 1.2);
@@ -186,13 +211,13 @@ export function renderCard(c0, i, cfg) {
     `<g${(cfg.stampWear || 0) > 0 ? ` filter="url(#ink${i})"` : ""} transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${r.toFixed(1)}) scale(${sz})" fill="none" stroke="${sco}" opacity=".95">${d.o}${yr ? `<text y="${d.yr}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(yr)}</text>` : ""}<text y="${d.nm}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${fit(txt, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(txt)}</text>${d.r ? `<path d="${d.r}" stroke-width=".5"/>` : ""}</g>`;
 
   const stamp = skw === "none" ? "" : mkS(sd, c0.stx || cfg.stamp || "Soul Fuel", cfg.stampYear || "2026", ss, sx, sy, sr);
-  const stamp2 = cfg.stamp2 && !T.min ? mkS(STAMPS.rect, cfg.stamp2, "", ss * 0.85, PX + 30 + rn(8) * (PS - 60), PB + 32 + rn(9) * 26, (rn(10) - 0.5) * 30) : "";
+  const stamp2 = cfg.stamp2 ? mkS(STAMPS.rect, cfg.stamp2, "", ss * 0.85, PX + 30 + rn(8) * (PS - 60), PB + 32 + rn(9) * 26, (rn(10) - 0.5) * 30) : "";
 
-  const tf = TF[cfg.titleFont] || { f: T.tf || "'Pirata One',Georgia,serif", w: T.tw || 400, s: T.ts || 17, k: T.tk || 0.58 };
+  const tf = TF[cfg.titleFont] || TF.pirata;
   const lumB = lum(T.bg), dkp = lumB < 0.45, tcol = dkp ? "#fff" : "#3a2a18";
   const tr = dkp ? 1 : 0.15, tg = dkp ? 1 : 0.1, tb = dkp ? 1 : 0.05;
 
-  const serial = cfg.serials && !T.min ? `<text x="${CW - 17}" y="${158.5 + D}" text-anchor="end" fill="${mute}" opacity=".85" font-size="3.8" font-weight="700" letter-spacing=".5" ${FT}>№ ${String(i + 1).padStart(4, "0")}</text>` : "";
+  const serial = cfg.serials ? `<text x="${CW - 17}" y="${158.5 + D}" text-anchor="end" fill="${mute}" opacity=".85" font-size="3.8" font-weight="700" letter-spacing=".5" ${FT}>№ ${String(i + 1).padStart(4, "0")}</text>` : "";
 
   let cre = "";
   const crVal = cfg.creases || 0;
@@ -224,6 +249,9 @@ export function renderCard(c0, i, cfg) {
     }
     nfc = `<g transform="translate(${CW - 38} ${209 + D})"><circle r="5.6" fill="${T.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${T.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${T.np || "#fff"}"/>${ar}</g>`;
   }
+  if (cfg.punchHole) {
+    nfc += `<g aria-label="NFC punch hole" transform="translate(${CW / 2} ${PMY})"><circle r="3.4" fill="#fff" stroke="${T.frame}" stroke-width=".6"/><circle r="1.7" fill="#e7e4dc" stroke="${A}" stroke-width=".35"/></g>`;
+  }
 
   let mk = "";
   if (cfg.cropMarks && !cfg.one) {
@@ -242,32 +270,33 @@ export function renderCard(c0, i, cfg) {
     sc += `<g transform="translate(${bx} ${by})"><circle cx=".35" cy=".5" r="2.5" fill="#000" opacity=".3"/><circle r="2.5" fill="${mt}" stroke="${dk}" stroke-width=".35"/><circle r="1.9" fill="none" stroke="${hi}" stroke-width=".3" opacity=".7"/><circle cx="-.7" cy="-.8" r=".7" fill="${hi}" opacity=".55"/><g transform="rotate(${ang})" stroke="${dk}" stroke-width=".42" stroke-linecap="round"><path d="M-1.5 0H1.5"/>${ph ? '<path d="M0 -1.5V1.5"/>' : ''}</g></g>`;
   });
 
-  const bw = `EST. ${c.year}`.length * 4.5, bdg = T.bd | 0, pf = T.pf | 0, tcn = T.tc ? 1 : 0;
+  const bw = `EST. ${c.year}`.length * 4.5, bdg = design.yearBadge, pf = design.tearStyle, tcn = design.centerTitle ? 1 : 0;
   const tx = tcn ? CW / 2 : 17, ta = tcn ? ' text-anchor="middle"' : "";
   const badge = `<rect x="17" y="168" width="${(bw + 9).toFixed(1)}" height="10" rx="${bdg === 1 ? 5 : 0}" fill="${bdg === 2 ? "none" : A}"${bdg === 2 ? ` stroke="${A}" stroke-width=".8"` : ""}/><text x="21.5" y="175.2" fill="${bdg === 2 ? A : bt}" font-size="6" font-weight="800" textLength="${bw.toFixed(1)}" lengthAdjust="spacingAndGlyphs" ${FT}>EST. ${esc(c.year)}</text>`;
   const perf = `<path d="M9 161H${CW - 9}" stroke="${mute}" stroke-width="${pf === 1 ? 1.3 : 0.6}"${pf === 0 ? ' stroke-dasharray="2 2"' : pf === 1 ? ' stroke-dasharray="0.1 3" stroke-linecap="round"' : ""}/>` + (pf === 2 ? "" : `<circle cx="0" cy="161" r="3.6" fill="#fff"/><circle cx="${CW}" cy="161" r="3.6" fill="#fff"/>`);
   const drag = cfg.drag && !cfg.one ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
 
-  const cleanTitle = displayText(c.title, 42);
+  const cleanTitle = String(c.title || "Add name");
 
-  if (T.min) {
+  if (cfg.minimalLayout === true) {
     return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs><clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g><rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>${ph}<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${fit(cleanTitle, tf.s, 136, tf.k)}">${esc(cleanTitle)}</text><text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
   }
 
   const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(cfg.gradientAngle ?? 180, cfg.gradientSpread ?? 32, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
-  const grayDef = T.gray ? `<filter id="np${i}" color-interpolation-filters="sRGB">${T.gray === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter><pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
+  const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
+  const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
 
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
-   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${inkFilter("bd" + i, i + 21, cfg.borderWear || 0)}${grayDef}
+   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${inkFilter("bd" + i, i + 21, cfg.borderWear || 0)}${grayDef}${halftoneDef}
    <clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath>
    <clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs>
    <g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
-   ${frame(i, A, T.bs | 0, CH, cfg.borderWear || 0)}${sc}
+   ${frame(i, A, design.borderStyle, CH, cfg.borderWear || 0)}${sc}
    <text x="17" y="11.5" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>★ ADMIT ONE</text>
    <text x="${CW - 17}" y="11.5" text-anchor="end" fill="${ink}" font-size="5.2" font-weight="800" letter-spacing=".4" ${FT}>${U(cfg.doors || "Doors 7PM")}</text>
    <text transform="translate(13 ${PMY}) rotate(-90)" text-anchor="middle" fill="${mute}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(no)}</text>
    <text transform="translate(${CW - 13} ${PMY}) rotate(90)" text-anchor="middle" fill="${A}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(cfg.side || "Dope-Amine")}</text>
-   ${ph}${T.ht ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width="1"/>${tp}
+   ${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width="1"/>${tp}
    <g transform="translate(0 ${D})">${perf}
    ${badge}
    <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
