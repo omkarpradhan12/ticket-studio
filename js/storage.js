@@ -33,6 +33,7 @@ export const SET0 = {
   gradientAngle: 180,
   gradientSpread: 32,
   titleFont: "theme",
+  titleScale: 85,
   paper: "a4",
   cardSize: "ticket",
   cutterCorners: "0",

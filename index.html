@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase4">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase5.1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase4">
-<link rel="stylesheet" href="css/app.css?v=phase4">
+<link rel="stylesheet" href="css/tokens.css?v=phase5.1">
+<link rel="stylesheet" href="css/app.css?v=phase5.1">
 </head>
 <body>
 <header class="topbar">
@@ -140,6 +140,10 @@
             <option value="type">Special Elite</option>
             <option value="courier">Courier</option>
           </select>
+        </label>
+        <label class="fld">
+          <span class="lbl-row"><span>Card title size</span><output id="title-size-value" for="title-size">85%</output></span>
+          <input type="range" id="title-size" min="70" max="100" step="1" value="85" data-live aria-valuetext="85%">
         </label>
         <label class="fld">
           <span>Border style</span>
@@ -409,6 +413,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase4"></script>
+<script type="module" src="js/app.js?v=phase5.1"></script>
 </body>
 </html>

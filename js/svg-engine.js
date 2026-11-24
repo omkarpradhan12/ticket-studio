@@ -1,6 +1,6 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase4";
-import { hsl } from "./image-utils.js?v=phase4";
+import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase5.1";
+import { hsl } from "./image-utils.js?v=phase5.1";
 
 export const CW = 170;
 export const SIZES = {
@@ -21,12 +21,15 @@ export const displayText = (t, n) => {
   return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 };
 
-export function titleLayout(title, font, maxWidth = 136) {
+export function titleLayout(title, font, maxWidth = 136, scale = 1) {
   const clean = String(title || "Add name");
-  const singleSize = Number(fit(clean, font.s, maxWidth, font.k));
-  if (singleSize >= font.s) return { lines: [clean], size: font.s, wrapped: false };
+  const requestedScale = Number(scale);
+  const boundedScale = Number.isFinite(requestedScale) ? Math.max(0.7, Math.min(1, requestedScale)) : 1;
+  const scaledFont = { ...font, s: font.s * boundedScale };
+  const singleSize = Number(fit(clean, scaledFont.s, maxWidth, scaledFont.k));
+  if (singleSize >= scaledFont.s - 0.05) return { lines: [clean], size: singleSize, wrapped: false };
 
-  const maxChars = Math.max(4, Math.floor(maxWidth / (font.s * font.k)));
+  const maxChars = Math.max(4, Math.floor(maxWidth / (scaledFont.s * scaledFont.k)));
   const words = clean.split(/\s+/).filter(Boolean);
   const lines = [];
   let current = "";
@@ -60,8 +63,8 @@ export function titleLayout(title, font, maxWidth = 136) {
   if (current) lines.push(current);
 
   const twoLines = lines.length > 1 ? lines.slice(0, 2) : lines;
-  const size = Math.max(3.4, Math.min(font.s,
-    ...twoLines.map(line => Number(fit(line, font.s, maxWidth, font.k)))
+  const size = Math.max(3.4, Math.min(scaledFont.s,
+    ...twoLines.map(line => Number(fit(line, scaledFont.s, maxWidth, scaledFont.k)))
   ));
   return { lines: twoLines, size, wrapped: lines.length > 1 };
 }
@@ -322,7 +325,7 @@ export function renderCard(c0, i, cfg) {
   const drag = cfg.drag && !cfg.one ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
 
   const cleanTitle = String(c.title || "Add name");
-  const titleLayoutResult = titleLayout(cleanTitle, tf);
+  const titleLayoutResult = titleLayout(cleanTitle, tf, 136, cfg.titleScale ?? 0.85);
   const titleLines = titleLayoutResult.lines;
   const titleSize = titleLayoutResult.size;
   const titleMarkup = titleLayoutResult.wrapped

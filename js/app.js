@@ -1,19 +1,19 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase4";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase4";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase4";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase4";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase4";
-import { FONTCSS } from "./fonts.js?v=phase4";
-import { History } from "./history.mjs?v=phase4";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase4";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase4";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase5.1";
+import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase5.1";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase5.1";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase5.1";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase5.1";
+import { FONTCSS } from "./fonts.js?v=phase5.1";
+import { History } from "./history.mjs?v=phase5.1";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase5.1";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase5.1";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
 const HISTORY_LIMIT = 100;
 const SETTINGS_FIELDS = {
   sheetTitle: "sheet-title",
-  style: "style", titleFont: "tfont", doors: "gdoors", side: "gside",
+  style: "style", titleFont: "tfont", titleScale: "title-size", doors: "gdoors", side: "gside",
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize", stampShape: "sshape",
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
@@ -88,6 +88,8 @@ function readSettings() {
   settings.customTheme = { ...studioState.settings.customTheme };
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
+  $("title-size-value").textContent = `${settings.titleScale}%`;
+  $("title-size").setAttribute("aria-valuetext", `${settings.titleScale}%`);
   studioState.settings = settings;
   return settings;
 }
@@ -159,6 +161,7 @@ function renderConfig(one = false) {
     stampAuto: settings.stampAuto,
     stamp2: settings.stamp2.trim(),
     titleFont: settings.titleFont,
+    titleScale: settings.titleScale / 100,
     gradientAngle: settings.gradientAngle,
     gradientSpread: settings.gradientSpread,
     grain: settings.grain,
@@ -377,6 +380,7 @@ function bindHistoryControlEvents() {
     sheetTitle: "change sheet title",
     style: "change theme",
     titleFont: "change title font",
+    titleScale: "change card title size",
     doors: "change doors text",
     side: "change side text",
     stamp: "change stamp text",

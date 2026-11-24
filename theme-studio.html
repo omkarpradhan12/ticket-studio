@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Theme Studio — Ticket Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase4">
-<link rel="stylesheet" href="css/tokens.css?v=phase4">
-<link rel="stylesheet" href="css/app.css?v=phase4">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase5.1">
+<link rel="stylesheet" href="css/tokens.css?v=phase5.1">
+<link rel="stylesheet" href="css/app.css?v=phase5.1">
 </head>
 <body>
 <header class="topbar">
@@ -31,78 +31,87 @@
   </div>
 </header>
 
-<div class="studio-wrap">
-  <div class="studio-grid">
-    <div class="panel">
-      <h1>Theme Studio</h1>
-      <p class="subtitle">Build colour palettes, clone built-in themes, and save reusable colour presets. Card structure and hardware are configured independently in the Sheet Editor.</p>
-
-      <details class="sec" open>
-        <summary><span>Start from template or saved theme</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
-        <div class="ctrl-grid">
-          <label class="fld full">
-            <span>Clone built-in / saved preset</span>
-            <div class="theme-nav">
-              <select id="ts_clone"></select>
-              <button class="g" type="button" id="ts_clone_btn"><span data-icon="duplicate"></span> Clone</button>
-            </div>
-          </label>
+<main class="studio-wrap theme-studio">
+  <div class="theme-workspace" id="theme-workspace">
+    <section class="theme-library panel" aria-labelledby="theme-studio-title">
+      <header class="theme-gallery-header">
+        <div>
+          <h1 id="theme-studio-title">Theme Studio</h1>
+          <p class="subtitle">Choose a palette to preview and fine-tune. Saved themes are available in the Sheet Editor.</p>
         </div>
-      </details>
-
-      <details class="sec" open>
-        <summary><span>Palette &amp; gradient</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
-        <div class="ctrl-grid">
-          <label class="fld full">
-            <span>Theme name</span>
-            <input type="text" id="ts_name" data-ts value="My theme" placeholder="e.g. Cyberpunk Gold">
+        <div class="theme-gallery-actions">
+          <label class="fld theme-sample-control">
+            <span>Sample card</span>
+            <select id="ts_sample" aria-label="Sample card">
+              <option value="auto" selected>Auto</option>
+            </select>
           </label>
-          <div class="ctrl-flex full">
-            <label class="colour-control"><span>Paper</span><input type="color" id="ts_bg" data-ts value="#1f2430"></label>
-            <label class="colour-control"><span>Text</span><input type="color" id="ts_ink" data-ts value="#ffffff"></label>
-            <label class="colour-control"><span>Accent</span><input type="color" id="ts_acc" data-ts value="#ff5a36"></label>
-            <label class="colour-control"><span>Photo frame</span><input type="color" id="ts_frame" data-ts value="#ffffff"></label>
-            <label class="colour-control"><span>Tape</span><input type="color" id="ts_tape" data-ts value="#d8b46b"></label>
-          </div>
-          <label class="chk"><input type="checkbox" id="ts_pa" data-ts> Auto-accent from photo</label>
-          <label class="chk"><input type="checkbox" id="ts_grad" data-ts> Gradient background</label>
+          <button class="accent" type="button" id="ts_new_btn"><span data-icon="plus"></span> New Theme</button>
+          <button class="g" type="button" id="ts_export_btn"><span data-icon="download"></span> Export JSON</button>
+          <button class="g" type="button" id="ts_import_btn"><span data-icon="upload"></span> Import JSON</button>
+          <input type="file" id="ts_import_file" accept=".json,application/json" hidden>
         </div>
+      </header>
+      <div id="st-msg" class="hint theme-status" aria-live="polite" aria-atomic="true"></div>
 
-        <div class="ctrl-grid gradient-options" id="grad-opts" hidden>
+      <section class="theme-group" aria-labelledby="builtin-themes-title">
+        <h2 id="builtin-themes-title">Built-in themes</h2>
+        <div class="theme-gallery" id="builtin-gallery"></div>
+      </section>
+      <section class="theme-group" id="saved-gallery-group" aria-labelledby="saved-themes-title" hidden>
+        <h2 id="saved-themes-title">Saved themes</h2>
+        <div class="theme-gallery" id="saved-gallery"></div>
+      </section>
+    </section>
+
+    <aside class="theme-editor" id="theme-editor" aria-labelledby="theme-editor-title" hidden>
+      <header class="theme-editor-header">
+        <div>
+          <p class="section-kicker">Fine-tune palette</p>
+          <h2 id="theme-editor-title">Theme preview</h2>
+        </div>
+        <div class="theme-editor-header-actions">
+          <button class="g icon-btn" type="button" id="ts_undo" aria-label="Undo" data-tooltip="Undo" disabled><span data-icon="undo"></span></button>
+          <button class="g icon-btn" type="button" id="ts_redo" aria-label="Redo" data-tooltip="Redo" disabled><span data-icon="redo"></span></button>
+          <button class="g icon-btn" type="button" id="ts_close" aria-label="Close theme editor" data-tooltip="Close theme editor"><span data-icon="close"></span></button>
+        </div>
+      </header>
+      <div class="theme-editor-preview">
+        <img id="ts-preview-image" alt="Live ticket theme preview">
+      </div>
+      <div class="ctrl-grid theme-editor-fields">
+        <label class="fld full">
+          <span>Theme name</span>
+          <input type="text" id="ts_name" data-ts maxlength="60" value="My theme" placeholder="e.g. Cyberpunk Gold">
+        </label>
+        <div class="theme-colours ctrl-flex full">
+          <label class="colour-control"><span>Paper</span><input type="color" id="ts_bg" data-ts value="#1f2430"></label>
+          <label class="colour-control"><span>Text</span><input type="color" id="ts_ink" data-ts value="#ffffff"></label>
+          <label class="colour-control"><span>Accent</span><input type="color" id="ts_acc" data-ts value="#ff5a36"></label>
+          <label class="colour-control"><span>Photo frame</span><input type="color" id="ts_frame" data-ts value="#ffffff"></label>
+          <label class="colour-control"><span>Tape</span><input type="color" id="ts_tape" data-ts value="#d8b46b"></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="ts_pa" data-ts> Auto-accent from photo</label>
+        <label class="chk"><input type="checkbox" id="ts_grad" data-ts> Gradient background</label>
+        <div class="ctrl-grid gradient-options full" id="grad-opts" hidden>
           <label class="colour-control"><span>Gradient start</span><input type="color" id="ts_gs" data-ts value="#0b0b10"></label>
           <label class="fld">
-            <span>Accent lightness</span>
-            <input type="range" id="ts_gl" data-ts min="0.2" max="0.85" step="0.02" value="0.45">
+            <span class="lbl-row"><span>Accent lightness</span><output id="ts_gl_value" for="ts_gl">45%</output></span>
+            <input type="range" id="ts_gl" data-ts min="0.2" max="0.85" step="0.01" value="0.45" aria-valuetext="45%">
           </label>
         </div>
-      </details>
-
-      <div class="ctrl-flex theme-actions">
-        <button class="accent" type="button" id="ts_save_btn"><span data-icon="palette"></span> Save to library</button>
-        <button class="g" type="button" id="ts_new_btn"><span data-icon="reset"></span> New draft</button>
-        <button class="g" type="button" id="ts_export_btn"><span data-icon="download"></span> Export theme JSON</button>
-        <button class="g" type="button" id="ts_import_btn"><span data-icon="upload"></span> Import theme JSON</button>
-        <input type="file" id="ts_import_file" accept=".json,application/json" hidden>
       </div>
-      <div id="st-msg" class="hint theme-status"></div>
-
-      <div class="cards-header">
-        <h2>Saved custom themes</h2>
+      <div class="theme-editor-actions">
+        <button class="accent" type="button" id="ts_save_new"><span data-icon="plus"></span> Save as new theme</button>
+        <button class="g" type="button" id="ts_update" hidden><span data-icon="upload"></span> Update this theme</button>
+        <button class="g" type="button" id="ts_duplicate" hidden><span data-icon="duplicate"></span> Duplicate</button>
+        <button class="danger" type="button" id="ts_delete" hidden><span data-icon="delete"></span> Delete</button>
       </div>
-      <div class="saved-themes-list" id="saved-list"></div>
-    </div>
-
-    <div class="studio-preview">
-      <div class="theme-preview-header">
-        <strong>Live theme preview</strong>
-        <select id="ts_sample" class="theme-sample-select" aria-label="Sample card"></select>
-      </div>
-      <div class="preview-card-box" id="ts-preview-svg"></div>
-      <div class="hint theme-help">Saved themes automatically appear under <b>Saved custom themes</b> in the Sheet Editor.</div>
-    </div>
+      <p class="hint theme-history-note">Theme draft undo is in memory only and clears when you switch themes or reload.</p>
+    </aside>
   </div>
-</div>
+</main>
 
-<script type="module" src="js/theme-studio.js?v=phase4"></script>
+<script type="module" src="js/theme-studio.js?v=phase5.1"></script>
 </body>
 </html>
