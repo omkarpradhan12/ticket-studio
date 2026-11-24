@@ -33,6 +33,7 @@
 - Do not change existing renderer output for existing sizes, themes, border styles, stamps, or settings. Print, SVG, PNG, and PDF output must remain identical for unchanged input.
 - Before the first Phase 1 code change, run the app locally, export a sample sheet in every available format, and store copies in git-ignored `.baseline/`.
 - State migration must be backward compatible; stop and ask before any migration that is not clearly reversible.
+- Sheet Editor undo/redo history is in memory only and clears on reload; saved sheet data continues to autosave independently.
 
 ## Verification checklist
 1. Load all three pages with no console errors.

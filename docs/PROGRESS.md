@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: 0 - Audit and planning
-- Next approval: owner to approve proceeding into Phase 1.
+- Current phase: 2 - Undo/redo design
+- Next approval: owner to approve the state-layer refactor and history design below.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -50,10 +50,12 @@
 | P1-30 | Verify UI issue U14 Ink/Text terminology | S | low | todo | - | |
 | P1-31 | Consolidate U15 CSS/inline/cache issues | L | medium | todo | - | Preserve behavior |
 | P1-32 | Verify UI issue U16 hex fields for pickers | M | medium | todo | - | |
-| P2-01 | Introduce state/snapshot layer if required | L | high | todo | - | State refactor decision is open until Phase 1 |
-| P2-02 | Undo/redo controls | M | medium | todo | - | |
-| P2-03 | Coalesce typing/sliders/drags | M | high | todo | - | |
-| P2-04 | Cover card operations/import/randomise/reset in history | L | high | todo | - | |
+| P2-01 | Design and approve state/history architecture | M | high | in progress | - | Awaiting approval; no app changes in this step |
+| P2-02 | Refactor Sheet Editor to canonical state | L | high | todo | - | Own behavior-preserving commit(s), before history implementation |
+| P2-03 | Implement in-memory history module and tests | L | high | todo | - | 100 entries; shared card objects; add standalone no-framework tests |
+| P2-04 | Wire undoable Sheet Editor actions and restore | L | high | todo | - | Settings, cards, pages, imports, reset/randomise/sample operations |
+| P2-05 | Add Undo/Redo controls, shortcuts, and undo toasts | M | medium | todo | - | Keep controls reachable on phone; native text-field undo takes precedence |
+| P2-06 | Verify coalescing, memory, restore, and persistence | L | high | todo | - | Include large-photo measurement and reload behavior |
 | P3-01 | Sheet Editor layout/sidebar accordions | L | high | todo | - | |
 | P3-02 | Top bar actions/menu | L | medium | todo | - | |
 | P3-03 | Compact card rows and selected expansion | L | medium | todo | - | |
@@ -111,3 +113,36 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - Title reproduction: `BREAKING BENJAMIN VERY LONG TITLE` now renders as two deterministic SVG text lines and is present in preview/export markup.
 - Print emulation: topbar/panel hidden; A4-sized `.sheet` is 210mm x 297mm and one template/additional page is present.
 - Remaining manual checks: real printer/PDF scaling, blank trailing page, PNG/PDF export downloads, and external/CORS image raster exports.
+
+## Phase 2 design (awaiting approval; implementation has not started)
+
+### State-layer refactor plan
+The audit found state split between the Sheet Editor DOM, module variables, and mutable card objects. Before introducing history, create one canonical `studioState` containing all Sheet Editor settings (including the custom palette), card records, count, selected card, active page, and page theme overrides. DOM controls become a view of that state. Move each existing mutation path (control edits, card edits/operations, image loads, drag-photo updates, imports, randomise/samples/reset, page theme and duplication) to state update helpers, and make card records immutable on update so a past snapshot cannot be changed through an object alias. Keep rendering, export helpers, saved `{v, count, settings, cards}` payloads, and visible behavior unchanged. Land this refactor separately and verify it before adding history.
+
+### Proposed snapshot and history format
+- Each history entry is an in-memory `{version: 1, state}` snapshot. `state` is the canonical Sheet Editor state, not rendered SVG or DOM markup.
+- Settings are shallow-copied as a plain object and card/page arrays are shallow-copied; card records are immutable and shared across snapshots unless changed. Photo strings/data URLs remain references on unchanged card records, not deep-copied payloads.
+- Snapshot/restore operates generically on complete settings and card objects, not a hard-coded list of per-card style keys. Future optional per-card borders, stamp positions and style overrides are therefore retained automatically. Future settings are included when added to canonical state.
+- The snapshot includes all undoable settings/card/page data plus selected-card and active-page identity so restoration can preserve selection. It excludes view-only state: zoom/fit, accordion state, search, scroll, expanded-row selection state, menus/tooltips, export and print state.
+- Persisted sheet format remains unchanged. History is session-memory-only and clears on reload. Do not persist history; report that the saved sheet itself still autosaves normally.
+
+### Coalescing and memory
+- History limit: 100 entries, oldest removed first. A new committed action after undo clears redo.
+- Text and range/color controls capture the pre-gesture snapshot once and commit after `change`, blur, pointer-up, or roughly 600ms idle. Dial pointer drags use pointer-up; no snapshot per movement. Programmatic batch operations (Randomise, Reset All, Load Samples, imports, page duplication) are one transaction each.
+- History uses copy-on-write card records and shallow array/settings snapshots. Large unchanged photo data URLs are shared by card references. A changed card creates a new small record but reuses the same photo string unless its image changes. Validate no in-place mutation remains in tracked state.
+- After implementation, measure with 18 cards carrying large data-URL photos: report total unique photo payload size, history snapshot metadata/state size, and a naive deep-copy comparison. Use actual runtime measurements where exposed and label estimates separately.
+
+### Apply snapshot and action naming
+- `applySnapshot` replaces canonical state, synchronizes every settings control/custom color and derived disabled state, rebuilds card rows, rerenders the SVG preview, synchronizes page selector/theme toolbar, restores the selected card and active page, then requests the existing debounced autosave exactly once.
+- Undo/redo must not generate an extra history entry; normal autosave runs once after restore. Do not clear IndexedDB/localStorage during history restoration.
+- Each committed operation records a human-readable action label for button tooltip/aria-label (for example `Undo: change border style`); redo uses its corresponding label.
+- Add `history.canUndo/canRedo` and a subscription/state query hook so Theme Studio can add draft-scoped history in Phase 5 without coupling it to Sheet Editor state.
+
+### UI and keyboard behavior
+- Place labelled/icon Undo and Redo controls in the top bar, disabled when the corresponding stack is empty and reachable without scrolling on phone layouts.
+- `Ctrl/Cmd+Z` undo; `Ctrl/Cmd+Shift+Z` and `Ctrl+Y` redo. When focus is in an editable text control, do not intercept native text undo. Ignore shortcuts in a way that preserves typing and existing browser shortcuts.
+- After delete, Reset All, Load Samples, bulk import, or Randomise, show a non-blocking toast with an Undo action. These actions remain reversible; saved-theme deletion stays confirmed and outside Sheet Editor history.
+
+### Approval gate
+- Approve or request changes to the state-layer refactor and snapshot/history design before any implementation.
+- No local history persistence is proposed.

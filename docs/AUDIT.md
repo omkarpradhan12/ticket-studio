@@ -201,3 +201,9 @@ No screenshots or Playwright run are included in this audit. The environment exp
 ## Verification conclusions
 - `app.js` is not a single-state architecture: undo/redo is likely to require a state-layer refactor or a disciplined snapshot of DOM + module + card state. Phase 2 should precede by introducing a single state transition/snapshot layer or a strong snapshot/restore helper.
 - Phase 7 (draggable stamps) and Phase 8 (Surprise me) require per-card style override support for stamp position and randomised styling. Add optional per-card fields only and preserve old defaults.
+
+## Phase 2 design follow-up
+- The Phase 2 plan chooses a canonical in-memory Sheet Editor state rather than treating DOM controls as history storage. Controls become a view synchronized from state.
+- Snapshot history must use immutable card records and copy-on-write updates; otherwise current in-place mutations can alter card records that older history snapshots reference.
+- Snapshots shallow-copy settings/arrays and share unchanged card records, including their image/data-URL strings. New optional card fields are retained because snapshots store full records rather than selecting known keys.
+- No migration or saved-data format change is planned. The user must approve this refactor and the history behavior before implementation starts.
