@@ -17,6 +17,7 @@ export const SEED_DATA = [
 ];
 
 export const SET0 = {
+  sheetTitle: "Concert Ticket Card Sheet",
   style: "cream",
   doors: "Doors 7PM",
   side: "Dope-Amine",

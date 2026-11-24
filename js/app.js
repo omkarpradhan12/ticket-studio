@@ -10,6 +10,7 @@ const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
 const HISTORY_LIMIT = 100;
 const SETTINGS_FIELDS = {
+  sheetTitle: "sheet-title",
   style: "style", titleFont: "tfont", doors: "gdoors", side: "gside",
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize", stampShape: "sshape",
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
@@ -45,6 +46,7 @@ let previousFocus = null;
 let historyReady = false;
 let batchImportInProgress = false;
 let undoToastTimer;
+let previewZoom = 1;
 const coalescingTimers = new Map();
 const history = new History({ limit: HISTORY_LIMIT, onChange: updateHistoryControls });
 
@@ -369,6 +371,7 @@ function redo() {
 
 function bindHistoryControlEvents() {
   const labels = {
+    sheetTitle: "change sheet title",
     style: "change theme",
     titleFont: "change title font",
     doors: "change doors text",
@@ -458,6 +461,7 @@ function render() {
   });
   if ($("tpl").checked) svgPages.push(tplSvg(currentLayout, cfg.regMarks));
   $("sheets").innerHTML = svgPages.join("");
+  updatePreviewZoom(previewZoom);
   const printStyle = $("print-page-style");
   if (printStyle) {
     const paperSize = $("paper").value === "letter" ? "letter" : "A4";
@@ -466,6 +470,8 @@ function render() {
     printStyle.textContent = `@media print {
       @page { size: ${paperSize} portrait; margin: 0; }
       .topbar, .panel, .page-tools, #pv, h1, p.subtitle { display: none !important; }
+      .app[data-mobile-view] .stage { display: block !important; }
+      .mobile-view-toggle, .mobile-actionbar { display: none !important; }
       .sheet { width: ${paperWidth} !important; height: ${paperHeight} !important; }
     }`;
   }
@@ -475,10 +481,17 @@ function render() {
   $("card-count-lbl").textContent = studioState.count;
   $("ssv").textContent = cfg.stampSize + "%";
   $("gsv").textContent = cfg.gradientSpread + "%";
-  $("gctl").style.opacity = active.grad ? "1" : ".55";
+  const gradientEnabled = Boolean(active.grad);
+  $("dial").setAttribute("aria-disabled", String(!gradientEnabled));
+  $("dial").tabIndex = gradientEnabled ? 0 : -1;
+  $("dial").classList.toggle("disabled", !gradientEnabled);
+  $("gradient-hint").textContent = gradientEnabled
+    ? "Drag the dial or use arrow keys to set the angle."
+    : "Choose a gradient theme to enable the angle control.";
   syncPageTools(pages);
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === studioState.selectedCard);
+    row.setAttribute("aria-expanded", String(i === studioState.selectedCard));
     if (i === studioState.selectedCard) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
   });
@@ -493,6 +506,7 @@ function selectCard(index, scroll = false) {
   if (historyReady) history.refresh(captureSnapshot());
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === index);
+    row.setAttribute("aria-expanded", String(i === index));
     if (i === index) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
   });
@@ -505,38 +519,52 @@ function buildRows() {
     const row = document.createElement("article");
     row.className = "row" + (index === studioState.selectedCard ? " selected" : "");
     row.dataset.index = index;
+    row.setAttribute("aria-expanded", String(index === studioState.selectedCard));
     const imgSrc = card.img || card.imgUrl;
+    const imageUrl = card.imgUrl || (String(card.img || "").startsWith("http") ? card.img : "");
+    const genre = String(card.genre || "");
     const themeOptions = `<option value="">Same as sheet</option>${Object.entries(THEMES).map(([key, theme]) => `<option value="${key}"${card.theme === key ? " selected" : ""}>${escapeHtml(theme.n)}</option>`).join("")}`;
     const stampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, key[0].toUpperCase() + key.slice(1)]), ["mixed", "Mixed"]]
       .map(([value, name]) => `<option value="${value}"${(card.sk || "") === value ? " selected" : ""}>${name}</option>`).join("");
     row.innerHTML = `
       <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : "Photo"}</div>
-      <div class="f">
-        <div class="w rb"><b>Card ${index + 1}</b>
-          <button class="g" type="button" data-action="up" aria-label="Move card up">▲</button>
-          <button class="g" type="button" data-action="down" aria-label="Move card down">▼</button>
-          <button class="g" type="button" data-action="duplicate" aria-label="Duplicate card">⧉</button>
-          <button class="g" type="button" data-action="delete" aria-label="Delete card">✕</button>
-          <button class="g" type="button" data-action="view">View</button>
-          <button class="g" type="button" data-action="clear" aria-label="Clear card">↺</button>
+      <div class="row-content">
+        <div class="row-heading">
+          <button class="card-name" type="button" data-action="select-card" aria-label="Select card ${index + 1}">Card ${index + 1} · ${escapeHtml(card.title || "Untitled card")}</button>
+          <div class="row-actions">
+            <button class="g sm" type="button" data-action="view">View</button>
+            <button class="danger sm" type="button" data-action="delete"${studioState.count <= 1 ? " disabled" : ""}>Delete</button>
+            <details class="card-menu">
+              <summary aria-label="More actions for card ${index + 1}" title="More card actions">…</summary>
+              <div class="menu-panel">
+                <button class="g" type="button" data-action="up"${index === 0 ? " disabled" : ""}>Move up</button>
+                <button class="g" type="button" data-action="down"${index === studioState.count - 1 ? " disabled" : ""}>Move down</button>
+                <button class="g" type="button" data-action="duplicate"${studioState.count >= MAX_CARDS ? " disabled" : ""}>Duplicate card</button>
+                <button class="g" type="button" data-action="clear">Reset card</button>
+                <button class="g" type="button" data-action="surprise" disabled title="Available in Phase 8">Surprise this card</button>
+              </div>
+            </details>
+          </div>
         </div>
-        <input class="w" type="text" data-field="title" aria-label="Card ${index + 1} name" placeholder="Artist / band name" value="${escapeHtml(card.title)}">
-        <input type="text" data-field="genre" aria-label="Genre" placeholder="Genre" value="${escapeHtml(card.genre)}">
-        <input type="text" data-field="loc" aria-label="Place" placeholder="Place" value="${escapeHtml(card.loc)}">
-        <input type="text" data-field="year" aria-label="Year" placeholder="Year" value="${escapeHtml(card.year)}">
-        <input type="text" data-field="code" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code)}">
-        <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url placeholder="https://…" value="${escapeHtml(card.imgUrl || (String(card.img || "").startsWith("http") ? card.img : ""))}"><button class="g sm" type="button" data-action="load-url">Load</button></div></label>
-        ${card.corsLimited ? '<span class="cors-tag w" title="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
-        <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> Accent sampled from image when available</div>
-        <details class="w adj"><summary>Photo &amp; theme options</summary>
-          <label><span>Zoom</span><input type="range" min="100" max="300" value="${Math.round((card.zm || 1) * 100)}" data-adjust="zm"></label>
-          <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
-          <label><span>Vertical</span><input type="range" min="-100" max="100" value="${card.py || 0}" data-adjust="py"></label>
-          <button class="g sm" type="button" data-action="reset-photo">Reset photo crop</button>
-          <label><span>Theme</span><select data-option="theme">${themeOptions}</select></label>
-          <label><span>Stamp</span><select data-option="sk">${stampOptions}</select></label>
-          <label><span>Stamp text</span><input type="text" data-option="stx" placeholder="Same as sheet" value="${escapeHtml(card.stx || "")}"></label>
-        </details>
+        <div class="f card-fields">
+          <label class="fld w"><span>Artist / band name</span><input type="text" data-field="title" aria-label="Card ${index + 1} name" placeholder="Artist / band name" value="${escapeHtml(card.title)}"></label>
+          <label class="fld w"><span>Genre</span><input type="text" data-field="genre" aria-label="Genre" placeholder="Genre" value="${escapeHtml(genre)}"><output class="field-value" data-field-value="genre"${genre.length > 24 ? "" : " hidden"}>${escapeHtml(genre)}</output></label>
+          <label class="fld w"><span>Place</span><input type="text" data-field="loc" aria-label="Place" placeholder="Place" value="${escapeHtml(card.loc)}"></label>
+          <label class="fld w"><span>Year</span><input type="text" data-field="year" aria-label="Year" placeholder="Year" value="${escapeHtml(card.year)}"></label>
+          <label class="fld w"><span>Abbreviation</span><input type="text" data-field="code" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code)}"></label>
+          <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
+          ${card.corsLimited ? '<span class="cors-tag w" title="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
+          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> Accent sampled from image when available</div>
+          <details class="w adj"><summary>Photo &amp; theme options</summary>
+            <label><span>Zoom</span><input type="range" min="100" max="300" value="${Math.round((card.zm || 1) * 100)}" data-adjust="zm"></label>
+            <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
+            <label><span>Vertical</span><input type="range" min="-100" max="100" value="${card.py || 0}" data-adjust="py"></label>
+            <button class="g sm" type="button" data-action="reset-photo">Reset photo crop</button>
+            <label><span>Theme</span><select data-option="theme">${themeOptions}</select></label>
+            <label><span>Stamp</span><select data-option="sk">${stampOptions}</select></label>
+            <label><span>Stamp text</span><input type="text" data-option="stx" placeholder="Same as sheet" value="${escapeHtml(card.stx || "")}"></label>
+          </details>
+        </div>
       </div>`;
     const file = document.createElement("input");
     file.type = "file";
@@ -565,6 +593,14 @@ function buildRows() {
     row.querySelectorAll("[data-field]").forEach(input => {
       input.addEventListener("input", () => {
         updateCard(index, { [input.dataset.field]: input.value });
+        if (input.dataset.field === "title") {
+          row.querySelector(".card-name").textContent = `Card ${index + 1} · ${input.value || "Untitled card"}`;
+        }
+        const output = row.querySelector(`[data-field-value="${input.dataset.field}"]`);
+        if (output) {
+          output.textContent = input.value;
+          output.hidden = input.value.length <= 24;
+        }
         scheduleRender();
       });
       const fieldNames = { title: "name", genre: "genre", loc: "place", year: "year", code: "abbreviation" };
@@ -596,11 +632,16 @@ function buildRows() {
       const url = row.querySelector("[data-url]").value.trim();
       await setImage(index, () => processImageUrl(url));
     });
+    row.querySelector("[data-url]").addEventListener("input", event => {
+      const output = row.querySelector("[data-field-value='url']");
+      output.textContent = event.target.value;
+      output.hidden = event.target.value.length <= 32;
+    });
     row.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
       const action = button.dataset.action;
       selectCard(index);
-      if (action === "load-url") return;
+      if (action === "select-card" || action === "surprise" || action === "load-url") return;
       if (action === "view") { selectCard(index); openPreview(index); }
       else if (action === "up" && index > 0) moveCard(index, index - 1);
       else if (action === "down" && index < studioState.count - 1) moveCard(index, index + 1);
@@ -635,6 +676,7 @@ function buildRows() {
         buildRows();
         render();
       }
+      button.closest(".card-menu")?.removeAttribute("open");
     }));
     $("rows").append(row);
   });
@@ -929,6 +971,21 @@ function closePreview() {
   if (previousFocus?.isConnected) previousFocus.focus();
 }
 
+function updatePreviewZoom(value) {
+  previewZoom = Math.max(.5, Math.min(2, Math.round(value * 10) / 10));
+  const stage = $("stage");
+  const stageStyle = getComputedStyle(stage);
+  const availableWidth = stage.clientWidth
+    - Number.parseFloat(stageStyle.paddingLeft)
+    - Number.parseFloat(stageStyle.paddingRight);
+  if (availableWidth > 0) {
+    const width = Math.min(availableWidth, 740) * previewZoom;
+    $("sheets").style.width = `${width}px`;
+    $("sheets").style.setProperty("--preview-sheet-width", `${width}px`);
+  }
+  $("zoom-value").textContent = `${Math.round(previewZoom * 100)}%`;
+}
+
 async function printSheet() {
   if (document.fonts?.ready) await document.fonts.ready;
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -955,6 +1012,7 @@ function bindEvents() {
   $("page-select")?.addEventListener("change", event => {
     studioState.activePage = +event.target.value;
     $("page-theme").value = studioState.pageThemes[studioState.activePage] || "";
+    $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${event.target.options.length}`;
     if (historyReady) history.refresh(captureSnapshot());
   });
   $("page-theme")?.addEventListener("change", event => {
@@ -1016,6 +1074,8 @@ function bindEvents() {
   $("print").addEventListener("click", () => {
     printSheet().catch(() => window.print());
   });
+  $("mobile-print").addEventListener("click", () => $("print").click());
+  $("mobile-export").addEventListener("click", () => $("svg").click());
   $("svg").addEventListener("click", () => exportAllSvgs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("png").addEventListener("click", () => exportAllPngs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("pdf").addEventListener("click", () => exportPdf([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
@@ -1027,6 +1087,23 @@ function bindEvents() {
   $("smp").addEventListener("click", loadSamples);
   $("rst").addEventListener("click", async () => { await clearSession(); resetDefaults(); });
   $("exp").addEventListener("click", () => exportProjectJson(readSettings(), studioState.cards, studioState.count));
+  $("data-open").addEventListener("click", () => $("data-dialog").showModal());
+  document.querySelectorAll(".action-menu").forEach(menu => {
+    menu.querySelectorAll("button").forEach(button => button.addEventListener("click", () => { menu.open = false; }));
+  });
+  document.querySelectorAll("[data-mobile-view]").forEach(button => button.addEventListener("click", () => {
+    const view = button.dataset.mobileView;
+    $("app").dataset.mobileView = view;
+    document.body.dataset.mobileView = view;
+    document.querySelectorAll("[data-mobile-view]").forEach(toggle => {
+      toggle.setAttribute("aria-pressed", String(toggle === button));
+    });
+    updatePreviewZoom(previewZoom);
+  }));
+  $("zoom-out").addEventListener("click", () => updatePreviewZoom(previewZoom - .1));
+  $("zoom-in").addEventListener("click", () => updatePreviewZoom(previewZoom + .1));
+  $("zoom-fit").addEventListener("click", () => updatePreviewZoom(1));
+  window.addEventListener("resize", () => updatePreviewZoom(previewZoom));
   $("imp").addEventListener("click", () => $("jf").click());
   $("jf").addEventListener("change", async event => {
     const file = event.target.files?.[0];
@@ -1096,6 +1173,7 @@ function bindEvents() {
     return Math.atan2(event.clientX - (rect.left + rect.width / 2), -(event.clientY - (rect.top + rect.height / 2))) * 180 / Math.PI;
   };
   dial.addEventListener("pointerdown", event => {
+    if (dial.getAttribute("aria-disabled") === "true") return;
     dial.setPointerCapture(event.pointerId);
     dial.dataset.dragging = "true";
     setGradientAngle(angleFromEvent(event), !event.shiftKey);
@@ -1112,6 +1190,7 @@ function bindEvents() {
     finishContinuous("change gradient angle", "setting:gradient-angle");
   }));
   dial.addEventListener("keydown", event => {
+    if (dial.getAttribute("aria-disabled") === "true") return;
     const step = event.shiftKey ? 15 : 5;
     const delta = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step }[event.key];
     if (delta !== undefined) {
@@ -1182,6 +1261,7 @@ function syncPageTools(pageCount) {
   select.innerHTML = Array.from({ length: pageCount }, (_, page) =>
     `<option value="${page}"${page === studioState.activePage ? " selected" : ""}>Page ${page + 1}</option>`
   ).join("");
+  $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${pageCount}`;
   if (!themeSelect.options.length || themeSelect.options.length === 1) {
     themeSelect.innerHTML = `<option value="">Use global</option>${Object.entries(THEMES).map(([key, theme]) =>
       `<option value="${key}">${escapeHtml(theme.n)}</option>`
@@ -1224,6 +1304,7 @@ function duplicateActivePage(perPage) {
 async function init() {
   populateThemeSelect($("style"));
   syncCustomControls();
+  updatePreviewZoom(1);
   const printStyle = document.createElement("style");
   printStyle.id = "print-page-style";
   document.head.append(printStyle);

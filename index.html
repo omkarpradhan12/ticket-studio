@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/main.css?v=2">
-<link rel="stylesheet" href="css/redesign.css?v=phase2-history">
+<link rel="stylesheet" href="css/redesign.css?v=phase3-layout">
 </head>
 <body>
 <header class="topbar">
@@ -20,37 +20,74 @@
     <nav class="nav-tabs" aria-label="Workspace pages">
       <a class="nav-tab active" href="index.html">Sheet Editor</a>
       <a class="nav-tab" href="theme-studio.html">Theme Studio</a>
-      <a class="nav-tab" href="bulk-import.html">Bulk Upload &amp; URLs</a>
+      <a class="nav-tab" href="bulk-import.html">Bulk Upload</a>
     </nav>
     <div class="history-actions" aria-label="History controls. Undo history is in memory only and clears on reload.">
       <button class="g history-action" id="undo" type="button" aria-label="Undo" title="Undo" disabled>↶</button>
       <button class="g history-action" id="redo" type="button" aria-label="Redo" title="Redo" disabled>↷</button>
     </div>
+    <div class="topbar-actions">
+      <button class="g" id="print" type="button">Print</button>
+      <button class="accent" id="svg" type="button">Export SVG</button>
+      <details class="action-menu export-menu">
+        <summary aria-label="More export formats" title="More export formats">Formats</summary>
+        <div class="menu-panel">
+          <button class="g" id="png" type="button">PNG (300 dpi)</button>
+          <button class="g" id="pdf" type="button">PDF (300 dpi)</button>
+          <button class="g" id="cut" type="button">Cutter SVG</button>
+        </div>
+      </details>
+      <details class="action-menu overflow-menu">
+        <summary aria-label="More sheet actions" title="More sheet actions">⋯</summary>
+        <div class="menu-panel">
+          <button class="g" id="rnd" type="button">Randomise all</button>
+          <button class="g" id="smp" type="button">Load Samples</button>
+          <button class="danger" id="rst" type="button">Reset all</button>
+          <button class="g" id="data-open" type="button">Data import / export</button>
+        </div>
+      </details>
+    </div>
+    <details class="mobile-nav">
+      <summary aria-label="Open workspace menu">☰</summary>
+      <div class="menu-panel">
+        <a href="index.html" aria-current="page">Sheet Editor</a>
+        <a href="theme-studio.html">Theme Studio</a>
+        <a href="bulk-import.html">Bulk Upload</a>
+      </div>
+    </details>
   </div>
 </header>
 
-<div class="app">
+<div class="mobile-view-toggle" role="group" aria-label="Editor view">
+  <button type="button" data-mobile-view="edit" aria-pressed="true">Edit</button>
+  <button type="button" data-mobile-view="preview" aria-pressed="false">Preview</button>
+</div>
+
+<main class="app" id="app" data-mobile-view="edit">
   <div class="panel">
-    <h1>Concert-ticket card sheet</h1>
+    <h1 class="sr-only">Sheet Editor</h1>
+    <label class="sheet-title-field">
+      <span class="sr-only">Sheet title</span>
+      <input id="sheet-title" type="text" maxlength="80" aria-label="Sheet title" value="Concert Ticket Card Sheet" data-live>
+    </label>
     <p class="subtitle" id="sub-info">Add a band photo or image URL and the accent colour is picked automatically. 9 tickets fit one A4 page.</p>
 
-    <!-- 1. LAYOUT & PAGE SETUP -->
     <details class="sec">
-      <summary>1. Sheet &amp; Card Layout</summary>
+      <summary>Page</summary>
       <div class="ctrl-grid">
         <label class="fld">
-          <span class="lbl-row"><span>Total Cards</span><span id="pg" class="hint"></span></span>
+          <span class="lbl-row"><span>Total cards</span><span id="pg" class="hint"></span></span>
           <input type="number" id="count" min="1" max="72" value="9">
         </label>
         <label class="fld">
-          <span>Paper Size</span>
+          <span>Paper size</span>
           <select id="paper" data-live>
             <option value="a4">A4 (210 × 297 mm)</option>
             <option value="letter">US Letter (8.5 × 11 in)</option>
           </select>
         </label>
         <label class="fld">
-          <span>Card Dimensions</span>
+          <span>Card size</span>
           <select id="csize" data-live>
             <option value="ticket">Ticket (60 × 84 mm)</option>
             <option value="poker">Poker (63.5 × 88.9 mm)</option>
@@ -60,7 +97,7 @@
           </select>
         </label>
         <label class="fld">
-          <span>Cutter Corner Radius</span>
+          <span>Corner radius</span>
           <select id="crad">
             <option value="0">Square (0 mm)</option>
             <option value="2">2 mm</option>
@@ -68,23 +105,22 @@
             <option value="5">5 mm</option>
           </select>
         </label>
-        <div class="ctrl-flex full" style="padding-top:4px">
+        <div class="page-options full">
           <label class="chk"><input type="checkbox" id="marks" checked> Crop marks</label>
           <label class="chk"><input type="checkbox" id="bleed" checked> 3 mm bleed</label>
-          <label class="chk"><input type="checkbox" id="regmarks"> Plotter reg. marks</label>
+          <label class="chk"><input type="checkbox" id="regmarks"> Registration marks</label>
           <label class="chk"><input type="checkbox" id="tpl" checked> Cut template page</label>
         </div>
       </div>
     </details>
 
-    <!-- 2. THEME, TYPOGRAPHY & GLOBAL TEXT -->
     <details class="sec">
-      <summary>2. Theme, Typography &amp; Global Labels</summary>
+      <summary>Look</summary>
       <div class="ctrl-grid">
         <label class="fld full">
           <span class="lbl-row">
-            <span>Visual Theme</span>
-            <a href="theme-studio.html" style="color:var(--accent);text-decoration:none;font-size:11px">+ Create / Manage Themes</a>
+            <span>Theme</span>
+            <a class="manage-themes" href="theme-studio.html">Manage themes</a>
           </span>
           <div class="theme-nav">
             <button class="g" type="button" id="prev-style" aria-label="Previous theme">‹</button>
@@ -93,7 +129,7 @@
           </div>
         </label>
         <label class="fld">
-          <span>Title Font</span>
+          <span>Title font</span>
           <select id="tfont" data-live>
             <option value="theme">Default (Pirata One)</option>
             <option value="pirata">Pirata One</option>
@@ -104,78 +140,29 @@
             <option value="courier">Courier</option>
           </select>
         </label>
-        <div class="ctrl-flex" style="align-self:end; padding-bottom:4px">
-          <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
-          <label class="chk"><input type="checkbox" id="serial" data-live> Serial №</label>
-          <label class="chk"><input type="checkbox" id="punch" data-live> NFC punch hole</label>
-        </div>
         <label class="fld">
-          <span>Top-Right Doors Text</span>
-          <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
-        </label>
-        <label class="fld">
-          <span>Right-Edge Side Text</span>
-          <input type="text" id="gside" placeholder="Side text" value="Dope-Amine">
-        </label>
-      </div>
-
-      <div class="gctl" id="gctl">
-        <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
-          <i id="needle"></i><b></b>
-        </div>
-        <div class="gtxt">
-          <div>Gradient angle <output id="gav">180°</output></div>
-          <label class="fld">
-            <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
-            <input type="range" id="gspread" min="10" max="100" value="32">
-          </label>
-          <div class="hint">Active on gradient themes. Drag dial or use arrow keys.</div>
-        </div>
-      </div>
-    </details>
-
-    <!-- 3. QUICK CUSTOM COLOURS -->
-    <details class="sec">
-      <summary>3. Quick Custom Colours</summary>
-      <div class="ctrl-grid">
-        <div class="ctrl-flex full">
-          <label class="chk"><input type="color" id="ct_bg" data-ct> Paper</label>
-          <label class="chk"><input type="color" id="ct_ink" data-ct> Text</label>
-          <label class="chk"><input type="color" id="ct_acc" data-ct> Accent</label>
-          <label class="chk"><input type="color" id="ct_tape" data-ct> Tape</label>
-        </div>
-        <label class="chk"><input type="checkbox" id="ct_pa" data-ct> Accent from photo</label>
-        <div class="hint full">This palette controls colours only. For gradients or saved palettes, open <a href="theme-studio.html" style="color:var(--accent)">Theme Studio</a>.</div>
-      </div>
-    </details>
-
-    <!-- 4. CARD CONSTRUCTION -->
-    <details class="sec">
-      <summary>4. Card Construction (Independent of Theme)</summary>
-      <div class="ctrl-grid">
-        <label class="fld">
-          <span>Border Style</span>
+          <span>Border style</span>
           <select id="design-border">
             <option value="0">Double</option><option value="1">Thick</option>
             <option value="2">Brackets</option><option value="3">Dashed</option><option value="4">Rounded</option>
           </select>
         </label>
         <label class="fld">
-          <span>Year Badge</span>
+          <span>Year badge</span>
           <select id="design-badge">
             <option value="0">Solid</option><option value="1">Pill</option><option value="2">Outline</option>
           </select>
         </label>
         <label class="fld">
-          <span>Tear Line</span>
+          <span>Tear line</span>
           <select id="design-tear">
-            <option value="0">Dashed</option><option value="1">Dotted</option><option value="2">Solid Line</option>
+            <option value="0">Dashed</option><option value="1">Dotted</option><option value="2">Solid line</option>
           </select>
         </label>
         <label class="fld">
-          <span>Photo Filter</span>
+          <span>Photo filter</span>
           <select id="design-filter">
-            <option value="0">Full Colour</option><option value="1">Black &amp; White</option><option value="2">Sepia</option>
+            <option value="0">Full colour</option><option value="1">Black &amp; white</option><option value="2">Sepia</option>
           </select>
         </label>
         <fieldset class="mount-fields full">
@@ -186,19 +173,76 @@
           <label class="chk"><input type="checkbox" data-quick-mount value="3"> None</label>
           <span class="hint full" id="quick-mount-status">Active mounts: Tape</span>
         </fieldset>
-        <div class="ctrl-flex full">
-          <label class="chk"><input type="checkbox" id="design-center"> Centre title &amp; genre</label>
+        <div class="look-options full">
+          <label class="chk"><input type="checkbox" id="design-center"> Centre title and genre</label>
           <label class="chk"><input type="checkbox" id="design-halftone"> Halftone photo</label>
+        </div>
+        <fieldset class="quick-colours full">
+          <legend>Quick colours</legend>
+          <div class="swatch-row">
+            <label class="swatch-control"><span>Paper</span><input type="color" id="ct_bg" aria-label="Paper colour" data-ct></label>
+            <label class="swatch-control"><span>Text</span><input type="color" id="ct_ink" aria-label="Text colour" data-ct></label>
+            <label class="swatch-control"><span>Accent</span><input type="color" id="ct_acc" aria-label="Accent colour" data-ct></label>
+            <label class="swatch-control"><span>Tape</span><input type="color" id="ct_tape" aria-label="Tape colour" data-ct></label>
+          </div>
+          <label class="chk photo-accent"><input type="checkbox" id="ct_pa" data-ct> Use photo accent</label>
+          <p class="hint colour-map">Paper = background · Text = lettering · Accent = borders and badges · Tape = mounts</p>
+        </fieldset>
+        <fieldset class="hardware-fields full">
+          <legend>Ticket details</legend>
+          <div class="hardware-toggle-row">
+            <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
+            <label class="chk"><input type="checkbox" id="serial" data-live> Serial number</label>
+            <label class="chk"><input type="checkbox" id="punch" data-live> Punch hole</label>
+          </div>
+        </fieldset>
+        <div class="gctl full" id="gctl">
+          <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
+            <i id="needle"></i><b></b>
+          </div>
+          <div class="gtxt">
+            <div>Gradient angle <output id="gav">180°</output></div>
+            <label class="fld">
+              <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
+              <input type="range" id="gspread" min="10" max="100" value="32">
+            </label>
+            <div class="hint" id="gradient-hint">Only available with gradient themes.</div>
+          </div>
         </div>
       </div>
     </details>
 
-    <!-- 5. STAMPS, DISTRESS & TEXTURE -->
     <details class="sec">
-      <summary>5. Stamps, Texture &amp; Wear</summary>
+      <summary>Content</summary>
       <div class="ctrl-grid">
         <label class="fld">
-          <span>Stamp Shape</span>
+          <span>Doors text</span>
+          <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
+        </label>
+        <label class="fld">
+          <span>Side text</span>
+          <input type="text" id="gside" placeholder="Side text" value="Dope-Amine">
+        </label>
+        <label class="fld">
+          <span>Primary stamp text</span>
+          <input type="text" id="gstamp" placeholder="Stamp text" value="Soul Fuel">
+        </label>
+        <label class="fld">
+          <span>Stamp year</span>
+          <input type="text" id="gsyear" placeholder="Stamp year" value="2026">
+        </label>
+        <label class="fld">
+          <span>Second stamp (optional)</span>
+          <input type="text" id="gs2" placeholder="e.g. VIP" data-live>
+        </label>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Effects</summary>
+      <div class="ctrl-grid">
+        <label class="fld">
+          <span>Stamp shape</span>
           <select id="sshape">
             <option value="round">Round</option>
             <option value="oval">Oval</option>
@@ -209,7 +253,7 @@
             <option value="diamond">Diamond</option>
             <option value="seal">Seal</option>
             <option value="starburst">Starburst</option>
-            <option value="scallop">Scalloped Seal</option>
+            <option value="scallop">Scalloped seal</option>
             <option value="ticket">Ticket</option>
             <option value="arch">Arch</option>
             <option value="ribbon">Ribbon</option>
@@ -220,97 +264,42 @@
           </select>
         </label>
         <label class="fld">
-          <span class="lbl-row"><span>Stamp Size</span><output id="ssv">100%</output></span>
+          <span class="lbl-row"><span>Stamp size</span><output id="ssv">100%</output></span>
           <input type="range" id="ssize" min="50" max="250" step="25" value="100" list="sst">
           <datalist id="sst"><option value="50"></option><option value="100"></option><option value="150"></option><option value="200"></option><option value="250"></option></datalist>
         </label>
-        <label class="fld">
-          <span>Primary Stamp Text</span>
-          <input type="text" id="gstamp" placeholder="Stamp text" value="Soul Fuel">
-        </label>
-        <label class="fld">
-          <span>Stamp Year</span>
-          <input type="text" id="gsyear" placeholder="Stamp year" value="2026">
-        </label>
-        <label class="fld">
-          <span>Second Stamp (Optional)</span>
-          <input type="text" id="gs2" placeholder="e.g. VIP" data-live>
-        </label>
-        <div class="ctrl-flex" style="align-self:end; padding-bottom:3px">
-          <label class="chk"><input type="color" id="scol" value="#d9322f" data-live> Ink</label>
-          <label class="chk"><input type="checkbox" id="sauto" checked data-live> Use accent</label>
-        </div>
-        <label class="fld">
-          <span>Stamp Ink Wear</span>
-          <input type="range" id="wear" min="0" max="100" value="35">
-        </label>
-        <label class="fld">
-          <span>Border Ink Wear</span>
-          <input type="range" id="bwear" min="0" max="100" value="35">
-        </label>
-        <label class="fld">
-          <span>Paper Grain</span>
-          <input type="range" id="tgr" min="0" max="100" value="15" data-live>
-        </label>
-        <label class="fld">
-          <span>Edge Vignette Wear</span>
-          <input type="range" id="tew" min="0" max="100" value="0" data-live>
-        </label>
-        <label class="fld">
-          <span>Paper Creases</span>
-          <input type="range" id="tcr" min="0" max="100" value="0" data-live>
-        </label>
-        <label class="fld">
-          <span>Surface Scuffs</span>
-          <input type="range" id="tsc" min="0" max="100" value="0" data-live>
-        </label>
-      </div>
-    </details>
-
-    <!-- 6. EXPORT, DATA & ACTIONS -->
-    <details class="sec">
-      <summary>6. Export, Batch Tools &amp; JSON Data</summary>
-      <div class="ctrl-flex" style="margin-bottom:8px">
-        <button id="svg" type="button">Download SVG</button>
-        <button class="g" id="print" type="button">Print / save PDF</button>
-        <button class="g" id="png" type="button">PNG (300dpi)</button>
-        <button class="g" id="pdf" type="button">PDF (300dpi)</button>
-        <button class="g" id="cut" type="button">Cutter SVG</button>
-      </div>
-      <div class="ctrl-flex" style="margin-bottom:8px">
-        <a class="btn accent" href="bulk-import.html">Bulk Upload &amp; URLs</a>
-        <button class="g" id="rnd" type="button">Randomise</button>
-        <button class="g" id="smp" type="button">Load Samples</button>
-        <button class="g" id="rst" type="button">Reset All</button>
-      </div>
-      <div class="ctrl-flex">
-        <button class="g" id="imp" type="button">Import JSON</button>
-        <button class="g" id="exp" type="button">Export JSON</button>
-        <span class="tipw">
-          <button class="g" type="button" aria-label="Show JSON format">JSON Help ?</button>
-          <div class="pop" role="tooltip">
-            <pre>[
- {
-  "name": "Three Days Grace",
-  "year": "1997",
-  "genre": "Alt-Rock",
-  "place": "Canada",
-  "abbreviation": "TDG",
-  "photo": "https://example.com/band.jpg"
- }
-]</pre>
-            Only <b>name</b> is required. <b>photo</b> accepts both <code>data:image/...</code> and <code>https://...</code> URLs. Extras: <b>accent</b> (#hex), <b>photoZoom</b> (1–3), <b>photoX</b>/<b>photoY</b> (-100 to 100), <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or <b>settings</b> + <b>cards</b>. Max 72 cards.
+        <label class="swatch-control effect-ink"><span>Stamp ink</span><input type="color" id="scol" value="#d9322f" data-live></label>
+        <label class="chk effect-accent"><input type="checkbox" id="sauto" checked data-live> Use accent colour</label>
+        <details class="advanced full">
+          <summary>Advanced</summary>
+          <div class="ctrl-grid">
+            <label class="fld">
+              <span>Stamp ink wear</span>
+              <input type="range" id="wear" min="0" max="100" value="35">
+            </label>
+            <label class="fld">
+              <span>Border ink wear</span>
+              <input type="range" id="bwear" min="0" max="100" value="35">
+            </label>
+            <label class="fld">
+              <span>Paper grain</span>
+              <input type="range" id="tgr" min="0" max="100" value="15" data-live>
+            </label>
+            <label class="fld">
+              <span>Edge vignette wear</span>
+              <input type="range" id="tew" min="0" max="100" value="0" data-live>
+            </label>
+            <label class="fld">
+              <span>Paper creases</span>
+              <input type="range" id="tcr" min="0" max="100" value="0" data-live>
+            </label>
+            <label class="fld">
+              <span>Surface scuffs</span>
+              <input type="range" id="tsc" min="0" max="100" value="0" data-live>
+            </label>
           </div>
-        </span>
+        </details>
       </div>
-
-      <details style="margin-top:8px; font-size:12px">
-        <summary style="cursor:pointer; font-weight:700; color:var(--mute)">Paste raw JSON</summary>
-        <textarea id="jt" rows="5" aria-label="Paste JSON" placeholder='[{"name": "Band Name", "year": "2026", "genre": "Rock", "place": "City", "photo": "https://..."}]'></textarea>
-        <button class="g sm" id="jl" type="button">Load pasted JSON</button>
-      </details>
-
-      <input type="file" id="jf" accept=".json,application/json" hidden>
     </details>
 
     <div class="status-bar">
@@ -321,25 +310,76 @@
     <!-- CARD LIST -->
     <div class="cards-header">
       <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
-      <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
+      <div class="cards-header-actions">
+        <button class="g" id="surprise-all" type="button" disabled title="Available in Phase 8">Surprise me</button>
+        <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
+      </div>
     </div>
+    <label class="card-search-slot">
+      <span class="sr-only">Search cards</span>
+      <input id="card-search" type="search" placeholder="Search cards (coming in Phase 9)" disabled>
+    </label>
     <div id="rows"></div>
   </div>
 
-  <div class="stage">
+  <div class="stage" id="stage">
     <div class="page-tools" id="page-tools" aria-label="Page tools">
-      <label class="fld page-select">
-        <span>Active page</span>
-        <select id="page-select"></select>
-      </label>
+      <div class="page-picker">
+        <span id="page-count-label">Page 1 of 1</span>
+        <select id="page-select" aria-label="Select page"></select>
+      </div>
       <label class="fld page-theme">
         <span>Page theme</span>
         <select id="page-theme"><option value="">Use global</option></select>
       </label>
-      <button class="g" type="button" id="duplicate-page">Duplicate page</button>
+      <button class="g" type="button" id="duplicate-page">Duplicate</button>
+      <button class="g move-stamps-placeholder" type="button" id="move-stamps" disabled title="Stamp positioning arrives in Phase 7">Move stamps</button>
+      <div class="zoom-controls" aria-label="Preview zoom">
+        <button class="g" type="button" id="zoom-out" aria-label="Zoom out">−</button>
+        <output id="zoom-value" aria-live="polite">100%</output>
+        <button class="g" type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        <button class="g" type="button" id="zoom-fit">Fit</button>
+      </div>
     </div>
-    <div id="sheets" style="display:contents"></div>
+    <div id="sheets"></div>
   </div>
+</main>
+
+<dialog id="data-dialog" aria-labelledby="data-dialog-title">
+  <form method="dialog" class="dialog-header">
+    <h2 id="data-dialog-title">Sheet data</h2>
+    <button class="g" type="submit" aria-label="Close data dialog">Close</button>
+  </form>
+  <p>Import or export sheet data as JSON. You can also paste a card list below.</p>
+  <div class="data-actions">
+    <button class="g" id="imp" type="button">Import JSON file</button>
+    <button class="g" id="exp" type="button">Export JSON</button>
+    <input type="file" id="jf" accept=".json,application/json" hidden>
+  </div>
+  <label class="fld" for="jt">
+    <span>Paste JSON</span>
+    <textarea id="jt" rows="8" placeholder='[{"name": "Band Name", "year": "2026", "genre": "Rock", "place": "City", "photo": "https://..."}]'></textarea>
+  </label>
+  <button class="accent" id="jl" type="button">Import pasted JSON</button>
+  <details class="json-help">
+    <summary>JSON format help</summary>
+    <pre>[
+  {
+    "name": "Three Days Grace",
+    "year": "1997",
+    "genre": "Alt-Rock",
+    "place": "Canada",
+    "abbreviation": "TDG",
+    "photo": "https://example.com/band.jpg"
+  }
+]</pre>
+    Only <b>name</b> is required. <b>photo</b> accepts <code>data:image/...</code> and <code>https://...</code> URLs. Optional fields include <b>accent</b>, <b>photoZoom</b>, <b>photoX</b>/<b>photoY</b>, <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or a full <b>settings</b> + <b>cards</b> payload. Maximum 72 cards.
+  </details>
+</dialog>
+
+<div class="mobile-actionbar" aria-label="Sheet actions">
+  <button class="g" id="mobile-print" type="button">Print</button>
+  <button class="accent" id="mobile-export" type="button">Export SVG</button>
 </div>
 
 <div id="undo-toast" class="history-toast" role="status" aria-live="polite" hidden>
@@ -364,6 +404,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase2-history-3"></script>
+<script type="module" src="js/app.js?v=phase3-layout"></script>
 </body>
 </html>
