@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase7">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase7.1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase7">
-<link rel="stylesheet" href="css/app.css?v=phase7">
+<link rel="stylesheet" href="css/tokens.css?v=phase7.1">
+<link rel="stylesheet" href="css/app.css?v=phase7.1">
 </head>
 <body>
 <header class="topbar">
@@ -395,29 +395,78 @@
     <details class="sec">
       <summary><span>Effects</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
-        <label class="fld">
-          <span>Stamp shape</span>
-          <select id="sshape">
-            <option value="round">Round</option>
-            <option value="oval">Oval</option>
-            <option value="rect">Rectangle</option>
-            <option value="tri">Triangle</option>
-            <option value="shield">Shield</option>
-            <option value="hex">Hexagon</option>
-            <option value="diamond">Diamond</option>
-            <option value="seal">Seal</option>
-            <option value="starburst">Starburst</option>
-            <option value="scallop">Scalloped seal</option>
-            <option value="ticket">Ticket</option>
-            <option value="arch">Arch</option>
-            <option value="ribbon">Ribbon</option>
-            <option value="burst">Sunburst</option>
-            <option value="cross">Cross</option>
-            <option value="mixed">Mixed (random)</option>
-            <option value="none">None</option>
-          </select>
-        </label>
-        <label class="fld">
+        <div class="border-picker-block stamp-picker-block full">
+          <div class="lbl-row">
+            <span>Stamp shape</span>
+            <span class="hint" id="stamp-shape-active">Round</span>
+          </div>
+          <div id="stamp-picker" class="border-picker stamp-picker" role="radiogroup" aria-label="Stamp shape"></div>
+          <details class="border-customise stamp-customise" id="stamp-customise">
+            <summary>
+              <span>Customise</span>
+              <span class="border-customise-meta" id="stamp-customise-meta"></span>
+              <span class="disclosure-icon" data-icon="chevron"></span>
+            </summary>
+            <div class="border-customise-body">
+              <p class="hint" id="stamp-none-note" hidden>No stamp is drawn for None.</p>
+              <div class="ctrl-grid" id="stamp-controls-grid">
+                <label class="fld">
+                  <span>Ink style</span>
+                  <select id="st-fill-mode">
+                    <option value="outline">Outline</option>
+                    <option value="tinted">Tinted wash</option>
+                    <option value="solid">Solid badge</option>
+                  </select>
+                </label>
+                <label class="fld">
+                  <span>Line pattern</span>
+                  <select id="st-pattern">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                  </select>
+                </label>
+                <label class="fld">
+                  <span class="lbl-row"><span>Stroke weight</span><output id="st-weight-val" for="st-weight">1.0×</output></span>
+                  <input type="range" id="st-weight" min="0.6" max="2" step="0.1" value="1">
+                </label>
+                <label class="fld">
+                  <span class="lbl-row"><span>Ink opacity</span><output id="st-opacity-val" for="st-opacity">95%</output></span>
+                  <input type="range" id="st-opacity" min="35" max="100" step="5" value="95">
+                </label>
+                <label class="fld full">
+                  <span class="lbl-row"><span>Stamp ink wear</span><output id="st-wear-val" for="st-wear">35%</output></span>
+                  <input type="range" id="st-wear" min="0" max="100" step="1" value="35">
+                </label>
+                <div class="look-options full">
+                  <label class="chk"><input type="checkbox" id="st-inner-ring" checked> Show inner frame</label>
+                  <label class="chk"><input type="checkbox" id="st-show-year" checked> Show stamp year</label>
+                </div>
+              </div>
+              <div class="border-actions-bar">
+                <button class="g sm" type="button" id="st-apply-selected">Apply to card #1</button>
+                <button class="g sm" type="button" id="st-apply-all">Apply to all cards</button>
+                <button class="g sm" type="button" id="st-reset-style">Reset defaults</button>
+              </div>
+              <fieldset class="border-presets-box">
+                <legend>Stamp presets</legend>
+                <div class="border-preset-save">
+                  <input type="text" id="st-preset-name" maxlength="48" placeholder="Preset name…" aria-label="New stamp preset name">
+                  <button class="g sm" type="button" id="st-preset-save">Save preset</button>
+                </div>
+                <div class="border-preset-apply">
+                  <select id="st-preset-select" aria-label="Saved stamp presets">
+                    <option value="">Saved presets…</option>
+                  </select>
+                  <button class="g sm" type="button" id="st-preset-apply" disabled>Apply to sheet</button>
+                  <button class="g sm" type="button" id="st-preset-apply-card" disabled>Apply to card</button>
+                  <button class="danger sm" type="button" id="st-preset-delete" disabled aria-label="Delete selected stamp preset" data-tooltip="Delete preset"><span data-icon="delete"></span></button>
+                </div>
+              </fieldset>
+            </div>
+          </details>
+        </div>
+        <label class="fld full">
           <span class="lbl-row"><span>Stamp size</span><output id="ssv">100%</output></span>
           <input type="range" id="ssize" min="50" max="250" step="25" value="100" list="sst">
           <datalist id="sst"><option value="50"></option><option value="100"></option><option value="150"></option><option value="200"></option><option value="250"></option></datalist>
@@ -563,6 +612,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase7"></script>
+<script type="module" src="js/app.js?v=phase7.1"></script>
 </body>
 </html>

@@ -3288,3 +3288,13 @@ details.sec > summary {
     }
   }
 }
+
+@layer app {
+  .stamp-swatch svg {
+    max-width: 60px;
+  }
+
+  .stamp-customise .look-options .chk {
+    min-height: 36px;
+  }
+}
