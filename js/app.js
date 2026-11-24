@@ -22,21 +22,44 @@ const CHECK_FIELDS = {
 };
 const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa"];
 
-let cards = DEFAULT_CARDS.map(c => ({ ...c }));
-let count = cards.length;
-let selectedCard = 0;
+const initialCards = DEFAULT_CARDS.map(c => ({ ...c }));
+const studioState = {
+  cards: initialCards,
+  count: initialCards.length,
+  selectedCard: 0,
+  activePage: 0,
+  pageThemes: [],
+  gradientAngle: SET0.gradientAngle,
+  settings: { customTheme: { ...CUSTOM } }
+};
+const cardIds = new WeakMap();
+let nextCardId = 0;
 let currentLayout;
 let renderFrame = 0;
 let saveTimer;
 let dragState = null;
 let previewIndex = -1;
 let previousFocus = null;
-let gradientAngle = SET0.gradientAngle;
-let activePage = 0;
-let pageThemes = [];
 
+function cardIdentity(card) {
+  let id = cardIds.get(card);
+  if (!id) {
+    id = ++nextCardId;
+    cardIds.set(card, id);
+  }
+  return id;
+}
+
+function updateCard(index, changes) {
+  const current = studioState.cards[index];
+  if (!current) return;
+  const next = { ...current, ...changes };
+  cardIds.set(next, cardIdentity(current));
+  studioState.cards = studioState.cards.map((card, cardIndex) => cardIndex === index ? next : card);
+  return next;
+}
 function readPageThemes() {
-  return pageThemes.slice();
+  return studioState.pageThemes.slice();
 }
 
 function message(text) {
@@ -50,10 +73,11 @@ function readSettings() {
     settings[key] = /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : value;
   }
   for (const [key, id] of Object.entries(CHECK_FIELDS)) settings[key] = $(id).checked;
-  settings.gradientAngle = gradientAngle;
-  settings.customTheme = { ...CUSTOM };
+  settings.gradientAngle = studioState.gradientAngle;
+  settings.customTheme = { ...studioState.settings.customTheme };
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
+  studioState.settings = settings;
   return settings;
 }
 
@@ -77,63 +101,71 @@ function applySettings(settings = {}) {
     updateMountStatus();
   }
   if (settings.customTheme && typeof settings.customTheme === "object") {
-    Object.assign(CUSTOM, settings.customTheme);
+    studioState.settings = {
+      ...studioState.settings,
+      customTheme: { ...settings.customTheme }
+    };
+    Object.assign(CUSTOM, studioState.settings.customTheme);
     for (const key of CUSTOM_FIELDS) {
       const el = $("ct_" + key);
-      if (el) el.type === "checkbox" ? (el.checked = Boolean(CUSTOM[key])) : (el.value = CUSTOM[key]);
+      if (el) el.type === "checkbox"
+        ? (el.checked = Boolean(studioState.settings.customTheme[key]))
+        : (el.value = studioState.settings.customTheme[key]);
     }
     buildCustom();
   }
   if (settings.gradientAngle !== undefined && Number.isFinite(+settings.gradientAngle)) {
-    gradientAngle = ((+settings.gradientAngle % 360) + 360) % 360;
+    studioState.gradientAngle = ((+settings.gradientAngle % 360) + 360) % 360;
   }
-  if (Array.isArray(settings.pageThemes)) pageThemes = settings.pageThemes.map(theme => String(theme || ""));
-  $("needle").style.transform = `rotate(${gradientAngle}deg)`;
-  $("dial").setAttribute("aria-valuenow", gradientAngle);
-  $("gav").textContent = gradientAngle + "°";
+  if (Array.isArray(settings.pageThemes)) studioState.pageThemes = settings.pageThemes.map(theme => String(theme || ""));
+  $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
+  $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
+  $("gav").textContent = studioState.gradientAngle + "°";
   if (settings.style && !allThemes[settings.style]) {
     const found = Object.keys(THEMES).find(key => THEMES[key].n.toLowerCase() === String(settings.style).toLowerCase());
     if (found) $("style").value = found;
   }
+  studioState.settings = readSettings();
 }
 
 function renderConfig(one = false) {
+  const settings = studioState.settings;
   return {
     lay: currentLayout,
-    style: $("style").value,
+    style: settings.style,
     one,
-    bleed: $("bleed").checked,
-    cropMarks: $("marks").checked,
-    regMarks: $("regmarks").checked,
-    stampWear: +$("wear").value,
-    borderWear: +$("bwear").value,
-    stampSize: +$("ssize").value,
-    stampShape: $("sshape").value,
-    stamp: $("gstamp").value,
-    stampYear: $("gsyear").value,
-    stampColor: $("scol").value,
-    stampAuto: $("sauto").checked,
-    stamp2: $("gs2").value.trim(),
-    titleFont: $("tfont").value,
-    gradientAngle,
-    gradientSpread: +$("gspread").value,
-    grain: +$("tgr").value,
-    edgeWear: +$("tew").value,
-    creases: +$("tcr").value,
-    scuffs: +$("tsc").value,
-    serials: $("serial").checked,
-    nfc: $("nfc").checked,
-    punchHole: $("punch")?.checked,
-    borderStyle: +$("design-border").value,
-    yearBadge: +$("design-badge").value,
-    tearStyle: +$("design-tear").value,
-    photoFilter: +$("design-filter").value,
-    photoMounts: [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2),
-    centerTitle: $("design-center").checked,
-    halftone: $("design-halftone").checked,
-    pageThemes: readPageThemes(),
-    doors: $("gdoors").value,
-    side: $("gside").value,
+    bleed: settings.bleed,
+    cropMarks: settings.cropMarks,
+    regMarks: settings.regMarks,
+    stampWear: settings.stampWear,
+    borderWear: settings.borderWear,
+    stampSize: settings.stampSize,
+    stampShape: settings.stampShape,
+    stamp: settings.stamp,
+    stampYear: settings.stampYear,
+    stampColor: settings.stampColor,
+    stampAuto: settings.stampAuto,
+    stamp2: settings.stamp2.trim(),
+    titleFont: settings.titleFont,
+    gradientAngle: settings.gradientAngle,
+    gradientSpread: settings.gradientSpread,
+    grain: settings.grain,
+    edgeWear: settings.edgeWear,
+    creases: settings.creases,
+    scuffs: settings.scuffs,
+    serials: settings.serials,
+    nfc: settings.nfc,
+    punchHole: settings.punchHole,
+    borderStyle: settings.borderStyle,
+    yearBadge: settings.yearBadge,
+    tearStyle: settings.tearStyle,
+    photoFilter: settings.photoFilter,
+    photoMounts: settings.photoMounts,
+    centerTitle: settings.centerTitle,
+    halftone: settings.halftone,
+    pageThemes: settings.pageThemes,
+    doors: settings.doors,
+    side: settings.side,
     drag: $("drag").checked
   };
 }
@@ -155,11 +187,12 @@ function scheduleRender() {
 }
 
 function render() {
+  studioState.settings = readSettings();
   const active = THEMES[$("style").value] || THEMES.cream;
   currentLayout = computeLayout($("paper").value, $("csize").value);
   const cfg = renderConfig();
-  const activeCards = cards.slice(0, count);
-  selectedCard = Math.max(0, Math.min(count - 1, selectedCard));
+  const activeCards = studioState.cards.slice(0, studioState.count);
+  studioState.selectedCard = Math.max(0, Math.min(studioState.count - 1, studioState.selectedCard));
   const pages = Math.ceil(activeCards.length / currentLayout.PER);
   const width = (currentLayout.W / 2.83465).toFixed(2) + "mm";
   const height = (currentLayout.H / 2.83465).toFixed(2) + "mm";
@@ -183,15 +216,15 @@ function render() {
   }
   $("pg").textContent = `${pages + ($("tpl").checked ? 1 : 0)} page${pages + ($("tpl").checked ? 1 : 0) === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
   const paperName = $("paper").value === "letter" ? "US Letter" : "A4";
-  $("sub-info").textContent = `${count} cards across ${pages} ${paperName} page${pages === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
-  $("card-count-lbl").textContent = count;
+  $("sub-info").textContent = `${studioState.count} cards across ${pages} ${paperName} page${pages === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
+  $("card-count-lbl").textContent = studioState.count;
   $("ssv").textContent = cfg.stampSize + "%";
   $("gsv").textContent = cfg.gradientSpread + "%";
   $("gctl").style.opacity = active.grad ? "1" : ".55";
   syncPageTools(pages);
   document.querySelectorAll(".row").forEach((row, i) => {
-    row.classList.toggle("selected", i === selectedCard);
-    if (i === selectedCard) row.setAttribute("aria-current", "true");
+    row.classList.toggle("selected", i === studioState.selectedCard);
+    if (i === studioState.selectedCard) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
   });
   if (!$("pv").hidden) refreshPreview();
@@ -199,8 +232,8 @@ function render() {
 }
 
 function selectCard(index, scroll = false) {
-  if (index < 0 || index >= count) return;
-  selectedCard = index;
+  if (index < 0 || index >= studioState.count) return;
+  studioState.selectedCard = index;
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === index);
     if (i === index) row.setAttribute("aria-current", "true");
@@ -211,9 +244,9 @@ function selectCard(index, scroll = false) {
 
 function buildRows() {
   $("rows").replaceChildren();
-  cards.slice(0, count).forEach((card, index) => {
+  studioState.cards.slice(0, studioState.count).forEach((card, index) => {
     const row = document.createElement("article");
-    row.className = "row" + (index === selectedCard ? " selected" : "");
+    row.className = "row" + (index === studioState.selectedCard ? " selected" : "");
     row.dataset.index = index;
     const imgSrc = card.img || card.imgUrl;
     const themeOptions = `<option value="">Same as sheet</option>${Object.entries(THEMES).map(([key, theme]) => `<option value="${key}"${card.theme === key ? " selected" : ""}>${escapeHtml(theme.n)}</option>`).join("")}`;
@@ -273,20 +306,20 @@ function buildRows() {
       if (dropped) await setImage(index, () => processImageFile(dropped));
     });
     row.querySelectorAll("[data-field]").forEach(input => input.addEventListener("input", () => {
-      card[input.dataset.field] = input.value;
+      updateCard(index, { [input.dataset.field]: input.value });
       scheduleRender();
     }));
     row.querySelectorAll("[data-adjust]").forEach(input => input.addEventListener("input", () => {
       const field = input.dataset.adjust;
-      card[field] = field === "zm" ? +input.value / 100 : +input.value;
+      updateCard(index, { [field]: field === "zm" ? +input.value / 100 : +input.value });
       scheduleRender();
     }));
     row.querySelectorAll("[data-option]").forEach(input => input.addEventListener("input", () => {
-      card[input.dataset.option] = input.value;
+      updateCard(index, { [input.dataset.option]: input.value });
       scheduleRender();
     }));
     row.querySelector("[data-accent]").addEventListener("input", event => {
-      Object.assign(card, hexToHS(event.target.value));
+      updateCard(index, hexToHS(event.target.value));
       scheduleRender();
     });
     row.querySelector("[data-action='load-url']").addEventListener("click", async () => {
@@ -298,26 +331,30 @@ function buildRows() {
       if (action === "load-url") return;
       if (action === "view") { selectCard(index); openPreview(index); }
       else if (action === "up" && index > 0) moveCard(index, index - 1);
-      else if (action === "down" && index < count - 1) moveCard(index, index + 1);
-      else if (action === "duplicate" && count < MAX_CARDS) {
-        cards.splice(index + 1, 0, { ...card });
-        count++;
-        selectedCard = index + 1;
+      else if (action === "down" && index < studioState.count - 1) moveCard(index, index + 1);
+      else if (action === "duplicate" && studioState.count < MAX_CARDS) {
+        const duplicate = { ...studioState.cards[index] };
+        cardIds.set(duplicate, ++nextCardId);
+        studioState.cards = [...studioState.cards.slice(0, index + 1), duplicate, ...studioState.cards.slice(index + 1)];
+        studioState.count++;
+        studioState.selectedCard = index + 1;
         buildRows();
         render();
-      } else if (action === "delete" && count > 1) {
-        cards.splice(index, 1);
-        count--;
-        selectedCard = Math.min(index, count - 1);
-        $("count").value = count;
+      } else if (action === "delete" && studioState.count > 1) {
+        studioState.cards = studioState.cards.filter((_, cardIndex) => cardIndex !== index);
+        studioState.count--;
+        studioState.selectedCard = Math.min(index, studioState.count - 1);
+        $("count").value = studioState.count;
         buildRows();
         render();
       } else if (action === "clear") {
-        cards[index] = blankCard();
+        studioState.cards = studioState.cards.map((current, cardIndex) =>
+          cardIndex === index ? blankCard() : current
+        );
         buildRows();
         render();
       } else if (action === "reset-photo") {
-        Object.assign(card, { zm: 1, px: 0, py: 0 });
+        updateCard(index, { zm: 1, px: 0, py: 0 });
         buildRows();
         render();
       }
@@ -331,36 +368,38 @@ function escapeHtml(text) {
 }
 
 async function setImage(index, loader) {
-  const target = cards[index];
+  const targetId = cardIdentity(studioState.cards[index]);
   try {
     const image = await loader();
-    const currentIndex = cards.indexOf(target);
+    const currentIndex = studioState.cards.findIndex(card => cardIdentity(card) === targetId);
     if (currentIndex < 0) {
       message("That card changed before its image finished loading.");
       return;
     }
-    Object.assign(target, image);
+    const updatedCard = updateCard(currentIndex, image);
     buildRows();
     render();
-    message(`Image added to card ${currentIndex + 1}${target.corsLimited ? " (host limits raster export)" : ""}.`);
+    message(`Image added to card ${currentIndex + 1}${updatedCard.corsLimited ? " (host limits raster export)" : ""}.`);
   } catch (error) {
     message(error instanceof Error ? error.message : "Could not load the image.");
   }
 }
 
 function moveCard(from, to) {
+  const cards = studioState.cards.slice();
   [cards[from], cards[to]] = [cards[to], cards[from]];
-  selectedCard = to;
+  studioState.cards = cards;
+  studioState.selectedCard = to;
   buildRows();
   render();
 }
 
 function setCount(value) {
-  count = Math.max(1, Math.min(MAX_CARDS, Number.parseInt(value, 10) || 1));
-  while (cards.length < count) cards.push(blankCard());
-  if (cards.length > count) cards.length = count;
-  selectedCard = Math.min(selectedCard, count - 1);
-  $("count").value = count;
+  studioState.count = Math.max(1, Math.min(MAX_CARDS, Number.parseInt(value, 10) || 1));
+  while (studioState.cards.length < studioState.count) studioState.cards = [...studioState.cards, blankCard()];
+  if (studioState.cards.length > studioState.count) studioState.cards = studioState.cards.slice(0, studioState.count);
+  studioState.selectedCard = Math.min(studioState.selectedCard, studioState.count - 1);
+  $("count").value = studioState.count;
   buildRows();
   render();
 }
@@ -411,10 +450,10 @@ async function importJson(text) {
       ...(accent || {})
     };
   });
-  cards = imported;
-  count = imported.length;
-  selectedCard = 0;
-  $("count").value = count;
+  studioState.cards = imported;
+  studioState.count = imported.length;
+  studioState.selectedCard = 0;
+  $("count").value = studioState.count;
   if (!Array.isArray(data) && data.settings) applySettings(data.settings);
   buildRows();
   render();
@@ -431,33 +470,54 @@ async function importJson(text) {
 }
 
 function hydrateDataImage(card) {
+  const targetId = cardIdentity(card);
   return new Promise(resolve => {
     const image = new Image();
     image.onload = () => {
-      card.iw = image.naturalWidth;
-      card.ih = image.naturalHeight;
-      if (card.autoAccent) Object.assign(card, sampleImageColor(image));
-      delete card.autoAccent;
+      const cardIndex = studioState.cards.findIndex(current => cardIdentity(current) === targetId);
+      if (cardIndex < 0) {
+        resolve();
+        return;
+      }
+      const changes = { iw: image.naturalWidth, ih: image.naturalHeight };
+      if (card.autoAccent) Object.assign(changes, sampleImageColor(image));
+      const next = updateCard(cardIndex, changes);
+      if (next.autoAccent) {
+        const { autoAccent: _autoAccent, ...cleanCard } = next;
+        const id = cardIdentity(next);
+        const clean = { ...cleanCard };
+        cardIds.set(clean, id);
+        studioState.cards = studioState.cards.map((current, index) => index === cardIndex ? clean : current);
+      }
       resolve();
     };
-    image.onerror = () => { delete card.autoAccent; resolve(); };
+    image.onerror = () => {
+      const cardIndex = studioState.cards.findIndex(current => cardIdentity(current) === targetId);
+      if (cardIndex >= 0) {
+        const { autoAccent: _autoAccent, ...cleanCard } = studioState.cards[cardIndex];
+        const clean = { ...cleanCard };
+        cardIds.set(clean, cardIdentity(studioState.cards[cardIndex]));
+        studioState.cards = studioState.cards.map((current, index) => index === cardIndex ? clean : current);
+      }
+      resolve();
+    };
     image.src = card.img;
   });
 }
 
 function setGradientAngle(angle, snap = true) {
   const rounded = snap ? Math.round(angle / 5) * 5 : Math.round(angle);
-  gradientAngle = ((rounded % 360) + 360) % 360;
-  $("needle").style.transform = `rotate(${gradientAngle}deg)`;
-  $("dial").setAttribute("aria-valuenow", gradientAngle);
-  $("gav").textContent = gradientAngle + "°";
+  studioState.gradientAngle = ((rounded % 360) + 360) % 360;
+  $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
+  $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
+  $("gav").textContent = studioState.gradientAngle + "°";
   scheduleRender();
 }
 
 function saveSoon() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    const result = await persistSession({ v: 1, count, settings: readSettings(), cards });
+    const result = await persistSession({ v: 1, count: studioState.count, settings: readSettings(), cards: studioState.cards });
     $("sv").textContent = result;
   }, 450);
 }
@@ -466,17 +526,17 @@ function syncCustomControls() {
   for (const key of CUSTOM_FIELDS) {
     const el = $("ct_" + key);
     if (!el) continue;
-    if (el.type === "checkbox") el.checked = Boolean(CUSTOM[key]);
-    else el.value = CUSTOM[key];
+    if (el.type === "checkbox") el.checked = Boolean(studioState.settings.customTheme[key]);
+    else el.value = studioState.settings.customTheme[key];
   }
   updateMountStatus();
 }
 
 function resetDefaults() {
-  cards = DEFAULT_CARDS.map(card => ({ ...card }));
-  count = cards.length;
-  selectedCard = 0;
-  $("count").value = count;
+  studioState.cards = DEFAULT_CARDS.map(card => ({ ...card }));
+  studioState.count = studioState.cards.length;
+  studioState.selectedCard = 0;
+  $("count").value = studioState.count;
   applySettings(SET0);
   syncCustomControls();
   buildRows();
@@ -496,10 +556,10 @@ function loadSamples() {
     ["Citizen Soldier", "Alt-Rock", "Utah", "2016", "CS", 220],
     ["Daughtry", "Post-Grunge", "North Carolina", "2006", "DGHT", 32]
   ];
-  cards = sample.map(([title, genre, loc, year, code, h]) => ({ ...blankCard(), title, genre, loc, year, code, h, s: .75 }));
-  count = cards.length;
-  selectedCard = 0;
-  $("count").value = count;
+  studioState.cards = sample.map(([title, genre, loc, year, code, h]) => ({ ...blankCard(), title, genre, loc, year, code, h, s: .75 }));
+  studioState.count = studioState.cards.length;
+  studioState.selectedCard = 0;
+  $("count").value = studioState.count;
   buildRows();
   render();
   message("Sample cards loaded.");
@@ -522,21 +582,21 @@ function randomise() {
 }
 
 function previewSvg(index) {
-  const originalIndex = selectedCard;
-  selectedCard = index;
+  const originalIndex = studioState.selectedCard;
+  studioState.selectedCard = index;
   const layout = currentLayout;
   const baseConfig = renderConfig(true);
   const page = Math.floor(index / layout.PER);
-  const cardMarkup = renderCard(cards[index], index, {
+  const cardMarkup = renderCard(studioState.cards[index], index, {
     ...baseConfig,
     lay: layout,
     one: true,
     drag: false,
     cropMarks: false,
-    style: pageThemes[page] || baseConfig.style,
-    themeForce: pageThemes[page] || ""
+    style: studioState.pageThemes[page] || baseConfig.style,
+    themeForce: studioState.pageThemes[page] || ""
   });
-  selectedCard = originalIndex;
+  studioState.selectedCard = originalIndex;
   const height = Math.max(204, Math.min(309, Math.round((SIZES[$("csize").value] || SIZES.ticket)[1] * 2.83465 / layout.K * 10) / 10));
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${cardMarkup}</svg>`;
 }
@@ -555,11 +615,11 @@ function sheetCardPreviewSvg(index) {
 function refreshPreview() {
   if (previewIndex < 0 || $("pv").hidden) return;
   $("pvi").innerHTML = sheetCardPreviewSvg(previewIndex);
-  $("pvt").textContent = `Card ${previewIndex + 1} of ${count}`;
+  $("pvt").textContent = `Card ${previewIndex + 1} of ${studioState.count}`;
 }
 
 function openPreview(index) {
-  previewIndex = (index + count) % count;
+  previewIndex = (index + studioState.count) % studioState.count;
   if ($("pv").hidden) previousFocus = document.activeElement;
   $("pv").hidden = false;
   refreshPreview();
@@ -596,11 +656,13 @@ function downloadCardSvg() {
 function bindEvents() {
   $("count").addEventListener("change", event => setCount(event.target.value));
   $("page-select")?.addEventListener("change", event => {
-    activePage = +event.target.value;
-    $("page-theme").value = pageThemes[activePage] || "";
+    studioState.activePage = +event.target.value;
+    $("page-theme").value = studioState.pageThemes[studioState.activePage] || "";
   });
   $("page-theme")?.addEventListener("change", event => {
-    pageThemes[activePage] = event.target.value;
+    studioState.pageThemes = studioState.pageThemes.map((theme, page) =>
+      page === studioState.activePage ? event.target.value : theme
+    );
     scheduleRender();
   });
   $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
@@ -634,7 +696,15 @@ function bindEvents() {
   });
   document.querySelectorAll("[data-ct]").forEach(input => {
     const update = () => {
-      CUSTOM[input.id.slice(3)] = input.type === "checkbox" ? input.checked : input.value;
+      const key = input.id.slice(3);
+      studioState.settings = {
+        ...studioState.settings,
+        customTheme: {
+          ...studioState.settings.customTheme,
+          [key]: input.type === "checkbox" ? input.checked : input.value
+        }
+      };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
       buildCustom();
       scheduleRender();
     };
@@ -657,7 +727,7 @@ function bindEvents() {
   $("rnd").addEventListener("click", randomise);
   $("smp").addEventListener("click", loadSamples);
   $("rst").addEventListener("click", async () => { await clearSession(); resetDefaults(); });
-  $("exp").addEventListener("click", () => exportProjectJson(readSettings(), cards, count));
+  $("exp").addEventListener("click", () => exportProjectJson(readSettings(), studioState.cards, studioState.count));
   $("imp").addEventListener("click", () => $("jf").click());
   $("jf").addEventListener("change", async event => {
     const file = event.target.files?.[0];
@@ -720,36 +790,37 @@ function bindEvents() {
   dial.addEventListener("keydown", event => {
     const step = event.shiftKey ? 15 : 5;
     const delta = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step }[event.key];
-    if (delta !== undefined) { event.preventDefault(); setGradientAngle(gradientAngle + delta, false); }
+    if (delta !== undefined) { event.preventDefault(); setGradientAngle(studioState.gradientAngle + delta, false); }
     else if (event.key === "Home") { event.preventDefault(); setGradientAngle(180, false); }
   });
 
   $("sheets").addEventListener("pointerdown", event => {
     const target = event.target.closest(".pp");
     if (!target) return;
-    const index = +target.dataset.ci, card = cards[index];
+    const index = +target.dataset.ci, card = studioState.cards[index];
     if (!card?.img || !card.iw) return;
     event.preventDefault();
     dragState = { index, x: event.clientX, y: event.clientY, px: card.px || 0, py: card.py || 0, scale: target.ownerSVGElement.getScreenCTM().a };
   });
   window.addEventListener("pointermove", event => {
     if (!dragState) return;
-    const card = cards[dragState.index], box = fitBox(card, currentLayout.CH);
+    const card = studioState.cards[dragState.index], box = fitBox(card, currentLayout.CH);
     if (!box) return;
     const dx = (event.clientX - dragState.x) / dragState.scale;
     const dy = (event.clientY - dragState.y) / dragState.scale;
-    card.px = box.mx > 0 ? Math.max(-100, Math.min(100, dragState.px + dx / box.mx * 100)) : 0;
-    card.py = box.my > 0 ? Math.max(-100, Math.min(100, dragState.py + dy / box.my * 100)) : 0;
+    const px = box.mx > 0 ? Math.max(-100, Math.min(100, dragState.px + dx / box.mx * 100)) : 0;
+    const py = box.my > 0 ? Math.max(-100, Math.min(100, dragState.py + dy / box.my * 100)) : 0;
+    updateCard(dragState.index, { px, py });
     const image = $("photo" + dragState.index);
     if (image) {
       const photoHeight = 136 + currentLayout.CH - 239;
-      image.setAttribute("x", (17 + 68 - box.w / 2 + card.px / 100 * box.mx).toFixed(2));
-      image.setAttribute("y", (16 + photoHeight / 2 - box.h / 2 + card.py / 100 * box.my).toFixed(2));
+      image.setAttribute("x", (17 + 68 - box.w / 2 + px / 100 * box.mx).toFixed(2));
+      image.setAttribute("y", (16 + photoHeight / 2 - box.h / 2 + py / 100 * box.my).toFixed(2));
     }
     const row = $("rows").children[dragState.index];
     if (row) {
-      row.querySelector("[data-adjust='px']").value = card.px;
-      row.querySelector("[data-adjust='py']").value = card.py;
+      row.querySelector("[data-adjust='px']").value = px;
+      row.querySelector("[data-adjust='py']").value = py;
     }
   });
   ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, () => {
@@ -771,37 +842,45 @@ function syncPageTools(pageCount) {
   const select = $("page-select");
   const themeSelect = $("page-theme");
   if (!select || !themeSelect) return;
-  while (pageThemes.length < pageCount) pageThemes.push("");
-  if (pageThemes.length > pageCount) pageThemes.length = pageCount;
-  activePage = Math.min(activePage, pageCount - 1);
+  while (studioState.pageThemes.length < pageCount) studioState.pageThemes = [...studioState.pageThemes, ""];
+  if (studioState.pageThemes.length > pageCount) studioState.pageThemes = studioState.pageThemes.slice(0, pageCount);
+  studioState.activePage = Math.min(studioState.activePage, pageCount - 1);
   select.innerHTML = Array.from({ length: pageCount }, (_, page) =>
-    `<option value="${page}"${page === activePage ? " selected" : ""}>Page ${page + 1}</option>`
+    `<option value="${page}"${page === studioState.activePage ? " selected" : ""}>Page ${page + 1}</option>`
   ).join("");
   if (!themeSelect.options.length || themeSelect.options.length === 1) {
     themeSelect.innerHTML = `<option value="">Use global</option>${Object.entries(THEMES).map(([key, theme]) =>
       `<option value="${key}">${escapeHtml(theme.n)}</option>`
     ).join("")}`;
   }
-  themeSelect.value = pageThemes[activePage] || "";
+  themeSelect.value = studioState.pageThemes[studioState.activePage] || "";
 }
 
 function duplicateActivePage(perPage) {
-  const start = activePage * perPage;
-  const end = Math.min(cards.length, start + perPage);
-  if (start >= cards.length) return;
-  const sourcePage = activePage + 1;
-  const pageCards = cards.slice(start, end).map(card => ({ ...card }));
-  if (cards.length + pageCards.length > MAX_CARDS) {
+  const start = studioState.activePage * perPage;
+  const end = Math.min(studioState.cards.length, start + perPage);
+  if (start >= studioState.cards.length) return;
+  const sourcePage = studioState.activePage + 1;
+  const pageCards = studioState.cards.slice(start, end).map(card => {
+    const duplicate = { ...card };
+    cardIds.set(duplicate, ++nextCardId);
+    return duplicate;
+  });
+  if (studioState.cards.length + pageCards.length > MAX_CARDS) {
     message(`That would exceed the ${MAX_CARDS}-card limit. Remove or duplicate fewer cards first.`);
     return;
   }
-  const insertAt = Math.min(cards.length, end);
-  cards.splice(insertAt, 0, ...pageCards);
-  count = Math.min(MAX_CARDS, cards.length);
-  cards.length = count;
-  pageThemes.splice(activePage + 1, 0, pageThemes[activePage] || "");
-  activePage++;
-  $("count").value = count;
+  const insertAt = Math.min(studioState.cards.length, end);
+  studioState.cards = [...studioState.cards.slice(0, insertAt), ...pageCards, ...studioState.cards.slice(insertAt)];
+  studioState.count = Math.min(MAX_CARDS, studioState.cards.length);
+  studioState.cards = studioState.cards.slice(0, studioState.count);
+  studioState.pageThemes = [
+    ...studioState.pageThemes.slice(0, studioState.activePage + 1),
+    studioState.pageThemes[studioState.activePage] || "",
+    ...studioState.pageThemes.slice(studioState.activePage + 1)
+  ];
+  studioState.activePage++;
+  $("count").value = studioState.count;
   buildRows();
   render();
   message(`Duplicated page ${sourcePage} with ${pageCards.length} card${pageCards.length === 1 ? "" : "s"}.`);
@@ -816,10 +895,10 @@ async function init() {
   bindEvents();
   const saved = await loadSession();
   if (saved && Array.isArray(saved.cards) && saved.cards.length) {
-    cards = saved.cards.slice(0, MAX_CARDS).map(card => ({ ...blankCard(), ...card }));
-    count = Math.max(1, Math.min(MAX_CARDS, saved.count || cards.length));
-    while (cards.length < count) cards.push(blankCard());
-    $("count").value = count;
+    studioState.cards = saved.cards.slice(0, MAX_CARDS).map(card => ({ ...blankCard(), ...card }));
+    studioState.count = Math.max(1, Math.min(MAX_CARDS, saved.count || studioState.cards.length));
+    while (studioState.cards.length < studioState.count) studioState.cards = [...studioState.cards, blankCard()];
+    $("count").value = studioState.count;
     applySettings(saved.settings || {});
     message("Restored your saved sheet.");
   }
