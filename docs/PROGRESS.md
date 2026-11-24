@@ -18,8 +18,8 @@
 | P0-02 | Write `CLAUDE.md` | S | low | done | - | Rules, layout, safety, verification |
 | P0-03 | Write architecture/control audit | L | medium | done | - | Source audit complete; screenshots pending approval |
 | P0-04 | Write progress checklist | M | low | done | - | |
-| P1-01 | Baseline app and screenshot setup | M | medium | todo | - | Do not change app code until approval |
-| P1-02 | Store baseline exports in `.baseline/` | M | high | todo | - | SVG, PNG, PDF, cutter/print as available |
+| P1-01 | Baseline app and screenshot setup | M | medium | done | - | Browser screenshots captured for Sheet Editor, Theme Studio, Bulk Import, desktop and 390px |
+| P1-02 | Store baseline exports in `.baseline/` | M | high | blocked | - | Screenshots are present; automated SVG/PNG/PDF download capture was blocked by browser download behavior, so exact baseline exports need manual browser verification |
 | P1-03 | Reproduce and fix B1 long titles | M | medium | done | - | Reproduced in browser at 1440px; added deterministic two-line title layout with shrinking and exported-SVG-compatible string output |
 | P1-04 | Fix B2 dynamic cards/page subtitle | S | low | done | - | Subtitle now derives card count, sheet page count and cards-per-page from the active layout |
 | P1-05 | Fix B3 Section 1 label layout | S | low | done | - | Section labels and hints now have minimum widths and safe wrapping/alignment |
@@ -93,4 +93,21 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - For F7, visiting-card dimensions/count should be confirmed if not defined by an approved mockup. No implementation assumptions are made here.
 
 ## Commit log
-- No commits yet for `ui-overhaul`.
+- 84bcc50 Fix long card title layout
+- 54fc48b Fix dynamic sheet subtitle
+- d73383b Fix Section 1 label alignment
+- 9d419c6 Fix card photo aspect fitting
+- 355d51f Fix sheet print-only output
+- 5ee59a0 Fix saved theme cloning
+- 8a6928c Fix saved theme deletion
+- 06da4a3 Fix duplicate theme names
+- 9d4ffba Validate imported theme JSON
+- 014d7d0 Refresh Phase 1 cache and print output
+
+## Phase 1 verification
+- Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
+- 390px: no horizontal document overflow in Sheet Editor, Theme Studio, or Bulk Import; Bulk staged URL flow worked.
+- Theme Studio: saving the same name twice produced `Test Theme` and `Test Theme (2)`; invalid hex import produced a visible validation error.
+- Title reproduction: `BREAKING BENJAMIN VERY LONG TITLE` now renders as two deterministic SVG text lines and is present in preview/export markup.
+- Print emulation: topbar/panel hidden; A4-sized `.sheet` is 210mm x 297mm and one template/additional page is present.
+- Remaining manual checks: real printer/PDF scaling, blank trailing page, PNG/PDF export downloads, and external/CORS image raster exports.
