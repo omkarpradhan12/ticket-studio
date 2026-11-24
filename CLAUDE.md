@@ -66,4 +66,5 @@
 ## Phase status
 - Phase 4 visual-system, accessibility, icon, and color-control work is complete on `ui-overhaul`.
 - Phase 5 Theme Studio gallery, palette editor, draft history, and unsaved-change safeguards are complete on `ui-overhaul`.
-- Resume at Phase 6 only after owner approval.
+- Phase 6 customisable borders (16 styles, Customise fold, presets, per-card overrides, scoped SVG defs, `?v=phase6`) are complete on `ui-overhaul`.
+- Resume at Phase 7 only after owner approval.

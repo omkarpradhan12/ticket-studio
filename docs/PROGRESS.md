@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 6 (customisable borders) — Step 1 proposal written, awaiting owner approval
-- Next approval: owner approval of the Phase 6 proposal below before Step 2 implementation.
+- Current phase: Phase 6 - Customisable borders complete
+- Next approval: owner approval before Phase 7 (per-card stamp positioning), plus decision on fixing the pre-existing Tarot title double-`D` offset regression.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -65,8 +65,8 @@
 | P5-02 | Theme side/bottom panel and custom actions | L | medium | done | b454575 | Responsive draft editor; explicit Update, versioned Save as new, Duplicate, and confirmed Delete |
 | P5-03 | Draft history, warnings, and theme JSON | L | high | done | b454575 | Draft-scoped undo/redo, coalescing, unique import names, and unsaved-change guards |
 | P5-04 | Optional card title scale | S | medium | done | b454575 | Owner approved optional `settings.titleScale`, 70-100% with an 85% default |
-| P6-01 | Customisable borders | L | high | todo | - | Step 1 proposal written; awaiting owner approval |
-| P6-02 | Preserve old border render values | L | high | todo | - | |
+| P6-01 | Customisable borders | L | high | done | 97892bb, 2c83c13, 14b8add | 16 styles (0..4 legacy + 5..15 new), visual picker, Customise fold, presets, per-card overrides, `#rnd` border randomisation |
+| P6-02 | Preserve old border render values | L | high | done | 97892bb | Exact legacy SVG fast-path verified for 0..4; legacy v1 sheet round-trip verified |
 | P7-01 | Per-card stamp position | L | high | todo | - | |
 | P7-02 | Stamp drag hit-test/touch/export/undo | L | high | todo | - | |
 | P8-01 | Per-card Surprise me style overrides | L | high | todo | - | |
@@ -107,6 +107,10 @@
 - ef82ee2 Make bulk sheet transfers undoable
 - 2d743d3 Restructure Sheet Editor layout for Phase 3
 - b454575 Complete Phase 5 theme studio
+- 9d64e30 Propose Phase 6 border styles and controls
+- 97892bb Add customisable border styles and SVG renderer
+- 2c83c13 Add visual border picker and customise UI
+- 14b8add Wire border state, presets, per-card overrides, and phase6 cache version
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -358,3 +362,21 @@ Every control below is practical in pure SVG with zero external dependencies, pr
 3. **Should the existing "Randomise all" (`#rnd`) action also randomise `borderStyle`?**
    - **Option A (Recommended)**: Keep `#rnd` touching only theme/stamp/wear/texture/gradient (as today), and leave border randomisation for Phase 8 (`Surprise me`).
    - **Option B**: Include `borderStyle` in `#rnd` as well.
+
+## Phase 6 implementation and verification
+- **Owner choices applied**: Option A for per-card UI (Look edits sheet default; `Apply to card #N` + presets apply to card/sheet + `Use sheet border` reset in card details); Option A for sheet-edit behaviour (normal sheet changes keep per-card `card.border` overrides intact; `Apply to all cards` clears all per-card overrides in one undo step); Option B for `#rnd` (`Randomise all` picks across visible styles `0..14` in one undo step).
+- **Renderer (`js/borders.mjs`, `js/svg-engine.js`)**:
+  - Kept styles `0..4` (`Double`, `Thick`, `Brackets`, `Dashed`, `Rounded`) on an exact legacy SVG fast-path when unmodified (`hasBorderOverrides === false`).
+  - Appended 11 new styles (`5` Triple line, `6` Thick retro, `7` Art-Deco, `8` Flourishes, `9` Dashed stitch, `10` Film-strip, `11` Scalloped stub, `12` Ink-bleed, `13` Holographic, `14` Neon glow, `15` None) scaling dynamically with `CH` across Ticket, Poker, Credit, Mini, Tarot, and `minimalLayout` (visiting-card ready).
+  - Scoped border `<defs>` IDs (`sw-` for swatches, `pv-` in preview modal, card index on sheets) so filters and gradients never collide across cards or views.
+- **UI, presets & state (`index.html`, `css/app.css`, `js/app.js`, `js/export.js`)**:
+  - Replaced `#design-border` select with a 16-swatch keyboard-navigable visual picker (`role="radiogroup"`) updating live with theme colours, followed by a collapsed `Customise` fold showing only controls relevant to the selected style (line width, inset, opacity, line gap, theme/custom hex colour, line pattern/dash/gap, corner style/size, second inner border, corner ornament/size, border wear synced 2-way with `#bwear`, and glow amount).
+  - Added `ticketgen.borderPresets.v1` `localStorage` presets (Save, Apply to sheet, Apply to card, confirmed Delete) and optional `settings.border` / `card.border` fields wired through `studioState` history coalescing and JSON import/export.
+  - Bumped all local CSS, JS, module, test, and favicon `?v=` cache queries uniformly to `?v=phase6`.
+- **Verification**:
+  - Node tests passed: `node tests/borders.test.mjs`, `node tests/history.test.mjs`, `node tests/theme-studio-utils.test.mjs`, `node tests/color-controls.test.mjs`, `.mjs` syntax checks, and 157 unique IDs check on `index.html`.
+  - Browser verification across `index.html`, `theme-studio.html`, `bulk-import.html`, and `tests/title-layout.test.html` (4 passed, 0 failed): 0 console/page errors, 0 duplicate DOM IDs (with and without `#pv` modal open on filtered/gradient cards), conditional Customise control visibility, hex color sync, `#bwear` 2-way sync, coalesced undo/redo, presets + per-card override/reset, `#rnd` 1-step undo, and legacy v1 `Brackets` (`2`) sheet round-trip across reload.
+  - Border styles `5..15` verified live with bleed and crop marks at Ticket and Tarot sizes; print emulation verified 210mm × 297mm A4 sheets with new borders and `.sheet:last-child` break-after rule.
+  - Exports on mixed new/filtered borders (`Holographic`, `Neon glow`, `Ink-bleed`, `Film-strip`, `Scalloped stub`): 300 dpi PNG (`ticket-cards-p1.png`) and 300 dpi PDF (`ticket-cards.pdf`) succeeded; `#svg` reported downloading 2 pages (`.svg` file write blocked by browser sandbox download policy).
+  - Mobile 390px: 0 horizontal overflow in both Edit and Preview views; minor cosmetic truncation noted on longer swatch names ("Dashed st...", "Scalloped...", "Holograp...") and tight "Formats" label padding.
+  - **Pre-existing Tarot finding**: during Tarot inspection, the browser check observed that `titleMarkup` in `js/svg-engine.js` (introduced in `84bcc50`) adds `+ D` inside `<g transform="translate(0 ${D})">`, pushing the card title below the bottom border on Tarot (`D = 52.4`). Left unchanged during Phase 6 per safety rails; flagged for owner approval before fixing.
