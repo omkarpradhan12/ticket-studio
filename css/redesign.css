@@ -92,6 +92,53 @@ body {
   box-shadow: none;
 }
 
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-action {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  font-size: 23px;
+  line-height: 1;
+}
+
+.history-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.history-toast {
+  position: fixed;
+  z-index: 80;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #211f1b;
+  color: var(--ink);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+.history-toast[hidden] {
+  display: none;
+}
+
+.history-toast span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .app,
 .studio-wrap {
   max-width: 1760px;
@@ -501,6 +548,11 @@ button.g:hover,
 @media (max-width: 520px) {
   .topbar-inner {
     align-items: center;
+  }
+
+  .history-action {
+    width: 44px;
+    height: 44px;
   }
 
   .nav-tab {

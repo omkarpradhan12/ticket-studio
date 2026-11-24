@@ -4,9 +4,11 @@ import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS 
 import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase1-b1";
 import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js";
 import { FONTCSS } from "./fonts.js";
+import { History } from "./history.mjs";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
+const HISTORY_LIMIT = 100;
 const SETTINGS_FIELDS = {
   style: "style", titleFont: "tfont", doors: "gdoors", side: "gside",
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize", stampShape: "sshape",
@@ -40,6 +42,11 @@ let saveTimer;
 let dragState = null;
 let previewIndex = -1;
 let previousFocus = null;
+let historyReady = false;
+let batchImportInProgress = false;
+let undoToastTimer;
+const coalescingTimers = new Map();
+const history = new History({ limit: HISTORY_LIMIT, onChange: updateHistoryControls });
 
 function cardIdentity(card) {
   let id = cardIds.get(card);
@@ -170,6 +177,254 @@ function renderConfig(one = false) {
   };
 }
 
+function captureSnapshot() {
+  const settings = readSettings();
+  return {
+    version: 1,
+    state: {
+      cards: studioState.cards.slice(),
+      count: studioState.count,
+      selectedCard: studioState.selectedCard,
+      activePage: studioState.activePage,
+      pageThemes: studioState.pageThemes.slice(),
+      gradientAngle: studioState.gradientAngle,
+      settings: {
+        ...settings,
+        customTheme: { ...settings.customTheme },
+        photoMounts: settings.photoMounts.slice()
+      }
+    }
+  };
+}
+
+function snapshotsEqual(left, right) {
+  if (!left || !right || left.version !== right.version) return false;
+  const a = left.state, b = right.state;
+  if (a.count !== b.count || a.selectedCard !== b.selectedCard
+    || a.activePage !== b.activePage || a.gradientAngle !== b.gradientAngle
+    || a.cards.length !== b.cards.length || a.pageThemes.length !== b.pageThemes.length) return false;
+  if (a.cards.some((card, index) => card !== b.cards[index])
+    || a.pageThemes.some((theme, index) => theme !== b.pageThemes[index])) return false;
+  const settingKeys = new Set([...Object.keys(a.settings), ...Object.keys(b.settings)]);
+  for (const key of settingKeys) {
+    const first = a.settings[key], second = b.settings[key];
+    if (Array.isArray(first) && Array.isArray(second)) {
+      if (first.length !== second.length || first.some((value, index) => value !== second[index])) return false;
+    } else if (first && second && typeof first === "object" && typeof second === "object") {
+      const keys = new Set([...Object.keys(first), ...Object.keys(second)]);
+      if ([...keys].some(name => first[name] !== second[name])) return false;
+    } else if (first !== second) return false;
+  }
+  return true;
+}
+
+function recordHistory(label, coalesceKey = null) {
+  if (!historyReady) return false;
+  const snapshot = captureSnapshot();
+  if (snapshotsEqual(history.present, snapshot)) return false;
+  history.record(snapshot, label, coalesceKey);
+  return true;
+}
+
+function clearCoalescingTimers() {
+  for (const timer of coalescingTimers.values()) clearTimeout(timer);
+  coalescingTimers.clear();
+}
+
+function recordContinuous(label, coalesceKey) {
+  if (!recordHistory(label, coalesceKey) && !history.isCoalescing(coalesceKey)) return;
+  clearTimeout(coalescingTimers.get(coalesceKey));
+  coalescingTimers.set(coalesceKey, setTimeout(() => {
+    history.endCoalescing(coalesceKey);
+    coalescingTimers.delete(coalesceKey);
+  }, 600));
+}
+
+function finishContinuous(label, coalesceKey) {
+  clearTimeout(coalescingTimers.get(coalesceKey));
+  coalescingTimers.delete(coalesceKey);
+  if (!history.isCoalescing(coalesceKey)) recordHistory(label, coalesceKey);
+  history.endCoalescing(coalesceKey);
+}
+
+function bindContinuousHistory(element, label, coalesceKey) {
+  element.addEventListener("input", () => recordContinuous(label, coalesceKey));
+  ["change", "blur", "pointerup", "pointercancel"].forEach(name => {
+    element.addEventListener(name, () => finishContinuous(label, coalesceKey));
+  });
+}
+
+function recordDiscrete(label) {
+  if (!historyReady) return;
+  clearCoalescingTimers();
+  history.endCoalescing();
+  recordHistory(label);
+}
+
+function updateHistoryControls(current = history) {
+  const undo = $("undo"), redo = $("redo");
+  if (!undo || !redo) return;
+  undo.disabled = !current.canUndo;
+  redo.disabled = !current.canRedo;
+  undo.setAttribute("aria-label", current.undoLabel);
+  undo.title = current.undoLabel;
+  redo.setAttribute("aria-label", current.redoLabel);
+  redo.title = current.redoLabel;
+}
+
+function showUndoToast(text) {
+  const toast = $("undo-toast");
+  $("undo-toast-message").textContent = text;
+  toast.hidden = false;
+  clearTimeout(undoToastTimer);
+  undoToastTimer = setTimeout(() => { toast.hidden = true; }, 8000);
+}
+
+function hideUndoToast() {
+  clearTimeout(undoToastTimer);
+  $("undo-toast").hidden = true;
+}
+
+function focusedRowControl() {
+  const element = document.activeElement;
+  const row = element?.closest?.(".row");
+  if (!row) return null;
+  const attribute = ["data-field", "data-adjust", "data-option", "data-url", "data-accent"]
+    .find(name => element.hasAttribute(name));
+  if (!attribute) return null;
+  const supportsSelection = element.tagName === "TEXTAREA"
+    || (element.tagName === "INPUT" && ["text", "search", "url", "tel", "password"].includes(element.type));
+  return {
+    index: Number(row.dataset.index),
+    attribute,
+    value: element.getAttribute(attribute),
+    selectionStart: supportsSelection ? element.selectionStart : null,
+    selectionEnd: supportsSelection ? element.selectionEnd : null
+  };
+}
+
+function restoreRowFocus(focus) {
+  if (!focus) return;
+  const row = $("rows").children[focus.index];
+  const control = [...(row?.querySelectorAll(`[${focus.attribute}]`) || [])]
+    .find(element => element.getAttribute(focus.attribute) === focus.value);
+  if (!control) return;
+  control.focus({ preventScroll: true });
+  if (focus.selectionStart !== null && focus.selectionEnd !== null) {
+    control.setSelectionRange(focus.selectionStart, focus.selectionEnd);
+  }
+}
+
+function applySnapshot(snapshot) {
+  if (snapshot?.version !== 1 || !snapshot.state) throw new TypeError("Invalid Sheet Editor history snapshot.");
+  const focus = focusedRowControl();
+  const expandedCardIds = new Set([...document.querySelectorAll(".row")].flatMap(row => {
+    const card = studioState.cards[Number(row.dataset.index)];
+    return row.querySelector("details.adj")?.open && card ? [cardIdentity(card)] : [];
+  }));
+  const scrollPosition = { x: window.scrollX, y: window.scrollY, rows: $("rows").scrollTop };
+  const previewCardId = previewIndex >= 0 && studioState.cards[previewIndex]
+    ? cardIdentity(studioState.cards[previewIndex])
+    : null;
+  const state = snapshot.state;
+  studioState.cards = state.cards.slice();
+  studioState.count = state.count;
+  studioState.selectedCard = state.selectedCard;
+  studioState.activePage = state.activePage;
+  studioState.pageThemes = state.pageThemes.slice();
+  studioState.gradientAngle = state.gradientAngle;
+  $("count").value = state.count;
+  applySettings(state.settings);
+  studioState.activePage = state.activePage;
+  if (previewIndex >= 0) {
+    const restoredIndex = previewCardId === null
+      ? -1
+      : studioState.cards.findIndex(card => cardIdentity(card) === previewCardId);
+    previewIndex = restoredIndex >= 0 ? restoredIndex : Math.min(previewIndex, studioState.count - 1);
+  }
+  buildRows();
+  document.querySelectorAll(".row").forEach(row => {
+    const card = studioState.cards[Number(row.dataset.index)];
+    const details = row.querySelector("details.adj");
+    if (card && details) details.open = expandedCardIds.has(cardIdentity(card));
+  });
+  render();
+  $("rows").scrollTop = scrollPosition.rows;
+  window.scrollTo(scrollPosition.x, scrollPosition.y);
+  restoreRowFocus(focus);
+}
+
+function undo() {
+  const result = history.undo();
+  if (result) applySnapshot(result.snapshot);
+  hideUndoToast();
+  return result;
+}
+
+function redo() {
+  const result = history.redo();
+  if (result) applySnapshot(result.snapshot);
+  return result;
+}
+
+function bindHistoryControlEvents() {
+  const labels = {
+    style: "change theme",
+    titleFont: "change title font",
+    doors: "change doors text",
+    side: "change side text",
+    stamp: "change stamp text",
+    stampYear: "change stamp year",
+    stampSize: "change stamp size",
+    stampShape: "change stamp shape",
+    stampColor: "change stamp colour",
+    stamp2: "change second stamp",
+    stampWear: "change stamp wear",
+    borderWear: "change border wear",
+    gradientSpread: "change gradient spread",
+    paper: "change paper size",
+    cardSize: "change card size",
+    cutterCorners: "change cutter corner radius",
+    grain: "change paper grain",
+    edgeWear: "change edge wear",
+    creases: "change paper creases",
+    scuffs: "change surface scuffs",
+    borderStyle: "change border style",
+    yearBadge: "change year badge",
+    tearStyle: "change tear line",
+    photoFilter: "change photo filter",
+    cropMarks: "toggle crop marks",
+    bleed: "toggle bleed",
+    nfc: "toggle NFC icon",
+    cutTemplate: "toggle cut template",
+    serials: "toggle serial number",
+    stampAuto: "toggle stamp accent",
+    regMarks: "toggle registration marks",
+    punchHole: "toggle punch hole",
+    centerTitle: "toggle centered title",
+    halftone: "toggle photo halftone"
+  };
+  const controls = new Map();
+  for (const [field, id] of Object.entries(SETTINGS_FIELDS)) controls.set(id, labels[field]);
+  for (const [field, id] of Object.entries(CHECK_FIELDS)) controls.set(id, labels[field]);
+  for (const key of CUSTOM_FIELDS) controls.set("ct_" + key, `change custom ${key} colour`);
+  controls.forEach((label, id) => {
+    const element = $(id);
+    if (element) bindContinuousHistory(element, label, `setting:${id}`);
+  });
+  document.querySelectorAll("[data-quick-mount]").forEach(input => {
+    const name = ["Tape", "Pins", "Corners", "None"][Number(input.value)] || "mount";
+    bindContinuousHistory(input, `toggle ${name.toLowerCase()} mount`, `mount:${input.value}`);
+  });
+}
+
+function isTextEditingTarget(target) {
+  if (!target || target.isContentEditable) return Boolean(target?.isContentEditable);
+  if (target.tagName === "TEXTAREA") return true;
+  return target.tagName === "INPUT"
+    && ["text", "search", "url", "tel", "password", "email", "number"].includes(target.type);
+}
+
 function updateMountStatus() {
   const names = { "0": "Tape", "1": "Pins", "2": "Corners", "3": "None" };
   const checked = [...document.querySelectorAll("[data-quick-mount]:checked")];
@@ -228,12 +483,14 @@ function render() {
     else row.removeAttribute("aria-current");
   });
   if (!$("pv").hidden) refreshPreview();
+  if (historyReady) history.refresh(captureSnapshot());
   saveSoon();
 }
 
 function selectCard(index, scroll = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
+  if (historyReady) history.refresh(captureSnapshot());
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === index);
     if (i === index) row.setAttribute("aria-current", "true");
@@ -305,29 +562,44 @@ function buildRows() {
       const dropped = event.dataTransfer?.files?.[0];
       if (dropped) await setImage(index, () => processImageFile(dropped));
     });
-    row.querySelectorAll("[data-field]").forEach(input => input.addEventListener("input", () => {
-      updateCard(index, { [input.dataset.field]: input.value });
-      scheduleRender();
-    }));
-    row.querySelectorAll("[data-adjust]").forEach(input => input.addEventListener("input", () => {
-      const field = input.dataset.adjust;
-      updateCard(index, { [field]: field === "zm" ? +input.value / 100 : +input.value });
-      scheduleRender();
-    }));
-    row.querySelectorAll("[data-option]").forEach(input => input.addEventListener("input", () => {
-      updateCard(index, { [input.dataset.option]: input.value });
-      scheduleRender();
-    }));
+    row.querySelectorAll("[data-field]").forEach(input => {
+      input.addEventListener("input", () => {
+        updateCard(index, { [input.dataset.field]: input.value });
+        scheduleRender();
+      });
+      const fieldNames = { title: "name", genre: "genre", loc: "place", year: "year", code: "abbreviation" };
+      bindContinuousHistory(input, `change card ${fieldNames[input.dataset.field]}`, `card:${index}:${input.dataset.field}`);
+    });
+    row.querySelectorAll("[data-adjust]").forEach(input => {
+      input.addEventListener("input", () => {
+        const field = input.dataset.adjust;
+        updateCard(index, { [field]: field === "zm" ? +input.value / 100 : +input.value });
+        scheduleRender();
+      });
+      const labels = { zm: "change photo zoom", px: "change horizontal photo position", py: "change vertical photo position" };
+      bindContinuousHistory(input, labels[input.dataset.adjust], `card:${index}:${input.dataset.adjust}`);
+    });
+    row.querySelectorAll("[data-option]").forEach(input => {
+      input.addEventListener("input", () => {
+        updateCard(index, { [input.dataset.option]: input.value });
+        scheduleRender();
+      });
+      const labels = { theme: "change card theme", sk: "change card stamp", stx: "change card stamp text" };
+      bindContinuousHistory(input, labels[input.dataset.option], `card:${index}:${input.dataset.option}`);
+    });
     row.querySelector("[data-accent]").addEventListener("input", event => {
       updateCard(index, hexToHS(event.target.value));
       scheduleRender();
     });
+    bindContinuousHistory(row.querySelector("[data-accent]"), "change card accent colour", `card:${index}:accent`);
     row.querySelector("[data-action='load-url']").addEventListener("click", async () => {
       const url = row.querySelector("[data-url]").value.trim();
       await setImage(index, () => processImageUrl(url));
     });
-    row.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => {
+    row.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
       const action = button.dataset.action;
+      selectCard(index);
       if (action === "load-url") return;
       if (action === "view") { selectCard(index); openPreview(index); }
       else if (action === "up" && index > 0) moveCard(index, index - 1);
@@ -338,6 +610,7 @@ function buildRows() {
         studioState.cards = [...studioState.cards.slice(0, index + 1), duplicate, ...studioState.cards.slice(index + 1)];
         studioState.count++;
         studioState.selectedCard = index + 1;
+        recordDiscrete("duplicate card");
         buildRows();
         render();
       } else if (action === "delete" && studioState.count > 1) {
@@ -345,16 +618,20 @@ function buildRows() {
         studioState.count--;
         studioState.selectedCard = Math.min(index, studioState.count - 1);
         $("count").value = studioState.count;
+        recordDiscrete("delete card");
         buildRows();
         render();
+        showUndoToast("Card deleted.");
       } else if (action === "clear") {
         studioState.cards = studioState.cards.map((current, cardIndex) =>
           cardIndex === index ? blankCard() : current
         );
+        recordDiscrete("clear card");
         buildRows();
         render();
       } else if (action === "reset-photo") {
         updateCard(index, { zm: 1, px: 0, py: 0 });
+        recordDiscrete("reset photo crop");
         buildRows();
         render();
       }
@@ -378,6 +655,7 @@ async function setImage(index, loader) {
     }
     const updatedCard = updateCard(currentIndex, image);
     buildRows();
+    if (!batchImportInProgress) recordDiscrete("change card image");
     render();
     message(`Image added to card ${currentIndex + 1}${updatedCard.corsLimited ? " (host limits raster export)" : ""}.`);
   } catch (error) {
@@ -390,6 +668,7 @@ function moveCard(from, to) {
   [cards[from], cards[to]] = [cards[to], cards[from]];
   studioState.cards = cards;
   studioState.selectedCard = to;
+  recordDiscrete("move card");
   buildRows();
   render();
 }
@@ -400,6 +679,7 @@ function setCount(value) {
   if (studioState.cards.length > studioState.count) studioState.cards = studioState.cards.slice(0, studioState.count);
   studioState.selectedCard = Math.min(studioState.selectedCard, studioState.count - 1);
   $("count").value = studioState.count;
+  recordDiscrete("change card count");
   buildRows();
   render();
 }
@@ -456,17 +736,25 @@ async function importJson(text) {
   $("count").value = studioState.count;
   if (!Array.isArray(data) && data.settings) applySettings(data.settings);
   buildRows();
+  recordDiscrete("import card data");
   render();
-  for (let i = 0; i < imported.length; i++) {
-    const entry = entries[i];
-    const photo = photoForJson(entry);
-    if (photo.startsWith("http")) {
-      await setImage(i, () => processImageUrl(photo));
-    } else if (photo.startsWith("data:")) {
-      await hydrateDataImage(imported[i]);
+  batchImportInProgress = true;
+  try {
+    for (let i = 0; i < imported.length; i++) {
+      const entry = entries[i];
+      const photo = photoForJson(entry);
+      if (photo.startsWith("http")) {
+        await setImage(i, () => processImageUrl(photo));
+      } else if (photo.startsWith("data:")) {
+        await hydrateDataImage(imported[i]);
+      }
     }
+  } finally {
+    batchImportInProgress = false;
+    if (historyReady) history.refresh(captureSnapshot());
   }
   message(`Loaded ${imported.length} card${imported.length === 1 ? "" : "s"}${entries.length > MAX_CARDS ? " (first 72 only)" : ""}.`);
+  showUndoToast("Card data imported.");
 }
 
 function hydrateDataImage(card) {
@@ -489,6 +777,7 @@ function hydrateDataImage(card) {
         cardIds.set(clean, id);
         studioState.cards = studioState.cards.map((current, index) => index === cardIndex ? clean : current);
       }
+      if (historyReady) history.refresh(captureSnapshot());
       resolve();
     };
     image.onerror = () => {
@@ -498,6 +787,7 @@ function hydrateDataImage(card) {
         const clean = { ...cleanCard };
         cardIds.set(clean, cardIdentity(studioState.cards[cardIndex]));
         studioState.cards = studioState.cards.map((current, index) => index === cardIndex ? clean : current);
+        if (historyReady) history.refresh(captureSnapshot());
       }
       resolve();
     };
@@ -540,8 +830,10 @@ function resetDefaults() {
   applySettings(SET0);
   syncCustomControls();
   buildRows();
+  recordDiscrete("reset all");
   render();
   message("Defaults restored.");
+  showUndoToast("Sheet reset.");
 }
 
 function loadSamples() {
@@ -561,8 +853,10 @@ function loadSamples() {
   studioState.selectedCard = 0;
   $("count").value = studioState.count;
   buildRows();
+  recordDiscrete("load samples");
   render();
   message("Sample cards loaded.");
+  showUndoToast("Sample cards loaded.");
 }
 
 function randomise() {
@@ -578,7 +872,9 @@ function randomise() {
   $("tsc").value = Math.random() > .5 ? Math.floor(Math.random() * 40) : 0;
   $("gspread").value = 25 + Math.floor(Math.random() * 45);
   setGradientAngle(Math.floor(Math.random() * 24) * 15, false);
+  recordDiscrete("randomise styling");
   message("Randomised theme and surface details.");
+  showUndoToast("Sheet styling randomised.");
 }
 
 function previewSvg(index) {
@@ -655,14 +951,17 @@ function downloadCardSvg() {
 
 function bindEvents() {
   $("count").addEventListener("change", event => setCount(event.target.value));
+  $("crad").addEventListener("change", scheduleRender);
   $("page-select")?.addEventListener("change", event => {
     studioState.activePage = +event.target.value;
     $("page-theme").value = studioState.pageThemes[studioState.activePage] || "";
+    if (historyReady) history.refresh(captureSnapshot());
   });
   $("page-theme")?.addEventListener("change", event => {
     studioState.pageThemes = studioState.pageThemes.map((theme, page) =>
       page === studioState.activePage ? event.target.value : theme
     );
+    recordDiscrete("change page theme");
     scheduleRender();
   });
   $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
@@ -772,6 +1071,24 @@ function bindEvents() {
     else if (event.key === "ArrowLeft") openPreview(previewIndex - 1);
     else if (event.key === "ArrowRight") openPreview(previewIndex + 1);
   });
+  document.addEventListener("keydown", event => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || isTextEditingTarget(event.target)) return;
+    const key = event.key.toLowerCase();
+    if (key === "z" && event.shiftKey && history.canRedo) {
+      event.preventDefault();
+      redo();
+    } else if (key === "y" && !event.shiftKey && history.canRedo) {
+      event.preventDefault();
+      redo();
+    } else if (key === "z" && !event.shiftKey && history.canUndo) {
+      event.preventDefault();
+      undo();
+    }
+  });
+  $("undo").addEventListener("click", undo);
+  $("redo").addEventListener("click", redo);
+  $("undo-toast-action").addEventListener("click", undo);
+  bindHistoryControlEvents();
 
   const dial = $("dial");
   const angleFromEvent = event => {
@@ -782,16 +1099,30 @@ function bindEvents() {
     dial.setPointerCapture(event.pointerId);
     dial.dataset.dragging = "true";
     setGradientAngle(angleFromEvent(event), !event.shiftKey);
+    recordContinuous("change gradient angle", "setting:gradient-angle");
   });
   dial.addEventListener("pointermove", event => {
-    if (dial.dataset.dragging) setGradientAngle(angleFromEvent(event), !event.shiftKey);
+    if (dial.dataset.dragging) {
+      setGradientAngle(angleFromEvent(event), !event.shiftKey);
+      recordContinuous("change gradient angle", "setting:gradient-angle");
+    }
   });
-  ["pointerup", "pointercancel"].forEach(name => dial.addEventListener(name, () => delete dial.dataset.dragging));
+  ["pointerup", "pointercancel"].forEach(name => dial.addEventListener(name, () => {
+    delete dial.dataset.dragging;
+    finishContinuous("change gradient angle", "setting:gradient-angle");
+  }));
   dial.addEventListener("keydown", event => {
     const step = event.shiftKey ? 15 : 5;
     const delta = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step }[event.key];
-    if (delta !== undefined) { event.preventDefault(); setGradientAngle(studioState.gradientAngle + delta, false); }
-    else if (event.key === "Home") { event.preventDefault(); setGradientAngle(180, false); }
+    if (delta !== undefined) {
+      event.preventDefault();
+      setGradientAngle(studioState.gradientAngle + delta, false);
+      recordContinuous("change gradient angle", "setting:gradient-angle");
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setGradientAngle(180, false);
+      recordContinuous("change gradient angle", "setting:gradient-angle");
+    }
   });
 
   $("sheets").addEventListener("pointerdown", event => {
@@ -811,6 +1142,7 @@ function bindEvents() {
     const px = box.mx > 0 ? Math.max(-100, Math.min(100, dragState.px + dx / box.mx * 100)) : 0;
     const py = box.my > 0 ? Math.max(-100, Math.min(100, dragState.py + dy / box.my * 100)) : 0;
     updateCard(dragState.index, { px, py });
+    recordContinuous("reposition card photo", `card:${dragState.index}:photo-position`);
     const image = $("photo" + dragState.index);
     if (image) {
       const photoHeight = 136 + currentLayout.CH - 239;
@@ -825,6 +1157,7 @@ function bindEvents() {
   });
   ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, () => {
     if (!dragState) return;
+    finishContinuous("reposition card photo", `card:${dragState.index}:photo-position`);
     dragState = null;
     render();
   }));
@@ -835,6 +1168,7 @@ function cycleTheme(direction) {
   const options = [...select.options];
   const current = options.findIndex(option => option.value === select.value);
   select.value = options[(current + direction + options.length) % options.length].value;
+  recordDiscrete("change theme");
   render();
 }
 
@@ -882,6 +1216,7 @@ function duplicateActivePage(perPage) {
   studioState.activePage++;
   $("count").value = studioState.count;
   buildRows();
+  recordDiscrete("duplicate page");
   render();
   message(`Duplicated page ${sourcePage} with ${pageCards.length} card${pageCards.length === 1 ? "" : "s"}.`);
 }
@@ -904,6 +1239,8 @@ async function init() {
   }
   buildRows();
   render();
+  historyReady = true;
+  history.initialize(captureSnapshot());
 }
 
 init().catch(error => {
