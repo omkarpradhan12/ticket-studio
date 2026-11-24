@@ -29,6 +29,7 @@ const defStamp = (name, outer, inner, extras) => ({
 });
 
 export const STAMPS = {
+  // --- EXISTING SHAPES ---
   round: defStamp("Round", '<circle r="17" stroke-width="1"/>', '<circle r="14.5" stroke-width=".5"/>', { yr: -5, nm: 3, w: 22, r: "M-7 7h14" }),
   oval: defStamp("Oval", '<ellipse rx="19" ry="12" stroke-width="1"/>', '<ellipse rx="16.5" ry="9.5" stroke-width=".5"/>', { yr: -2.5, nm: 4, w: 24, r: "M-7 6.5h14" }),
   rect: defStamp("Rectangle", '<rect x="-19" y="-11" width="38" height="22" rx="1.5" stroke-width="1"/>', '<rect x="-16.5" y="-8.5" width="33" height="17" rx="1" stroke-width=".5"/>', { yr: -2.5, nm: 5, w: 30 }),
@@ -36,20 +37,39 @@ export const STAMPS = {
   shield: defStamp("Shield", '<path d="M-14 -15H14V2Q14 12 0 18Q-14 12 -14 2Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-11.5 -12.5H11.5V1.5Q11.5 9.5 0 14.8Q-11.5 9.5 -11.5 1.5Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -6, nm: 1, w: 20, r: "M-6 4.5h12" }),
   hex: defStamp("Hexagon", `<polygon points="${hexp(17)}" stroke-width="1" stroke-linejoin="round"/>`, `<polygon points="${hexp(14.5)}" stroke-width=".5" stroke-linejoin="round"/>`, { yr: -5, nm: 3, w: 22, r: "M-7 7h14" }),
   diamond: defStamp("Diamond", '<path d="M0 -19L19 0L0 19L-19 0Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M0 -15.6L15.6 0L0 15.6L-15.6 0Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -4.5, nm: 2.5, w: 20, r: "M-4.5 6.5h9" }),
-  seal: defStamp("Seal", `<polygon points="${star(16, 17.6, 15.2)}" stroke-width=".9" stroke-linejoin="round"/>`, '<circle r="12.8" stroke-width=".5"/>', { yr: -4.5, nm: 3, w: 19, r: "M-6 6.5h12" }),
-  starburst: defStamp("Starburst", `<polygon points="${star(12, 20, 14.5)}" stroke-width="1" stroke-linejoin="round"/>`, '<circle r="12" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 20, r: "M-6.5 7h13" }),
-  scallop: defStamp("Scalloped", `<polygon points="${star(20, 17.8, 16.2)}" stroke-width=".9" stroke-linejoin="round"/>`, '<circle r="13.5" stroke-width=".5"/>', { yr: -5, nm: 3, w: 20, r: "M-6 7h12" }),
+
+  // --- FIXED SEAL-STYLE SHAPES (No more sunflower look) ---
+  // 1. Notary Seal: Fine, shallow 36-tooth coin/notary serrations
+  seal: defStamp("Seal", `<polygon points="${star(36, 17.5, 16.3)}" stroke-width=".85" stroke-linejoin="round"/>`, '<circle r="14.2" stroke-width=".5"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
+  // 2. Scalloped Wax/Embossed Seal: Smooth outward lobes (12 rounded arcs) instead of sharp spikes
+  scallop: defStamp("Scalloped", '<path d="M0-17.5A3.2 3.2 0 0 1 8.75-15.15A3.2 3.2 0 0 1 15.15-8.75A3.2 3.2 0 0 1 17.5 0A3.2 3.2 0 0 1 15.15 8.75A3.2 3.2 0 0 1 8.75 15.15A3.2 3.2 0 0 1 0 17.5A3.2 3.2 0 0 1-8.75 15.15A3.2 3.2 0 0 1-15.15 8.75A3.2 3.2 0 0 1-17.5 0A3.2 3.2 0 0 1-15.15-8.75A3.2 3.2 0 0 1-8.75-15.15A3.2 3.2 0 0 1 0-17.5Z" stroke-width="1" stroke-linejoin="round"/>', '<circle r="13.8" stroke-width=".5"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
+  // 3. Starburst: Tighter 10-point promo badge with shallower valleys
+  starburst: defStamp("Starburst", `<polygon points="${star(10, 19.5, 15.2)}" stroke-width="1" stroke-linejoin="round"/>`, '<circle r="12.8" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" }),
+  // 4. Sunburst: Kept explicitly as a sun-ray motif, with crisper 14-ray geometry
+  burst: defStamp("Sunburst", `<polygon points="${star(14, 20.5, 16)}" stroke-width=".9" stroke-linejoin="round"/>`, '<circle r="13.2" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" }),
+
   ticket: defStamp("Ticket", '<path d="M-20 -12H20V-7A7 7 0 0 0 20 7V12H-20V7A7 7 0 0 0-20-7Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-16.5" y="-8.5" width="33" height="17" rx="2" stroke-width=".5"/><path d="M-12 -5V5M12 -5V5" stroke-width=".5"/>', { yr: -3, nm: 5.5, w: 27, r: "M-7 8h14" }),
   arch: defStamp("Arch", '<path d="M-18 13V-3A18 18 0 0 1 18-3V13Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-14.5 10V-2A14.5 14.5 0 0 1 14.5-2V10Z" stroke-width=".5"/>', { yr: -5, nm: 3, w: 21, r: "M-6 6.5h12" }),
   ribbon: defStamp("Ribbon", '<path d="M-18 -12H18V8H7L4 14L0 8H-18Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-15" y="-9" width="30" height="14" rx="1" stroke-width=".5"/>', { yr: -4, nm: 4.5, w: 25, r: "M-7 7h14" }),
-  burst: defStamp("Sunburst", `<polygon points="${star(16, 21, 17)}" stroke-width=".9" stroke-linejoin="round"/>`, '<circle r="13" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" }),
   cross: defStamp("Cross", '<path d="M-7 -18H7V-7H18V7H7V18H-7V7H-18V-7H-7Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-4.5 -14.5H4.5V-4.5H14.5V4.5H4.5V14.5H-4.5V4.5H-14.5V-4.5H-4.5Z" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-5.5 7h11" }),
   vinyl: defStamp("Vinyl", '<circle r="18" stroke-width="1"/>', '<path d="M-15.4 0A15.4 15.4 0 0 1 0-15.4M15.4 0A15.4 15.4 0 0 1 0 15.4" stroke-width=".45" stroke-linecap="round"/><circle r="13.2" stroke-width=".55"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
   pick: defStamp("Guitar pick", '<path d="M0 -18C14 -18 19 -8 14 5C10 14 4 19 0 19C-4 19 -10 14 -14 5C-19 -8 -14 -18 0 -18Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M0 -14.5C11 -14.5 15 -6.5 11 4C7.8 11.2 3.2 15.2 0 15.2C-3.2 15.2 -7.8 11.2 -11 4C-15 -6.5 -11 -14.5 0 -14.5Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -6, nm: 1.5, w: 20, r: "M-5.5 5.5h11" }),
   octagon: defStamp("Octagon", '<path d="M-7.2 -17.5H7.2L17.5 -7.2V7.2L7.2 17.5H-7.2L-17.5 7.2V-7.2Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-5.8 -14.2H5.8L14.2 -5.8V5.8L5.8 14.2H-5.8L-14.2 5.8V-5.8Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -5, nm: 3, w: 22, r: "M-7 7h14" }),
   banner: defStamp("Banner", '<path d="M-20 -11H20L16 0L20 11H-20L-16 0Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-16.5 -8H16.5L13.5 0L16.5 8H-16.5L-13.5 0Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -2.5, nm: 4.5, w: 24 }),
   badge: defStamp("Star badge", '<path d="M-16 -12H-5L0 -18L5 -12H16V4Q16 13 0 18Q-16 13 -16 4Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-13 -9.5H13V3.2Q13 10.2 0 14.6Q-13 10.2 -13 3.2Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -4, nm: 3, w: 21, r: "M-6 6.5h12" }),
-  bolt: defStamp("Rock bolt", '<path d="M-18 -13H10L13 -18L19 -10L15 -6V13H-18Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-15" y="-10" width="27" height="20" rx="1" stroke-width=".5"/><path d="M13.5 -15L11 -11H14L12 -7" stroke-width=".7" stroke-linejoin="round"/>', { yr: -4, nm: 3.5, w: 22, r: "M-7 6.5h14" })
+  bolt: defStamp("Rock bolt", '<path d="M-18 -13H10L13 -18L19 -10L15 -6V13H-18Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-15" y="-10" width="27" height="20" rx="1" stroke-width=".5"/><path d="M13.5 -15L11 -11H14L12 -7" stroke-width=".7" stroke-linejoin="round"/>', { yr: -4, nm: 3.5, w: 22, r: "M-7 6.5h14" }),
+
+  // --- NEW STAMP SHAPES ---
+  postage: defStamp("Postage", '<path d="M-17-13H-13A2 2 0 0 0-9-13H-5A2 2 0 0 0-1-13H3A2 2 0 0 0 7-13H11A2 2 0 0 0 15-13H17V-9A2 2 0 0 0 17-5V-1A2 2 0 0 0 17 3V7A2 2 0 0 0 17 11V13H13A2 2 0 0 0 9 13H5A2 2 0 0 0 1 13H-3A2 2 0 0 0-7 13H-11A2 2 0 0 0-15 13H-17V9A2 2 0 0 0-17 5V1A2 2 0 0 0-17-3V-7A2 2 0 0 0-17-11Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-13.5" y="-9.5" width="27" height="19" stroke-width=".5"/>', { yr: -3, nm: 4.5, w: 23, r: "M-6 7.5h12" }),
+  tag: defStamp("Luggage tag", '<path d="M-19-10H10L19 0L10 10H-19Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-16-7.5H8.5L15 0L8.5 7.5H-16Z" stroke-width=".5"/><circle cx="11.5" cy="0" r="1.5" stroke-width=".6"/>', { yr: -2.5, nm: 4.5, w: 22 }),
+  pill: defStamp("Capsule", '<rect x="-19" y="-10" width="38" height="20" rx="10" stroke-width="1"/>', '<rect x="-16.5" y="-7.5" width="33" height="15" rx="7.5" stroke-width=".5"/>', { yr: -2.5, nm: 4.5, w: 25 }),
+  crest: defStamp("Crest", '<path d="M-15-13C-10-16-4-16 0-13C4-16 10-16 15-13V2Q15 12 0 18Q-15 12-15 2Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-12.2-10.5C-8-13-3.5-13 0-10.5C3.5-13 8-13 12.2-10.5V1.5Q12.2 9.5 0 14.6Q-12.2 9.5-12.2 1.5Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -4.5, nm: 2.5, w: 20, r: "M-6 6h12" }),
+  quatrefoil: defStamp("Quatrefoil", '<path d="M-8-8A8.5 8.5 0 0 1 8-8A8.5 8.5 0 0 1 8 8A8.5 8.5 0 0 1-8 8A8.5 8.5 0 0 1-8-8Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-6-6A6.5 6.5 0 0 1 6-6A6.5 6.5 0 0 1 6 6A6.5 6.5 0 0 1-6 6A6.5 6.5 0 0 1-6-6Z" stroke-width=".5"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
+  plaque: defStamp("Plaque", '<path d="M-15-12A4 4 0 0 0-19-8V8A4 4 0 0 0-15 12H15A4 4 0 0 0 19 8V-8A4 4 0 0 0 15-12Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-13-9.5A3 3 0 0 0-16-6.5V6.5A3 3 0 0 0-13 9.5H13A3 3 0 0 0 16 6.5V-6.5A3 3 0 0 0 13-9.5Z" stroke-width=".5"/>', { yr: -2.5, nm: 4.5, w: 26 }),
+  compass: defStamp("Compass", '<circle r="17" stroke-width="1"/><path d="M0-19.5V-15.5M0 15.5V19.5M-19.5 0H-15.5M15.5 0H19.5" stroke-width="1" stroke-linecap="round"/>', '<circle r="13.5" stroke-width=".5" stroke-dasharray="2 2"/>', { yr: -4.5, nm: 3, w: 21, r: "M-6 6.5h12" }),
+  pennant: defStamp("Pennant", '<path d="M-18-13L19 0L-18 13Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-15-9.5L12 0L-15 9.5Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -2, nm: 4, w: 20 }),
+  keyhole: defStamp("Keyhole", '<path d="M-8.5 3.5A12 12 0 1 1 8.5 3.5L11 17H-11Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-6 2A9 9 0 1 1 6 2L8 14H-8Z" stroke-width=".5"/>', { yr: -6.5, nm: 0.5, w: 17, r: "M-5 8h10" }),
+  cloud: defStamp("Cloud", '<path d="M-12 11H13A6 6 0 0 0 14-1A7.5 7.5 0 0 0 0-7A7 7 0 0 0-12-1A6 6 0 0 0-12 11Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-10.5 8.5H11.5A4.2 4.2 0 0 0 12.2 0A5.5 5.5 0 0 0 0-4.5A5 5 0 0 0-10.2 0A4.2 4.2 0 0 0-10.5 8.5Z" stroke-width=".5"/>', { yr: -1.5, nm: 5, w: 22 })
 };
 
 export const SKINDS = Object.keys(STAMPS);
