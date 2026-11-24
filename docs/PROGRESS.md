@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 5 - Theme Studio gallery and editor complete
-- Next approval: owner approval before Phase 6 custom borders.
+- Current phase: Phase 6 (customisable borders) — Step 1 proposal written, awaiting owner approval
+- Next approval: owner approval of the Phase 6 proposal below before Step 2 implementation.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -65,7 +65,7 @@
 | P5-02 | Theme side/bottom panel and custom actions | L | medium | done | b454575 | Responsive draft editor; explicit Update, versioned Save as new, Duplicate, and confirmed Delete |
 | P5-03 | Draft history, warnings, and theme JSON | L | high | done | b454575 | Draft-scoped undo/redo, coalescing, unique import names, and unsaved-change guards |
 | P5-04 | Optional card title scale | S | medium | done | b454575 | Owner approved optional `settings.titleScale`, 70-100% with an 85% default |
-| P6-01 | Customisable borders | L | high | todo | - | |
+| P6-01 | Customisable borders | L | high | todo | - | Step 1 proposal written; awaiting owner approval |
 | P6-02 | Preserve old border render values | L | high | todo | - | |
 | P7-01 | Per-card stamp position | L | high | todo | - | |
 | P7-02 | Stamp drag hit-test/touch/export/undo | L | high | todo | - | |
@@ -226,3 +226,135 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - Reproduced on the full-size A4 sheet: the title used a fallback serif until opening the individual-card preview, which loads the embedded font CSS.
 - `injectFonts()` now runs before the Sheet Editor's first render, so the selected title font is available to the inline full-sheet SVG immediately.
 - No renderer markup, saved data, or export serialization changed. Verified the distinct Pirata One title at full sheet and individual-card sizes; local asset references were bumped uniformly to `?v=phase5.2`.
+
+## Phase 6 proposal: customisable borders (awaiting approval)
+
+### Audit baseline & geometry constraints
+From `docs/AUDIT.md` (Sections 5, 8, 10, 11) and `js/svg-engine.js`:
+- **Existing styles (`borderStyle` `0..4`)**:
+  - `0` **Double**: `<rect x="2.5" y="2.5" width="165" height="CH-5" stroke-width="1.5"/>` + inner `<rect x="5.8" y="5.8" width="158.4" height="CH-11.6" stroke-width=".7" opacity=".8"/>`.
+  - `1` **Thick**: `<rect x="3" y="3" width="164" height="CH-6" stroke-width="2.6"/>`.
+  - `2` **Brackets**: four 22-unit corner L-paths from `(3,3)` etc., `stroke-width="2.2"`.
+  - `3` **Dashed**: `<rect x="4" y="4" width="162" height="CH-8" stroke-width="1.1" stroke-dasharray="4 2.5"/>`.
+  - `4` **Rounded**: same geometry as `0` with `rx="9"` outer / `rx="6"` inner.
+- **Coordinate budget (`CW = 170`, `CH = 204..309` across Mini, Ticket, Poker, Credit, Tarot, and upcoming Phase 10 visiting card)**:
+  - Cut edge is `[0..CW, 0..CH]`; optional `3 mm` bleed (`bl = 3/K`) expands only the background fill clip `#ck${i}`; crop marks start `bl + 2` outside `[0..CW, 0..CH]`. All border geometry must stay inside `[0..CW, 0..CH]` so cutting never trims away the frame.
+  - Interior landmarks to clear: 4 corner screws at `(9, 9)`, `(CW - 9, 9)`, `(9, CH - 9)`, `(CW - 9, CH - 9)` (`r = 2.5`); top text (`★ ADMIT ONE` / `Doors`) at `y = 11.5, x = 17..153`; vertical side labels at `x = 13` and `x = CW - 13`; tear line at `y = 161 + D` (`x = 9..CW - 9`); photo box at `x = 17..153, y = 16..152 + D`.
+  - Keeping default insets in `2.0..6.5` keeps frames cleanly outside the `x = 13` / `y = 11.5` text and outside/around the `(9, 9)` screws.
+- **Filter/def ID collision risk**:
+  - Today `frame()` uses `filter="url(#bd${i})"`, where `i` is the card index (`0..71`). When visual style swatches render miniature SVGs in the sidebar alongside full sheets and the single-card preview modal, duplicate `<defs>` IDs across multiple inline `<svg>` elements in the same DOM can cross-reference wrong filters/gradients in browsers.
+  - **Fix**: scope all border `<defs>` IDs with a unique render-context prefix (e.g. `bd-s-${i}` on sheets, `bd-pv-${i}` in modal, `bd-sw-${k}` in swatch previews) so no two inline SVGs share filter/gradient/mask IDs.
+- **Backward compatibility guarantee**:
+  - Styles `0..4` stay at indices `0..4`. When `borderStyle` is `0..4` and no customisation fields differ from the legacy defaults, `frame()` emits the exact legacy SVG markup byte-for-byte so existing saved sheets and `.baseline/` parity stay intact.
+  - `minimalLayout === true` (minimal layout mode / potential visiting-card mode) currently hard-codes a `0.5` `T.frame` rect; in Step 2 we can allow `frame()` when border fields are customised or keep `minimalLayout` opt-in so existing `minimalLayout` output stays unchanged unless custom borders are selected.
+
+---
+
+### Part 1: Proposed border styles (`5..15`, appended after `0..4`)
+
+**Disposition of the 13 candidate names:**
+- **Dropped (2)** — already covered without duplicating style slots:
+  - *Double line*: already `0` Double (gains width, inset, line gap, colour, pattern, corner, and inner-border customisation).
+  - *Rounded inset frame*: already `4` Rounded (and `0`/`1` with `Corner style = Rounded` + `Inset` covers single or double rounded inset frames at any depth).
+- **Picked (11 new styles, appended as `5..15`)** — cohesive with the concert-ticket, vintage print, zine, and neon-club themes:
+
+| ID | Key / Name | How it is drawn in SVG | Theme colour usage | Print & export risk |
+|---:|---|---|---|---|
+| **5** | **Triple line** (`triple`) | Three concentric `<rect>` (or corner-shaped `<path>`) frames: outer medium (`0.8×` width) at `inset`, middle primary (`1.3×` width) at `inset + gap`, inner hairline (`0.55×` width) at `inset + 2×gap`. | Outer & middle use primary border colour (default `A`); inner hairline uses primary at `0.7` opacity (or `T.hi`/`T.ink` when customised). | **Low–medium**: inner hairline at default `0.55` SVG units (~`0.19 mm` on Ticket, `0.15 mm` on Mini) approaches minimum hairline print weight; enforce a `0.45` floor and warn below `0.5`. |
+| **6** | **Thick retro frame** (`retro`) | Bold outer frame (`width`, default `2.8`) at `inset` (`3`), an inset thin keyline (`0.65`) separated by `gap` (`2.5`), plus four solid rectangular corner blocks (`3.5 × 3.5`) seated on the outer corners for a heavy woodblock/poster plaque look. | Outer frame + corner blocks in primary colour (`A`); inner keyline in primary at `0.75` opacity (or `T.frame` / custom inner colour). | **Low**: bold strokes print reliably on all printers and raster exports; stays clear of `(9, 9)` screws when `inset <= 4.5`. |
+| **7** | **Art-Deco corners** (`deco`) | Thin continuous connecting hairline (`0.7`) at `inset + 1.5`, anchored by four stepped geometric `<path>` corner brackets (two nested L-steps + a 45° diagonal bevel/chevron bar at each corner, sized `~18` SVG units, staying clear of the `(9, 9)` screw). | Corner geometry in primary colour (`A`); connecting hairline at `0.65` opacity or `T.frame` highlight (`T.hi` on dark themes). | **Low–medium**: crisp vector `<path>`s; keep diagonal step strokes `>= 0.55` so angled hairlines do not anti-alias away at 300 dpi. |
+| **8** | **Corner flourishes** (`ornate`) | Delicate connecting perimeter frame (`0.75`) plus four symmetrical cubic-Bezier scroll/filigree corner `<path>` ornaments (`~20 × 20` tucked at `inset` `2.5..6.5`, hugging the corner edge outside the `(9, 9)` screw and `y = 11.5` header). | Filigree scrolls in primary colour (`A`); connecting rule at `0.7` opacity (or secondary accent). | **Medium**: curved Bezier curls (`0.75` stroke) can look slightly soft on low-DPI inkjet if scaled down to Mini (`45 × 64 mm`); keep curve stroke `>= 0.65`. |
+| **9** | **Dashed stitch** (`stitch`) | Paired parallel stitched tracks (or single heavy stitch at `inset = 3.8`) using `stroke-dasharray="3.2 2.2"` with `stroke-linecap="round"` and tiny diagonal corner tack stitches at the 4 corners, distinct from `3` Dashed (`1.1` single `4 2.5` rect). | Primary colour (`A`), or `T.tape`/`T.ink` when selected; optional inner stitch line in secondary colour. | **Low**: rounded dash caps print cleanly in SVG, PDF, PNG, and physical printers. |
+| **10** | **Film-strip / perforated edge** (`film`) | Left and right vertical guide rails (`x = 1.6..5.4` and `x = CW - 5.4..CW - 1.6`) containing evenly spaced rounded sprocket-hole cutouts rendered via a pure-vector `evenodd` compound `<path>` (so the card's actual paper or gradient shows through every sprocket hole without an SVG `<mask>`). Top and bottom remain clear of `y = 11.5` text and `(9, 9)` screws. | Rails filled in primary colour (`A` or `T.frame`) at `0.85` opacity. | **Low**: pure vector `evenodd` `<path>`, prints crisply at 300 dpi; keep rail web `>= 0.6` SVG units so sprockets don't merge under ink spread. |
+| **11** | **Scalloped ticket-stub edge** (`scallop`) | Continuous scalloped/postage-stamp perimeter `<path>` drawn with alternating semicircular SVG arcs (`A r r 0 0 1`) along all four edges inside `[inset..CW-inset, inset..CH-inset]`, plus an optional crisp inner hairline frame (`0.6`). Arc step adapts dynamically to `CH` (`Ticket` vs `Tarot` vs `Mini`) so corners always meet symmetrically. | Outer scalloped stroke in primary colour (`A`); optional inner hairline at `0.65` opacity. | **Low**: pure vector `<path>` inside cut bounds `[0..CW, 0..CH]`; works cleanly with bleed and crop marks. |
+| **12** | **Grunge / ink-bleed edge** (`grunge`) | Irregular double-pass hand-inked border: a bold rough perimeter `<path>` plus subtle broken outer splatter ticks, filtered through a scoped `<filter>` (`feTurbulence` + `feDisplacementMap` + rough alpha erosion), driven by `borderWear` (with built-in organic path wobble so it still reads as distressed at `borderWear = 0`). | Primary colour (`A`) or `T.ink`; filter operates on `SourceGraphic` so theme colours pass through accurately. | **Medium–high**: SVG `<filter>` primitives are rasterized during PNG/PDF export and some browser print drivers; bounded filter region (`x="-8%" y="-8%" width="116%" height="116%"`) prevents edge clipping while staying inside card gutters (`GX=22, GY=20`). |
+| **13** | **Holographic gradient stroke** (`holo`) | Double chamfered or clean geometric frame stroked with a scoped `<linearGradient id="bgd-${scope}-${i}">` (`x1="0%" y1="0%" x2="100%" y2="100%"`) cycling 5 iridescent stops (derived by hue-shifting `A` ±60°/±120° and blending `T.hi`). | Anchored to card/theme hue (`A` + harmonic hue offsets + `T.hi`), harmonizing with both light cream cards and dark neon/luxe cards. | **Medium (expectation risk)**: prints cleanly as a multi-colour vector gradient in SVG/PDF/PNG, **but** standard printers output flat CMYK/RGB ink rather than true metallic foil. |
+| **14** | **Neon glow** (`neon`) | Two-layer stroke: outer blurred halo (`width × 1.8`) via a scoped `<filter id="bgl-${scope}-${i}">` (`feGaussianBlur` + `feMerge`) in primary colour `A`, topped by a crisp bright inner core stroke (`0.85`, blended toward `#fff` / `T.hi` for a lit tube look). | Halo in primary colour (`A`); bright core tinted toward `#ffffff` (`mix(A, "#ffffff", 0.65)` or `T.hi`). | **High on light paper / medium on dark**: `feGaussianBlur` rasterizes in PNG/PDF/print and softens on light backgrounds (`Minimal` / `Cream`); UI shows a brief hint ("Best on dark themes; glow softens in print"). |
+| **15** | **None** (`none`) | Emits no border elements at all (skips `bd` filter too). | N/A | **None**: cleanest possible print/bleed output; relies solely on crop marks and bleed for trimming. |
+
+*(All new styles compute height dynamically from `CH` so `Ticket`, `Poker`, `Credit`, `Mini`, `Tarot`, and the upcoming Phase 10 visiting card scale cleanly without hard-coded `239` assumptions.)*
+
+---
+
+### Part 2: Proposed customisation controls & practicality
+
+Every control below is practical in pure SVG with zero external dependencies, provided the **Customise** fold displays **only controls relevant to the selected style** and stores **only overrides** (omitting defaults so saved data stays compact and legacy `0..4` output is unchanged).
+
+| Control | Data key (optional) | Range / options | Practicality & SVG implementation | Shown for styles |
+|---|---|---|---|---|
+| **Line width** | `width` | `0.5` – `5.0` (step `0.1`, default per style) | Directly sets primary `stroke-width` (and scales secondary hairlines proportionally). `0.5` floor avoids invisible sub-pixel print dropouts. | All except `none` (`15`) |
+| **Inset** | `inset` | `1.5` – `10.0` (step `0.5`, default per style) | Pulls frame inward from `[0..CW, 0..CH]` cut edges. Capped at `10` (with soft note near `8–10`) so frames stay clear of `(9,9)` screws and `16..153` photo box. | All except `none` (`15`) |
+| **Colour** | `colorMode` + `color` | `accent` (theme auto), `ink`, `frame`, `mute`, `custom` + `#RRGGBB` picker/hex | Resolves stroke colour from active theme or custom hex; custom picker automatically gets a paired validated hex input via `color-controls.mjs`. | All except `none` (`15`) (`holo` tints gradient anchor) |
+| **Opacity** | `opacity` | `10` – `100%` (step `5%`, default `100`) | Sets outer `<g opacity="...">` on the frame group. | All except `none` (`15`) |
+| **Line pattern** | `pattern`, `dash`, `gap` | `solid`, `dashed`, `dotted`, `dashdot`; Dash `1`–`16`, Gap `1`–`16` | Maps cleanly to `stroke-dasharray` (`[d, g]`, `0.1 g` with `round` cap, `[d, g, 0.1, g]`). Dash/gap sliders appear only when pattern ≠ `solid`. | Stroke-based styles (`0..8`, `13`, `14`). Hidden for `stitch`, `film`, `scallop`, `grunge`, `none`. |
+| **Corner style & size** | `corner`, `cornerSize` | `square`, `rounded`, `notched`, `chamfered`; Size `2` – `18` | Unified `boxPath(x, y, w, h, corner, r)` helper builds `<path>` for `rounded` (arcs), `notched` (inward square cut), and `chamfered` (45° bevel). Legacy `0`/`4` keep `<rect>` when untouched. Size slider hidden when `square`. | Frame styles (`0`, `1`, `3`, `4`, `5`, `6`, `9`, `12`, `13`, `14`). Hidden for `brackets`, `deco`, `ornate`, `film`, `scallop`, `none`. |
+| **Line gap** | `lineGap` | `1.5` – `8.0` (step `0.2`, default `3.3` for `0`/`4`) | Spacing between concentric lines (`2.5 + 3.3 = 5.8` reproduces legacy `0`/`4` exactly). | Multi-line styles (`0` Double, `4` Rounded, `5` Triple, `6` Thick retro). |
+| **Second inner border** | `inner` (bool), `innerWidth` (`0.4–3.0`), `innerGap` (`1.5–10`), `innerColorMode` + `innerColor` | Toggle + compact sub-row | Adds an independent inset frame inside the primary border with its own width, gap, and theme/custom hex colour. | All except `none` (`15`) (collapsed under a simple checkbox toggle) |
+| **Corner ornament** | `ornament`, `ornamentSize` | `none`, `diamond`, `dot`, `star`, `cross`, `bracket`; Size `2` – `10` | Places 4 small vector glyphs at the frame's corner coordinates (`inset` offset). | All except `none` (`15`) and `film` (`10`) |
+| **Wear / grunge** | `borderWear` (existing `0–100`) | `0` – `100` (existing `#bwear` default `35`) | Existing `inkFilter("bd...")` in `svg-engine.js`. Surfaced in Customise (synced 2-way with Effects -> Advanced `#bwear`) without breaking old state/controls. | All except `none` (`15`) |
+| **Glow amount** | `glow` | `0` – `100` (default `0`, or `65` for `14` Neon glow) | Adds scoped `<filter>` (`feGaussianBlur` + `feMerge`) behind the frame stroke. Hidden/0 by default for clean vector exports unless enabled or using Neon glow. | All except `none` (`15`) |
+
+---
+
+### Part 3: UI structure, visual picker & border presets
+
+1. **Visual border style picker (Look section)**:
+   - Replace `<select id="design-border">` with a responsive grid of **16 compact SVG swatch buttons** (`role="radiogroup"` with `aria-checked`, keyboard arrow navigation, clear visible name label + miniature corner/card preview SVG using the active theme's accent and paper colours so it updates live).
+   - Each swatch uses unique IDs (`bd-sw-${styleId}`) so filters/gradients never collide with the sheet SVG.
+2. **"Customise" fold (right below the visual picker)**:
+   - Collapsed `<details class="border-customise">` by default so the Look accordion stays uncluttered.
+   - Summary shows active override chips when customised (e.g. `Customise · 2.0px · Chamfered`).
+   - Inside the fold: dynamically shows **only controls relevant to the selected style**, plus a **Reset border customisations** button.
+3. **Border Presets & Scope**:
+   - **Saved presets** persisted in `localStorage` (`ticketgen.borderPresets.v1`, independent of individual sheets):
+     - Preset `<select>` + **Save current as preset** (name input with unique-name handling) + **Delete preset** (confirmed).
+   - **Apply / Scope controls**:
+     - Explicit actions: **"Apply to all cards"** (updates sheet-level border) vs **"Apply to selected card (#N)"** (writes optional `card.border` on `studioState.cards[selectedCard]`).
+     - In the selected card's **"Photo & theme options"** (`buildRows()`): show a compact `Border` indicator (`Same as sheet` vs `Custom: <Style Name>`) with a quick **"Use sheet border"** reset button when overridden.
+
+---
+
+### Part 4: Data model, inheritance, undo/redo, exports & Phase 8 interaction
+
+1. **Where data lives (optional fields only, backward compatible)**:
+   - **Sheet-level**:
+     - Keep `settings.borderStyle` (`0..15`, default `0`) and `settings.borderWear` (`0..100`, default `35`) at the top level of `settings` so old sheets load unchanged.
+     - Add optional `settings.border` plain object containing only non-default overrides (omitted when at style defaults).
+   - **Per-card override**:
+     - Optional `card.border` plain object on individual cards in `studioState.cards` (`undefined` when using sheet border). Shape: `{ style?: number, width?: number, inset?: number, colorMode?: string, color?: string, opacity?: number, pattern?: string, dash?: number, gap?: number, corner?: string, cornerSize?: number, lineGap?: number, inner?: boolean, innerWidth?: number, innerGap?: number, innerColorMode?: string, innerColor?: string, ornament?: string, ornamentSize?: number, wear?: number, glow?: number }`.
+   - **JSON export/import (`export.js`, `app.js`)**:
+     - `exportProjectJson` includes `border: c.border` on a card only when `c.border` exists; `importJson` validates and restores `card.border` if present. Old JSON files import unchanged.
+2. **Resolution & inheritance with sheet-level border**:
+   - `resolveBorderConfig(settings, card)`:
+     - Effective style = `card.border?.style ?? settings.borderStyle ?? 0`.
+     - If `card.border?.style !== undefined && card.border.style !== settings.borderStyle`: start from `STYLE_DEFAULTS[card.border.style]` and apply `card.border` (inheriting `settings.borderWear` if `card.border.wear === undefined`). This prevents incompatible sheet-level gaps/patterns from bleeding onto a different per-card border style.
+     - If `card.border` overrides properties *without* changing `style` (e.g., per-card custom colour or ornament): merge `STYLE_DEFAULTS[style] -> settings.border -> card.border`.
+     - If `card.border` is absent: merge `STYLE_DEFAULTS[style] -> settings.border`.
+3. **Undo/redo & coalescing**:
+   - Because `studioState` uses copy-on-write `updateCard()` and `captureSnapshot()` / `snapshotsEqual()` shallow-copy `settings` and nested plain objects (`customTheme`, and similarly `border`), both sheet-level `settings.border` and per-card `card.border` are captured automatically in the 100-entry history stack.
+   - Sliders and colour/hex inputs inside `Customise` use `bindContinuousHistory` with 600ms / pointer-up / change coalescing; style swatch clicks, preset apply, "Apply to all cards", and "Use sheet border" record single discrete undo steps.
+4. **Interaction with bleed, crop marks, sizes, stamps, exports & Theme Studio**:
+   - **Bleed & crop marks**: all border frames stay inside `[0..CW, 0..CH]` and outside the `ck${i}` bleed rectangle; crop marks sit outside bleed.
+   - **Card sizes**: `CH` is passed dynamically to `frame()`, and `K` scales the entire card `<g>`, so `Ticket`, `Poker`, `Credit`, `Mini`, `Tarot`, and the future Phase 10 visiting card all render borders at true physical proportions.
+   - **Stamps**: stamps sit in a later SVG layer (`${stamp}${stamp2}`) and can overlap the border authentically without clipping.
+   - **Exports & print**: `serializeSheetSvg`, `rasterizeSvg` (300 dpi PNG/PDF), `sheetCardPreviewSvg`, and `window.print()` all consume the same `renderCard()` SVG output.
+   - **Theme Studio (`PREVIEW_OPTIONS`)**: stays pinned to `borderStyle: 0` with no border customisation overrides so theme comparison tiles remain consistent.
+5. **Interaction with Phase 8 ("Surprise me")**:
+   - In Phase 8, **"Surprise me"** (all cards) and **"Surprise this card"** will randomise per-card styling (`card.theme`, `card.sk`, and `card.border`) using curated style/ornament/colour combinations stored in `card.border`, leaving `settings.borderStyle` / `settings.border` intact and committing the whole batch as **one undo step**. Cards without `card.border` continue inheriting the sheet-level border.
+
+---
+
+### Owner decisions needed before Step 2 implementation
+
+1. **How should per-card border customisation be edited in the UI?**
+   - **Option A (Recommended)**: Look's visual picker + `Customise` fold always edit the **sheet default** (simple mental model); inside `Customise`, an **"Apply to selected card"** button (plus preset apply-to-card / apply-to-all actions) writes `card.border` on the active card, and the selected card's `Photo & theme options` shows the active override with a `"Use sheet border"` reset button.
+   - **Option B**: Add an editing-target segmented toggle at the top of Look (`Sheet default | Card #N only`) so every slider in `Customise` directly edits either `settings.border` or `card.border`.
+   - **Option C**: Add a border style dropdown inside each card's `Photo & theme options` (style-only per card, while `Customise` stays sheet-wide).
+
+2. **When clicking "Apply to all cards" vs changing the sheet-level border normally when some cards already have per-card overrides:**
+   - **Option A (Recommended)**: Changing the sheet-level border normally updates `settings` and leaves existing per-card `card.border` overrides untouched (consistent with `Theme` and `Stamp`); clicking **"Apply to all cards"** explicitly clears all `card.border` overrides in one undoable step.
+   - **Option B**: Prompt before clearing per-card overrides whenever changing the sheet border.
+
+3. **Should the existing "Randomise all" (`#rnd`) action also randomise `borderStyle`?**
+   - **Option A (Recommended)**: Keep `#rnd` touching only theme/stamp/wear/texture/gradient (as today), and leave border randomisation for Phase 8 (`Surprise me`).
+   - **Option B**: Include `borderStyle` in `#rnd` as well.
