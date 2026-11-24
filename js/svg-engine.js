@@ -1,7 +1,8 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase6";
-import { hsl } from "./image-utils.js?v=phase6";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase6";
+import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase7";
+import { hsl } from "./image-utils.js?v=phase7";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase7";
+import { resolveStampTransform } from "./stamps.mjs?v=phase7";
 
 export const CW = 170;
 export const SIZES = {
@@ -176,6 +177,30 @@ function mountSingle(tt, PX, PY, PS, PB, odd, i, A, T) {
       `<path d="M${a} ${b}h${dx * 14}l${-dx * 14} ${dy * 14}z" fill="${T.tape}" stroke="${T.te}" stroke-width=".4"/>`
     ).join("");
   }
+  if (tt === 4) {
+    const strips = odd ? [[PX + PS - 2, PY + 2, 34], [PX + 2, PB - 2, 34]] : [[PX + 2, PY + 2, -34], [PX + PS - 2, PB - 2, -34]];
+    return strips.map(([wx, wy, wr]) =>
+      `<g transform="translate(${wx} ${wy}) rotate(${wr})"><rect x="-12" y="-3.8" width="24" height="7.6" rx=".6" fill="${T.tape}" fill-opacity=".75" stroke="${T.te}" stroke-width=".3"/><path d="M-9 -3.8L-6 3.8M-3 -3.8L0 3.8M3 -3.8L6 3.8M9 -3.8L11.5 2.4" stroke="${A}" stroke-width="1.3" stroke-opacity=".55"/></g>`
+    ).join("");
+  }
+  if (tt === 5) {
+    return [[PX + 4.5, PY + 4.5], [PX + PS - 4.5, PY + 4.5], [PX + 4.5, PB - 4.5], [PX + PS - 4.5, PB - 4.5]].map(([bx, by], k) =>
+      `<g transform="translate(${bx} ${by}) rotate(${(i * 37 + k * 53) % 180})"><circle cx=".3" cy=".5" r="2.6" fill="#000" opacity=".28"/><circle r="2.6" fill="${T.mt}" stroke="${T.dk}" stroke-width=".35"/><circle r="1.8" fill="none" stroke="${T.hi}" stroke-width=".3" opacity=".75"/><path d="M-1.5 0H1.5" stroke="${T.dk}" stroke-width=".45"/></g>`
+    ).join("");
+  }
+  if (tt === 6) {
+    const cx = odd ? PX + PS - 22 : PX + 22;
+    return `<g transform="translate(${cx} ${PY})"><path d="M-3 12V-2.5A3.2 3.2 0 0 1 3.4-2.5V14.5A2.2 2.2 0 0 1-1 14.5V1.5A1.2 1.2 0 0 1 1.4 1.5V11" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="1.4" stroke-linecap="round" transform="translate(.6 .8)"/><path d="M-3 12V-2.5A3.2 3.2 0 0 1 3.4-2.5V14.5A2.2 2.2 0 0 1-1 14.5V1.5A1.2 1.2 0 0 1 1.4 1.5V11" fill="none" stroke="${T.hi}" stroke-width="1.15" stroke-linecap="round"/><path d="M-3 12V-2.5A3.2 3.2 0 0 1 3.4-2.5V14.5" fill="none" stroke="${T.mt}" stroke-width=".45" stroke-linecap="round"/></g>`;
+  }
+  if (tt === 7) {
+    return [[PX + 9, PY + 5, -35], [PX + PS - 9, PY + 5, 35]].map(([sx, sy, sr]) =>
+      `<g transform="translate(${sx} ${sy}) rotate(${sr})"><circle cx="-4.2" cy=".4" r=".7" fill="#000" opacity=".4"/><circle cx="4.2" cy=".4" r=".7" fill="#000" opacity=".4"/><path d="M-4.2 .4H4.2" stroke="#000" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round" transform="translate(.4 .6)"/><path d="M-4.2 0H4.2" stroke="${T.hi}" stroke-width="1.05" stroke-linecap="round"/><path d="M-3.4 -.2H3.4" stroke="#fff" stroke-opacity=".5" stroke-width=".35" stroke-linecap="round"/></g>`
+    ).join("");
+  }
+  if (tt === 8) {
+    const wx = odd ? PX + 11 : PX + PS - 11, wy = PB - 10;
+    return `<g transform="translate(${wx} ${wy})"><circle cx=".8" cy="1" r="6.8" fill="#000" opacity=".28"/><path d="M0 -7.2Q4.2 -7.4 6.5 -3.6Q7.8 .5 5.4 4.8Q2 7.5 -2.8 6.4Q-7 4.4 -6.8 -0.6Q-6.2 -5.8 0 -7.2Z" fill="${A}" stroke="#000" stroke-opacity=".35" stroke-width=".45"/><circle r="4.5" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".55"/><circle r="4.1" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width=".35"/></g>`;
+  }
   return odd
     ? tape(PX + PS - 2, PY + 2, 35, i * 2, T) + tape(PX + 2, PB - 2, 35, i * 2 + 1, T)
     : tape(PX + 2, PY + 2, -35, i * 2, T) + tape(PX + PS - 2, PB - 2, -35, i * 2 + 1, T);
@@ -230,22 +255,38 @@ export function renderCard(c0, i, cfg) {
     : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
 
   const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
-  const ss = (cfg.stampSize || 100) / 100, rr = 17 * ss;
+  const ss = (cfg.stampSize || 100) / 100;
   const rn = k => { const v = Math.sin((i + 1) * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
-  const sx = PX + rr * 0.6 + rn(1) * (PS - rr * 1.2);
-  const sy = PB + (rn(2) - 0.5) * 8;
-  const sr = (rn(3) - 0.5) * 50;
 
   const skw = c0.sk || cfg.stampShape || "round";
   const sk = skw === "mixed" ? SKINDS[Math.floor(rn(4) * SKINDS.length)] : skw;
   const sd = STAMPS[sk] || STAMPS.round;
   const sco = cfg.stampAuto ? A : (cfg.stampColor || "#d9322f");
 
-  const mkS = (d, txt, yr, sz, px, py, r) =>
-    `<g${(cfg.stampWear || 0) > 0 ? ` filter="url(#ink${i})"` : ""} transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${r.toFixed(1)}) scale(${sz})" fill="none" stroke="${sco}" opacity=".95">${d.o}${yr ? `<text y="${d.yr}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(yr)}</text>` : ""}<text y="${d.nm}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${fit(txt, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(txt)}</text>${d.r ? `<path d="${d.r}" stroke-width=".5"/>` : ""}</g>`;
+  const mkS = (d, txt, yr, sz, px, py, r, si) =>
+    `<g${cfg.moveStamps && !cfg.one ? ` id="st${si}-${i}"` : ""}${(cfg.stampWear || 0) > 0 ? ` filter="url(#ink${i})"` : ""} transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${r.toFixed(1)}) scale(${sz})" fill="none" stroke="${sco}" opacity=".95">${d.o}${yr ? `<text y="${d.yr}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(yr)}</text>` : ""}<text y="${d.nm}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${fit(txt, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(txt)}</text>${d.r ? `<path d="${d.r}" stroke-width=".5"/>` : ""}</g>`;
 
-  const stamp = skw === "none" ? "" : mkS(sd, c0.stx || cfg.stamp || "Soul Fuel", cfg.stampYear || "2026", ss, sx, sy, sr);
-  const stamp2 = cfg.stamp2 ? mkS(STAMPS.rect, cfg.stamp2, "", ss * 0.85, PX + 30 + rn(8) * (PS - 60), PB + 32 + rn(9) * 26, (rn(10) - 0.5) * 30) : "";
+  const st0 = resolveStampTransform({ index: i, stampIndex: 0, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stampPos });
+  const st1 = resolveStampTransform({ index: i, stampIndex: 1, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stamp2Pos });
+  const st0Scale = st0.isOverridden ? Number(st0.scale.toFixed(3)) : ss;
+  const st1Scale = st1.isOverridden ? Number(st1.scale.toFixed(3)) : ss * 0.85;
+
+  const stamp = skw === "none" ? "" : mkS(sd, c0.stx || cfg.stamp || "Soul Fuel", cfg.stampYear || "2026", st0Scale, st0.x, st0.y, st0.r, 0);
+  const stamp2 = cfg.stamp2 ? mkS(STAMPS.rect, cfg.stamp2, "", st1Scale, st1.x, st1.y, st1.r, 1) : "";
+
+  const mkStUi = (si, st, sz) => {
+    const bw = Math.max(28, 42 * sz);
+    const bh = Math.max(28, 36 * sz);
+    const hw = Math.max(74, bw + 12);
+    const hh = Math.max(74, bh + 12);
+    const isSel = cfg.selectedCard === i && (cfg.selectedStamp ?? 0) === si;
+    const label = `Card ${i + 1} ${si === 0 ? "primary" : "second"} stamp position`;
+    const vText = `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`;
+    return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${(-bh / 2 - 14).toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${(-bh / 2 - 14).toFixed(1)}" r="20" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${(-bh / 2 - 14).toFixed(1)}" r="4.8"/></g>`;
+  };
+  const stampUi = cfg.moveStamps && !cfg.one
+    ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
+    : "";
 
   const tf = TF[cfg.titleFont] || TF.pirata;
   const lumB = lum(T.bg), dkp = lumB < 0.45, tcol = dkp ? "#fff" : "#3a2a18";
@@ -316,9 +357,9 @@ export function renderCard(c0, i, cfg) {
   const titleSize = titleLayoutResult.size;
   const titleMarkup = titleLayoutResult.wrapped
     ? titleLines.map((line, lineIndex) =>
-        `<text x="${tx}" y="${(191 + lineIndex * 11 + D).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(line)}</text>`
+        `<text x="${tx}" y="${(191 + lineIndex * 11).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(line)}</text>`
       ).join("")
-    : `<text x="${tx}" y="${199 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
+    : `<text x="${tx}" y="199"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
 
   const resolvedBorder = resolveBorderConfig(cfg, c0);
   const borderRendered = renderBorder({
@@ -365,7 +406,7 @@ export function renderCard(c0, i, cfg) {
    <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
    ${titleMarkup}
    <text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>
-   </g>${nfc}${serial}${tex}${stamp}${stamp2}${drag}${mk}</g>`;
+   </g>${nfc}${serial}${tex}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
 }
 
 export function regMarksSvg(W, H, enabled) {
