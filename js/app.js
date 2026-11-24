@@ -1,7 +1,7 @@
 import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js";
 import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js";
 import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase1-b1";
 import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js";
 import { FONTCSS } from "./fonts.js";
 
@@ -177,6 +177,7 @@ function render() {
     const paperHeight = $("paper").value === "letter" ? "279.4mm" : "297mm";
     printStyle.textContent = `@media print {
       @page { size: ${paperSize} portrait; margin: 0; }
+      .topbar, .panel, .page-tools, #pv, h1, p.subtitle { display: none !important; }
       .sheet { width: ${paperWidth} !important; height: ${paperHeight} !important; }
     }`;
   }

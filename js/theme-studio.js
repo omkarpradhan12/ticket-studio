@@ -1,6 +1,6 @@
 import { BUILTIN_THEMES, DEFAULT_CUSTOM, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js";
 import { SAMPLE_CARDS } from "./storage.js";
-import { computeLayout, renderCard } from "./svg-engine.js";
+import { computeLayout, renderCard } from "./svg-engine.js?v=phase1-b1";
 import { triggerDownload } from "./export.js";
 import { FONTCSS } from "./fonts.js";
 
