@@ -28,6 +28,26 @@ const defStamp = (name, outer, inner, extras) => ({
   ...extras
 });
 
+// Smooth sinusoidal seal edge helper (replaces spiky star() for seals)
+const wave = (n, rOut, rIn) => {
+  const pts = [];
+  const steps = n * 2;
+  for (let i = 0; i < steps; i++) {
+    const a0 = (i * Math.PI) / n - Math.PI / 2;
+    const a1 = ((i + 1) * Math.PI) / n - Math.PI / 2;
+    const r0 = i % 2 === 0 ? rOut : rIn;
+    const r1 = i % 2 === 0 ? rIn : rOut;
+    const t = (4 / 3) * Math.tan(Math.PI / (2 * steps));
+    const x0 = r0 * Math.cos(a0), y0 = r0 * Math.sin(a0);
+    const x1 = r1 * Math.cos(a1), y1 = r1 * Math.sin(a1);
+    const cp1x = x0 - t * r0 * Math.sin(a0), cp1y = y0 + t * r0 * Math.cos(a0);
+    const cp2x = x1 + t * r1 * Math.sin(a1), cp2y = y1 - t * r1 * Math.cos(a1);
+    if (i === 0) pts.push(`M${x0.toFixed(2)} ${y0.toFixed(2)}`);
+    pts.push(`C${cp1x.toFixed(2)} ${cp1y.toFixed(2)} ${cp2x.toFixed(2)} ${cp2y.toFixed(2)} ${x1.toFixed(2)} ${y1.toFixed(2)}`);
+  }
+  return pts.join("") + "Z";
+};
+
 export const STAMPS = {
   // --- EXISTING SHAPES ---
   round: defStamp("Round", '<circle r="17" stroke-width="1"/>', '<circle r="14.5" stroke-width=".5"/>', { yr: -5, nm: 3, w: 22, r: "M-7 7h14" }),
@@ -38,15 +58,37 @@ export const STAMPS = {
   hex: defStamp("Hexagon", `<polygon points="${hexp(17)}" stroke-width="1" stroke-linejoin="round"/>`, `<polygon points="${hexp(14.5)}" stroke-width=".5" stroke-linejoin="round"/>`, { yr: -5, nm: 3, w: 22, r: "M-7 7h14" }),
   diamond: defStamp("Diamond", '<path d="M0 -19L19 0L0 19L-19 0Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M0 -15.6L15.6 0L0 15.6L-15.6 0Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -4.5, nm: 2.5, w: 20, r: "M-4.5 6.5h9" }),
 
-  // --- FIXED SEAL-STYLE SHAPES (No more sunflower look) ---
-  // 1. Notary Seal: Fine, shallow 36-tooth coin/notary serrations
-  seal: defStamp("Seal", `<polygon points="${star(36, 17.5, 16.3)}" stroke-width=".85" stroke-linejoin="round"/>`, '<circle r="14.2" stroke-width=".5"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
-  // 2. Scalloped Wax/Embossed Seal: Smooth outward lobes (12 rounded arcs) instead of sharp spikes
-  scallop: defStamp("Scalloped", '<path d="M0-17.5A3.2 3.2 0 0 1 8.75-15.15A3.2 3.2 0 0 1 15.15-8.75A3.2 3.2 0 0 1 17.5 0A3.2 3.2 0 0 1 15.15 8.75A3.2 3.2 0 0 1 8.75 15.15A3.2 3.2 0 0 1 0 17.5A3.2 3.2 0 0 1-8.75 15.15A3.2 3.2 0 0 1-15.15 8.75A3.2 3.2 0 0 1-17.5 0A3.2 3.2 0 0 1-15.15-8.75A3.2 3.2 0 0 1-8.75-15.15A3.2 3.2 0 0 1 0-17.5Z" stroke-width="1" stroke-linejoin="round"/>', '<circle r="13.8" stroke-width=".5"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
-  // 3. Starburst: Tighter 10-point promo badge with shallower valleys
-  starburst: defStamp("Starburst", `<polygon points="${star(10, 19.5, 15.2)}" stroke-width="1" stroke-linejoin="round"/>`, '<circle r="12.8" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" }),
-  // 4. Sunburst: Kept explicitly as a sun-ray motif, with crisper 14-ray geometry
-  burst: defStamp("Sunburst", `<polygon points="${star(14, 20.5, 16)}" stroke-width=".9" stroke-linejoin="round"/>`, '<circle r="13.2" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" }),
+  // 1. Certificate / Crimp Seal (Matches Image 1: ~24 smooth gentle waves + solid & dashed double inner ring)
+  seal: defStamp(
+    "Seal",
+    `<path d="${wave(24, 17.6, 16.5)}" stroke-width="1" stroke-linejoin="round"/>`,
+    '<circle r="14.4" stroke-width=".6"/><circle r="12.8" stroke-width=".55" stroke-dasharray="1.3 1.4"/>',
+    { yr: -4.2, nm: 2.8, w: 19, r: "M-5.5 6.2h11" }
+  ),
+
+  // 2. Scalloped Seal (Slightly deeper, plush 18-wave scalloped border + stitched inner ring)
+  scallop: defStamp(
+    "Scalloped",
+    `<path d="${wave(18, 17.8, 16.0)}" stroke-width="1" stroke-linejoin="round"/>`,
+    '<circle r="13.8" stroke-width=".55" stroke-dasharray="1.6 1.5"/>',
+    { yr: -4.2, nm: 2.8, w: 19, r: "M-5.5 6.2h11" }
+  ),
+
+  // 3. Wax Seal (Matches Image 2: organic melted-wax blob perimeter + double inner impression ring)
+  wax: defStamp(
+    "Wax seal",
+    '<path d="M-2-17.8C4-18.4 10.5-16.5 14.5-12C18.2-7.8 18.8-1.5 17.6 4.5C16.5 10 13.5 15.2 7.8 17.4C2 19.5-4.8 18.5-10.2 15.5C-15.6 12.5-18.5 6.8-18.2 0.5C-17.9-5.8-15.5-11.8-10.5-15.2C-7.5-17.2-4.8-17.5-2-17.8Z" stroke-width="1.15" stroke-linejoin="round"/>',
+    '<circle r="13.5" stroke-width=".75"/><circle r="11.6" stroke-width=".45"/>',
+    { yr: -4, nm: 2.8, w: 18, r: "M-5 6h10" }
+  ),
+
+  // 4. Starburst (Crisp 12-point promo badge, distinct from the wavy seals)
+  starburst: defStamp(
+    "Starburst",
+    `<polygon points="${star(12, 19.2, 15.2)}" stroke-width="1" stroke-linejoin="round"/>`,
+    '<circle r="12.8" stroke-width=".5"/>',
+    { yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" }
+  ),
 
   ticket: defStamp("Ticket", '<path d="M-20 -12H20V-7A7 7 0 0 0 20 7V12H-20V7A7 7 0 0 0-20-7Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-16.5" y="-8.5" width="33" height="17" rx="2" stroke-width=".5"/><path d="M-12 -5V5M12 -5V5" stroke-width=".5"/>', { yr: -3, nm: 5.5, w: 27, r: "M-7 8h14" }),
   arch: defStamp("Arch", '<path d="M-18 13V-3A18 18 0 0 1 18-3V13Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-14.5 10V-2A14.5 14.5 0 0 1 14.5-2V10Z" stroke-width=".5"/>', { yr: -5, nm: 3, w: 21, r: "M-6 6.5h12" }),
