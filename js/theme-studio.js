@@ -188,8 +188,23 @@ async function importTheme(file) {
     const payload = JSON.parse(await file.text());
     const config = payload.config || payload;
     if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("The file must contain a theme object.");
-    writeForm({ ...DEFAULT_CUSTOM, ...config });
+    const normalized = { ...DEFAULT_CUSTOM, ...config };
+    if (typeof normalized.name !== "string") throw new Error("Theme name must be text.");
+    normalized.name = normalized.name.trim().slice(0, 60) || "Untitled theme";
+    for (const key of ["bg", "ink", "acc", "frame", "tape", "gs"]) {
+      if (typeof normalized[key] !== "string" || !/^#[0-9a-f]{6}$/i.test(normalized[key])) {
+        throw new Error(`${key} must be a 6-digit hex colour.`);
+      }
+    }
+    normalized.gl = Number(normalized.gl);
+    if (!Number.isFinite(normalized.gl)) normalized.gl = DEFAULT_CUSTOM.gl;
+    normalized.gl = Math.max(0.2, Math.min(0.85, normalized.gl));
+    normalized.pa = normalized.pa === true || normalized.pa === "true" || normalized.pa === 1 || normalized.pa === "1";
+    normalized.grad = normalized.grad === true || normalized.grad === "true" || normalized.grad === 1 || normalized.grad === "1";
+    writeForm(normalized);
     editingId = "";
+    populateCloneOptions();
+    renderSavedList();
     message("Theme imported. Save it to add it to your library.");
   } catch (error) {
     message("Could not import theme: " + error.message);
