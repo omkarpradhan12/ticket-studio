@@ -21,7 +21,7 @@
 | P1-01 | Baseline app and screenshot setup | M | medium | todo | - | Do not change app code until approval |
 | P1-02 | Store baseline exports in `.baseline/` | M | high | todo | - | SVG, PNG, PDF, cutter/print as available |
 | P1-03 | Reproduce and fix B1 long titles | M | medium | done | - | Reproduced in browser at 1440px; added deterministic two-line title layout with shrinking and exported-SVG-compatible string output |
-| P1-04 | Fix B2 dynamic cards/page subtitle | S | low | todo | - | |
+| P1-04 | Fix B2 dynamic cards/page subtitle | S | low | done | - | Subtitle now derives card count, sheet page count and cards-per-page from the active layout |
 | P1-05 | Fix B3 Section 1 label layout | S | low | todo | - | |
 | P1-06 | Fix B4 card row crowding and reset/delete actions | M | medium | todo | - | |
 | P1-07 | Fix B5 card list input truncation | S | low | todo | - | |

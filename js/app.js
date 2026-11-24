@@ -173,6 +173,8 @@ function render() {
   const printStyle = $("print-page-style");
   if (printStyle) printStyle.textContent = `@media print { @page { size: ${$("paper").value === "letter" ? "letter" : "A4"} portrait; margin: 0; } }`;
   $("pg").textContent = `${pages + ($("tpl").checked ? 1 : 0)} page${pages + ($("tpl").checked ? 1 : 0) === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
+  const paperName = $("paper").value === "letter" ? "US Letter" : "A4";
+  $("sub-info").textContent = `${count} cards across ${pages} ${paperName} page${pages === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
   $("card-count-lbl").textContent = count;
   $("ssv").textContent = cfg.stampSize + "%";
   $("gsv").textContent = cfg.gradientSpread + "%";
