@@ -1,4 +1,4 @@
-import { DEFAULT_CARDS, blankCard, loadSession, persistSession } from "./storage.js";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js";
 import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js";
 import { abbr } from "./svg-engine.js";
 
@@ -6,6 +6,7 @@ const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
 let staged = [];
 let draggedIndex = -1;
+let lastTransfer = null;
 
 function message(text) {
   $("bi-msg").textContent = text;
@@ -268,8 +269,26 @@ async function pushToSheet(replace) {
     message("Could not save the sheet. Your staged cards are still here; try again or use fewer/lower-resolution images.");
     return;
   }
-  message(`${replace ? "Replaced" : "Appended to"} the sheet. Opening the editor…`);
-  window.location.href = "index.html";
+  lastTransfer = { existing };
+  $("bulk-transfer-message").textContent = `${replace ? "Replaced" : "Appended to"} the saved sheet. Undo is available until you leave or reload.`;
+  $("bulk-transfer-toast").hidden = false;
+  message("Transfer saved. Undo it here or open the editor.");
+}
+
+async function undoTransfer() {
+  if (!lastTransfer) return;
+  const result = lastTransfer.existing
+    ? await persistSession(lastTransfer.existing)
+    : (await clearSession() ? "Saved locally" : "Not saved");
+  if (result === "Not saved") {
+    message("Could not fully undo the transfer. Reload and verify the saved sheet before continuing.");
+    return;
+  }
+  lastTransfer = null;
+  $("bulk-transfer-toast").hidden = true;
+  message(result === "Saved (embedded photos exceeded localStorage)"
+    ? "Transfer undone, but local storage could not retain embedded photos. Verify the sheet before continuing."
+    : "Bulk transfer undone.");
 }
 
 function bind() {
@@ -305,6 +324,10 @@ function bind() {
   $("clear-staged-btn").addEventListener("click", () => { staged = []; renderStaged(); message("Staging cleared."); });
   $("push-append-btn").addEventListener("click", () => pushToSheet(false).catch(error => message("Could not append staged cards: " + error.message)));
   $("push-replace-btn").addEventListener("click", () => pushToSheet(true).catch(error => message("Could not replace the sheet: " + error.message)));
+  $("undo-transfer").addEventListener("click", () => undoTransfer().catch(error => message("Could not undo the transfer: " + error.message)));
+  $("open-sheet-editor").addEventListener("click", () => {
+    if (lastTransfer) window.location.href = "index.html";
+  });
 }
 
 bind();

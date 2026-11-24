@@ -141,10 +141,15 @@ export async function persistSession(payload) {
 }
 
 export async function clearSession() {
+  let idbCleared = false;
+  let localStorageCleared = false;
   try {
     await idbOp("readwrite", st => st.delete(SESSION_KEY));
+    idbCleared = true;
   } catch {}
   try {
     localStorage.removeItem(SESSION_KEY);
+    localStorageCleared = true;
   } catch {}
+  return idbCleared && localStorageCleared;
 }

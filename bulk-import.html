@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/main.css?v=2">
 <link rel="stylesheet" href="css/studio.css">
-<link rel="stylesheet" href="css/redesign.css?v=1">
+<link rel="stylesheet" href="css/redesign.css?v=phase2-history">
 </head>
 <body>
 <header class="topbar">
@@ -75,7 +75,7 @@
       <div class="ctrl-flex">
         <button class="g" type="button" id="clear-staged-btn">Clear Staging</button>
         <button class="g" type="button" id="push-append-btn">Append to Existing Sheet</button>
-        <button class="accent" type="button" id="push-replace-btn">Replace Sheet &amp; Open Editor</button>
+        <button class="accent" type="button" id="push-replace-btn">Replace Sheet</button>
       </div>
     </div>
 
@@ -83,6 +83,12 @@
   </div>
 </div>
 
-<script type="module" src="js/bulk-import.js?v=phase1-b1"></script>
+<div id="bulk-transfer-toast" class="history-toast" role="status" aria-live="polite" hidden>
+  <span id="bulk-transfer-message"></span>
+  <button class="g sm" id="undo-transfer" type="button">Undo</button>
+  <button class="accent sm" id="open-sheet-editor" type="button">Open Editor</button>
+</div>
+
+<script type="module" src="js/bulk-import.js?v=phase2-history-1"></script>
 </body>
 </html>
