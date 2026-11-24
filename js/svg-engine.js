@@ -2,7 +2,9 @@
 import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase7";
 import { hsl } from "./image-utils.js?v=phase7";
 import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase7";
-import { resolveStampTransform } from "./stamps.mjs?v=phase7";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase7";
+
+export { SKINDS, STAMPS };
 
 export const CW = 170;
 export const SIZES = {
@@ -123,39 +125,6 @@ function gradDir(ga, gd, CH) {
   return `x1="${(x2 - dx * L).toFixed(1)}" y1="${(y2 - dy * L).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"`;
 }
 
-const star = (n, ro, ri) => {
-  const p = [];
-  for (let k = 0; k < n * 2; k++) {
-    const r = k % 2 ? ri : ro, a = Math.PI * k / n;
-    p.push((r * Math.sin(a)).toFixed(2) + "," + (-r * Math.cos(a)).toFixed(2));
-  }
-  return p.join(" ");
-};
-
-const hexp = r => [0, 1, 2, 3, 4, 5].map(k => {
-  const a = Math.PI / 3 * k;
-  return (r * Math.cos(a)).toFixed(2) + "," + (r * Math.sin(a)).toFixed(2);
-}).join(" ");
-
-export const STAMPS = {
-  round:   { o: '<circle r="17" stroke-width="1"/><circle r="14.5" stroke-width=".5"/>', yr: -5, nm: 3, w: 22, r: "M-7 7h14" },
-  oval:    { o: '<ellipse rx="19" ry="12" stroke-width="1"/><ellipse rx="16.5" ry="9.5" stroke-width=".5"/>', yr: -2.5, nm: 4, w: 24, r: "M-7 6.5h14" },
-  rect:    { o: '<rect x="-19" y="-11" width="38" height="22" rx="1.5" stroke-width="1"/><rect x="-16.5" y="-8.5" width="33" height="17" rx="1" stroke-width=".5"/>', yr: -2.5, nm: 5, w: 30 },
-  tri:     { o: '<path d="M0 -19L18 12H-18Z" stroke-width="1" stroke-linejoin="round"/><path d="M0 -14.9L14.4 9.9H-14.4Z" stroke-width=".5" stroke-linejoin="round"/>', yr: 1, nm: 7.2, w: 19, ys: 3.4 },
-  shield:  { o: '<path d="M-14 -15H14V2Q14 12 0 18Q-14 12 -14 2Z" stroke-width="1" stroke-linejoin="round"/><path d="M-11.5 -12.5H11.5V1.5Q11.5 9.5 0 14.8Q-11.5 9.5 -11.5 1.5Z" stroke-width=".5" stroke-linejoin="round"/>', yr: -6, nm: 1, w: 20, r: "M-6 4.5h12" },
-  hex:     { o: `<polygon points="${hexp(17)}" stroke-width="1" stroke-linejoin="round"/><polygon points="${hexp(14.5)}" stroke-width=".5" stroke-linejoin="round"/>`, yr: -5, nm: 3, w: 22, r: "M-7 7h14" },
-  diamond: { o: '<path d="M0 -19L19 0L0 19L-19 0Z" stroke-width="1" stroke-linejoin="round"/><path d="M0 -15.6L15.6 0L0 15.6L-15.6 0Z" stroke-width=".5" stroke-linejoin="round"/>', yr: -4.5, nm: 2.5, w: 20, r: "M-4.5 6.5h9" },
-  seal:    { o: `<polygon points="${star(16, 17.6, 15.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="12.8" stroke-width=".5"/>`, yr: -4.5, nm: 3, w: 19, r: "M-6 6.5h12" },
-  starburst: { o: `<polygon points="${star(12, 20, 14.5)}" stroke-width="1" stroke-linejoin="round"/><circle r="12" stroke-width=".5"/>`, yr: -4.5, nm: 3.5, w: 20, r: "M-6.5 7h13" },
-  scallop: { o: `<polygon points="${star(20, 17.8, 16.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="13.5" stroke-width=".5"/>`, yr: -5, nm: 3, w: 20, r: "M-6 7h12" },
-  ticket: { o: '<path d="M-20 -12H20V-7A7 7 0 0 0 20 7V12H-20V7A7 7 0 0 0-20-7Z" stroke-width="1" stroke-linejoin="round"/><rect x="-16.5" y="-8.5" width="33" height="17" rx="2" stroke-width=".5"/><path d="M-12 -5V5M12 -5V5" stroke-width=".5"/>', yr: -3, nm: 5.5, w: 27, r: "M-7 8h14" },
-  arch: { o: '<path d="M-18 13V-3A18 18 0 0 1 18-3V13Z" stroke-width="1" stroke-linejoin="round"/><path d="M-14.5 10V-2A14.5 14.5 0 0 1 14.5-2V10Z" stroke-width=".5"/>', yr: -5, nm: 3, w: 21, r: "M-6 6.5h12" },
-  ribbon: { o: '<path d="M-18 -12H18V8H7L4 14L0 8H-18Z" stroke-width="1" stroke-linejoin="round"/><rect x="-15" y="-9" width="30" height="14" rx="1" stroke-width=".5"/>', yr: -4, nm: 4.5, w: 25, r: "M-7 7h14" },
-  burst: { o: `<polygon points="${star(16, 21, 17)}" stroke-width=".9" stroke-linejoin="round"/><circle r="13" stroke-width=".5"/>`, yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" },
-  cross: { o: '<path d="M-7 -18H7V-7H18V7H7V18H-7V7H-18V-7H-7Z" stroke-width="1" stroke-linejoin="round"/><path d="M-4.5 -14.5H4.5V-4.5H14.5V4.5H4.5V14.5H-4.5V4.5H-14.5V-4.5H-4.5Z" stroke-width=".5"/>', yr: -4.5, nm: 3.5, w: 19, r: "M-5.5 7h11" }
-};
-export const SKINDS = Object.keys(STAMPS);
-
 function mount(tt, PX, PY, PS, PB, odd, i, A, T) {
   if (Array.isArray(T.mounts)) {
     return T.mounts.slice(0, 2).map((mountType, mountIndex) =>
@@ -260,19 +229,44 @@ export function renderCard(c0, i, cfg) {
 
   const skw = c0.sk || cfg.stampShape || "round";
   const sk = skw === "mixed" ? SKINDS[Math.floor(rn(4) * SKINDS.length)] : skw;
-  const sd = STAMPS[sk] || STAMPS.round;
   const sco = cfg.stampAuto ? A : (cfg.stampColor || "#d9322f");
-
-  const mkS = (d, txt, yr, sz, px, py, r, si) =>
-    `<g${cfg.moveStamps && !cfg.one ? ` id="st${si}-${i}"` : ""}${(cfg.stampWear || 0) > 0 ? ` filter="url(#ink${i})"` : ""} transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${r.toFixed(1)}) scale(${sz})" fill="none" stroke="${sco}" opacity=".95">${d.o}${yr ? `<text y="${d.yr}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(yr)}</text>` : ""}<text y="${d.nm}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${fit(txt, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(txt)}</text>${d.r ? `<path d="${d.r}" stroke-width=".5"/>` : ""}</g>`;
+  const resolvedStampStyle = resolveStampStyle(cfg, c0);
 
   const st0 = resolveStampTransform({ index: i, stampIndex: 0, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stampPos });
   const st1 = resolveStampTransform({ index: i, stampIndex: 1, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stamp2Pos });
   const st0Scale = st0.isOverridden ? Number(st0.scale.toFixed(3)) : ss;
   const st1Scale = st1.isOverridden ? Number(st1.scale.toFixed(3)) : ss * 0.85;
 
-  const stamp = skw === "none" ? "" : mkS(sd, c0.stx || cfg.stamp || "Soul Fuel", cfg.stampYear || "2026", st0Scale, st0.x, st0.y, st0.r, 0);
-  const stamp2 = cfg.stamp2 ? mkS(STAMPS.rect, cfg.stamp2, "", st1Scale, st1.x, st1.y, st1.r, 1) : "";
+  const stamp = skw === "none" ? "" : renderStampMarkup({
+    shapeKey: sk,
+    text: c0.stx || cfg.stamp || "Soul Fuel",
+    year: cfg.stampYear || "2026",
+    scale: st0Scale,
+    px: st0.x,
+    py: st0.y,
+    rotation: st0.r,
+    color: sco,
+    wear: cfg.stampWear || 0,
+    filterId: `ink${i}`,
+    idAttr: cfg.moveStamps && !cfg.one ? `st0-${i}` : "",
+    style: resolvedStampStyle,
+    themeBg: T.bg
+  });
+  const stamp2 = cfg.stamp2 ? renderStampMarkup({
+    shapeKey: "rect",
+    text: cfg.stamp2,
+    year: "",
+    scale: st1Scale,
+    px: st1.x,
+    py: st1.y,
+    rotation: st1.r,
+    color: sco,
+    wear: cfg.stampWear || 0,
+    filterId: `ink${i}`,
+    idAttr: cfg.moveStamps && !cfg.one ? `st1-${i}` : "",
+    style: resolvedStampStyle,
+    themeBg: T.bg
+  }) : "";
 
   const mkStUi = (si, st, sz) => {
     const bw = Math.max(28, 42 * sz);

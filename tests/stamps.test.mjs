@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import {
+  SKINDS,
+  STAMP_OPTIONS,
+  STAMPS,
   autoStampGeometry,
   clampStampNorm,
   clampStampScale,
+  compactStampStyle,
+  hasStampStyleOverrides,
   normalizeAngle,
+  renderStampMarkup,
+  renderStampSwatchSvg,
+  resolveStampStyle,
   resolveStampTransform,
   sanitizeStampOverride,
-  snapStampNorm
+  snapStampNorm,
+  uniqueStampPresetName
 } from "../js/stamps.mjs";
 
 // 1. Auto placement matches legacy deterministic math
@@ -64,6 +73,64 @@ import {
     sanitizeStampOverride({ x: 2, y: -1, r: 370, scale: 9 }),
     { x: 1.04, y: -0.04, r: 10, scale: 2.5 }
   );
+}
+
+// 6. Stamp shapes (15 legacy + 6 new + mixed + none) & swatch rendering
+{
+  assert.equal(SKINDS.length, 21);
+  assert.equal(STAMP_OPTIONS.length, 23);
+  for (const key of ["vinyl", "pick", "octagon", "banner", "badge", "bolt"]) {
+    assert.ok(STAMPS[key], `missing new stamp shape ${key}`);
+  }
+  for (const opt of STAMP_OPTIONS) {
+    const svg = renderStampSwatchSvg(opt.id, "#ff5a36", { bg: "#141211", ink: "#ffffff" });
+    assert.ok(svg.startsWith("<svg ") && svg.endsWith("</svg>"));
+    assert.equal(svg.includes("NaN"), false);
+  }
+}
+
+// 7. Exact legacy stamp markup when style has no overrides
+{
+  const legacyRound = `<g filter="url(#ink0)" transform="translate(85.0 152.0) rotate(12.5) scale(1)" fill="none" stroke="#d9322f" opacity=".95"><circle r="17" stroke-width="1"/><circle r="14.5" stroke-width=".5"/><text y="-5" text-anchor="middle" fill="#d9322f" stroke="none" font-size="4" font-weight="700" font-family="Montserrat,Arial,sans-serif">2026</text><text y="3" text-anchor="middle" fill="#d9322f" stroke="none" font-size="5.4" font-weight="800" font-family="Montserrat,Arial,sans-serif">SOUL</text><path d="M-7 7h14" stroke-width=".5"/></g>`;
+  const rendered = renderStampMarkup({
+    shapeKey: "round",
+    text: "Soul",
+    year: "2026",
+    scale: 1,
+    px: 85,
+    py: 152,
+    rotation: 12.5,
+    color: "#d9322f",
+    wear: 35,
+    filterId: "ink0",
+    style: resolveStampStyle({}, null)
+  });
+  assert.equal(rendered, legacyRound);
+}
+
+// 8. Stamp Customise modes (solid, tinted, dashed, weight, opacity, innerRing, showYear) & compacting
+{
+  assert.equal(compactStampStyle({ fillMode: "outline", weight: 1, pattern: "solid", opacity: 95, innerRing: true, showYear: true }), undefined);
+  const custom = resolveStampStyle({ stampStyle: { fillMode: "solid", weight: 1.5, pattern: "dashed", opacity: 80, innerRing: false, showYear: false } });
+  assert.equal(hasStampStyleOverrides(custom), true);
+  const markup = renderStampMarkup({
+    shapeKey: "vinyl",
+    text: "LIVE",
+    year: "2026",
+    scale: 1,
+    px: 85,
+    py: 152,
+    rotation: 0,
+    color: "#112233",
+    style: custom,
+    themeBg: "#f2eadb"
+  });
+  assert.ok(markup.includes('fill="#112233"'));
+  assert.ok(markup.includes('stroke-dasharray="3.2 2.2"'));
+  assert.ok(markup.includes('stroke-width="1.5"'));
+  assert.ok(markup.includes('opacity=".80"'));
+  assert.equal(markup.includes("2026"), false);
+  assert.equal(uniqueStampPresetName("Badge", ["badge"]), "Badge (2)");
 }
 
 console.log("Stamp module tests passed.");
