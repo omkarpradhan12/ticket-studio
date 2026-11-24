@@ -34,6 +34,7 @@
 - Before the first Phase 1 code change, run the app locally, export a sample sheet in every available format, and store copies in git-ignored `.baseline/`.
 - State migration must be backward compatible; stop and ask before any migration that is not clearly reversible.
 - Sheet Editor undo/redo history is in memory only and clears on reload; saved sheet data continues to autosave independently.
+- The editable Sheet Editor title is stored in the optional `settings.sheetTitle` field; older sheets use the default title.
 - Sheet Editor state is centralized in `studioState`; card records and arrays use copy-on-write updates so history snapshots can share unchanged photos safely.
 - Bulk Upload commits now stay on that page until the user chooses Undo or Open Editor; its single transfer undo is memory-only and expires on leave/reload.
 

@@ -156,15 +156,15 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - Photo data URLs can make a snapshot very large. IndexedDB avoids the localStorage quota, but fallback intentionally drops only embedded `data:` photos, not external URLs.
 - Phase 2 added in-memory undo/redo with a 100-entry limit, copy-on-write snapshots, coalescing, redo clearing, action labels and a subscription hook for future draft-scoped history.
 - Snapshots include cards, count, selected card, active page, page themes, gradient angle and complete settings/custom palette. They exclude view-only state and Theme Studio drafts until Phase 5.
+- The editable Sheet Editor title is now an optional `settings.sheetTitle` value with a default fallback for older saved sheets.
 - Snapshot restore synchronizes controls, custom controls, card rows, page tools and preview, preserves current focus/expanded card details/scroll, and requests the existing debounced autosave once. History itself is never persisted.
 - Sheet Editor JSON import, card/image actions, settings, pages, Randomise, Load Samples and Reset All are undoable. Bulk Upload transfer stays on its page with a single in-memory Undo/Open Editor toast; the transfer undo is lost on leave/reload.
 
 ## 13. Responsive behavior
-- Desktop: redesign app grid is 390px sidebar + preview; main CSS 340-440px fallback.
-- At <=900px: app becomes one column with preview/stage first and panel second; preview is sticky and capped around 42vh. Theme/Bulk grids stack.
-- At <=520px: compact topbar, app padding, card row and stage sizing.
-- Current source has no explicit Edit/Preview segmented toggle or phone bottom action bar.
-- The preview/stage and sidebar can still produce double scrolling; the page tools are in the stage and may not be a slim toolbar.
+- Desktop: Sheet Editor sidebar is 380px beside the preview; other pages retain their existing layouts.
+- At mobile widths, the Sheet Editor has a workspace menu, Edit/Preview toggle, 40px Undo/Redo controls, and a fixed Print/Export action bar with 44px buttons.
+- In mobile Preview mode, the stage is the scroll container; Edit mode exposes the panel. At 390px, browser verification found no horizontal document overflow.
+- The preview toolbar contains page count/theme, duplicate page, a disabled Move stamps placeholder, and zoom/Fit controls.
 
 ## 14. Accessibility
 - Focus-visible outlines exist for controls, card thumbnails and dial.
@@ -174,7 +174,7 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - Color controls lack a visible hex field and are coupled to `.chk`.
 - JSON tooltip is hover-only.
 - Muted text contrast needs real theme-dependent validation. Redesign overrides token muted to `#aaa49a`, main defines other values.
-- Gradient dial is keyboard-operable with arrows/Home, but visually remains present and only opacity `.55` when a non-gradient theme is selected. It has no disabled/aria reason or dynamic hint.
+- Gradient dial remains visible but is disabled for non-gradient themes, removed from keyboard tab order, guarded against pointer/keyboard input, and accompanied by a helper message.
 - Modal keyboard focus trap and full dialog focus management are incomplete for nested/preview use.
 
 ## 15. Other bugs and risks
@@ -197,7 +197,7 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - U16 color pickers have no hex fields.
 
 ## 16. Screenshots
-No screenshots or Playwright dependency were used. Manual browser checks on an isolated local origin are summarized under Phase 2; Phase 1 export parity still needs baseline/manual printer validation.
+Browser checks used the existing browser harness; no Playwright dependency was added. Phase 1 screenshots cover the three pages at desktop and 390px. Phase 2 and Phase 3 browser checks are summarized in `docs/PROGRESS.md`. No pre-change export files were captured in `.baseline/`, so exact export and physical-printer parity remain unverified.
 
 ## Verification conclusions
 - Sheet Editor now has a canonical state layer and tested history module suitable for future optional card fields. Node tests cover coalescing, the 100-entry limit, redo clearing and snapshot sharing.
@@ -210,3 +210,10 @@ No screenshots or Playwright dependency were used. Manual browser checks on an i
 - Snapshot history relies on immutable card records and copy-on-write updates; current card updates replace both the record and card array.
 - Snapshots shallow-copy settings/arrays and share unchanged card records, including their image/data-URL strings. New optional card fields are retained because snapshots store full records rather than selecting known keys.
 - No migration or saved-data format change is planned. History remains in-memory only.
+
+## Phase 3 layout verification
+- The Sheet Editor now groups controls under Page, Look, Content, and Effects and uses an editable title stored in the optional `settings.sheetTitle` field. Older saved sheets receive the default title.
+- The top bar uses SVG as its primary export because that was the previously highlighted action. Usage telemetry is unavailable, so the actual most-used format could not be determined.
+- Cards use compact rows with only the selected card expanded; disabled placeholders reserve future Surprise me/search/Move stamps entry points.
+- At 390px the page had no horizontal overflow; the mobile action bar remained fixed and Undo/Redo/workspace menu controls stayed reachable.
+- The default rendered card inner markup matched the pre-change baseline hash; changing preview zoom left serialized SVG output unchanged. Print emulation hid editor chrome and retained the 210 × 297 mm sheet dimensions, but does not certify physical printer output.

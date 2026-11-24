@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 2 - Undo/redo complete
-- Next approval: owner approval before Phase 3 layout work.
+- Current phase: Phase 3 - Sheet Editor layout complete
+- Next approval: owner approval before Phase 4 visual system and icon work.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -16,15 +16,15 @@
 |---|---|---:|---|---|---|---|
 | P0-01 | Create `ui-overhaul` branch | S | low | done | - | Working tree was clean before branch creation |
 | P0-02 | Write `CLAUDE.md` | S | low | done | - | Rules, layout, safety, verification |
-| P0-03 | Write architecture/control audit | L | medium | done | - | Source audit complete; screenshots pending approval |
+| P0-03 | Write architecture/control audit | L | medium | done | - | Source audit complete; screenshots captured during Phase 1 |
 | P0-04 | Write progress checklist | M | low | done | - | |
 | P1-01 | Baseline app and screenshot setup | M | medium | done | - | Browser screenshots captured for Sheet Editor, Theme Studio, Bulk Import, desktop and 390px |
 | P1-02 | Store baseline exports in `.baseline/` | M | high | blocked | - | Screenshots are present; automated SVG/PNG/PDF download capture was blocked by browser download behavior, so exact baseline exports need manual browser verification |
 | P1-03 | Reproduce and fix B1 long titles | M | medium | done | - | Reproduced in browser at 1440px; added deterministic two-line title layout with shrinking and exported-SVG-compatible string output |
 | P1-04 | Fix B2 dynamic cards/page subtitle | S | low | done | - | Subtitle now derives card count, sheet page count and cards-per-page from the active layout |
 | P1-05 | Fix B3 Section 1 label layout | S | low | done | - | Section labels and hints now have minimum widths and safe wrapping/alignment |
-| P1-06 | Fix B4 card row crowding and reset/delete actions | M | medium | todo | - | |
-| P1-07 | Fix B5 card list input truncation | S | low | todo | - | |
+| P1-06 | Fix B4 card row crowding and reset/delete actions | M | medium | done | 2d743d3 | Resolved in Phase 3: compact rows, selected-row actions, overflow menu, and undoable delete |
+| P1-07 | Fix B5 card list input truncation | S | low | done | 2d743d3 | Resolved in Phase 3 with full-width fields and visible long-value outputs |
 | P1-08 | Verify/fix B6 photo aspect ratios | M | high | done | - | Known-dimension photo images now use cover-style xMidYMid slice; rerun Ticket/Tarot visual check after baseline |
 | P1-09 | Verify/fix B7 print behavior | L | high | done | - | Added print-only CSS, exact color adjustment, all-sheet page breaks, zoom reset and font/image wait before window.print |
 | P1-10 | Fix B8 saved-theme cloning | M | medium | done | - | configForTheme now recognizes saved acc/pa/name configs and never uses a UUID as the name |
@@ -33,15 +33,15 @@
 | P1-13 | Fix B11 theme import validation | M | medium | done | - | Imports now validate required 6-digit hex fields, clamp gl, coerce booleans, trim/cap names, and refresh theme controls/lists |
 | P1-14 | Fix B12 unsaved-changes warning | M | medium | todo | - | |
 | P1-15 | Fix B13 Theme Studio live status | S | low | todo | - | |
-| P1-16 | Fix B14 gradient dial disabled state | S | low | todo | - | |
-| P1-17 | Verify UI issue U1 duplicate headings | S | low | todo | - | |
-| P1-18 | Verify UI issue U2 section grouping | M | medium | todo | - | |
-| P1-19 | Verify UI issue U3 export prominence | S | low | todo | - | |
-| P1-20 | Verify UI issue U4 destructive confirmation/undo styling | M | medium | todo | - | |
-| P1-21 | Verify UI issue U5 duplicate entry points | S | low | todo | - | |
-| P1-22 | Verify UI issue U6 long card list | M | medium | todo | - | |
-| P1-23 | Verify UI issue U7 preview toolbar/scroll | M | medium | todo | - | |
-| P1-24 | Verify UI issue U8 checkbox/paper swatch cluster | S | low | todo | - | |
+| P1-16 | Fix B14 gradient dial disabled state | S | low | done | 2d743d3 | Disabled state, keyboard/pointer guard, and helper text verified |
+| P1-17 | Verify UI issue U1 duplicate headings | S | low | done | 2d743d3 | Replaced duplicate heading with editable sheet-title field |
+| P1-18 | Verify UI issue U2 section grouping | M | medium | done | 2d743d3 | Grouped Page, Look, Content, and Effects controls |
+| P1-19 | Verify UI issue U3 export prominence | S | low | done | 2d743d3 | SVG remains the primary action; usage telemetry is unavailable |
+| P1-20 | Verify UI issue U4 destructive confirmation/undo styling | M | medium | done | 2d743d3 | Reset is danger-styled; reversible actions use the Phase 2 Undo toast |
+| P1-21 | Verify UI issue U5 duplicate entry points | S | low | done | 2d743d3 | One nav entry per page; Manage themes remains by the theme selector |
+| P1-22 | Verify UI issue U6 long card list | M | medium | done | 2d743d3 | Compact rows; only selected card expands; future controls remain disabled placeholders |
+| P1-23 | Verify UI issue U7 preview toolbar/scroll | M | medium | done | 2d743d3 | Slim toolbar, page count, zoom and mobile single-stage scrolling verified |
+| P1-24 | Verify UI issue U8 checkbox/paper swatch cluster | S | low | done | 2d743d3 | Labelled swatches and grouped NFC/serial/punch controls verified |
 | P1-25 | Verify UI issue U9 jargon/help | M | low | todo | - | |
 | P1-26 | Verify UI issue U10 uppercase/letter spacing | S | low | todo | - | |
 | P1-27 | Verify UI issue U11 muted contrast | S | medium | todo | - | |
@@ -56,10 +56,10 @@
 | P2-04 | Wire undoable Sheet Editor actions and restore | L | high | done | 329f59c | Settings, cards, images, pages, JSON imports, reset/randomise/sample operations |
 | P2-05 | Add Undo/Redo controls, shortcuts, and undo toasts | M | medium | done | 329f59c, ef82ee2 | Sticky topbar controls; native text undo; destructive-action toasts; Bulk Upload transfer Undo/Open Editor flow |
 | P2-06 | Verify coalescing, memory, restore, and persistence | L | high | done | - | Node/browser checks; 18-photo payload measurement; reload clears history but retains saved state |
-| P3-01 | Sheet Editor layout/sidebar accordions | L | high | todo | - | |
-| P3-02 | Top bar actions/menu | L | medium | todo | - | |
-| P3-03 | Compact card rows and selected expansion | L | medium | todo | - | |
-| P3-04 | Preview toolbar and scroll container | M | medium | todo | - | |
+| P3-01 | Sheet Editor layout/sidebar accordions | L | high | done | 2d743d3 | Page/Look/Content/Effects, editable persisted title, and disabled gradient dial state |
+| P3-02 | Top bar actions/menu | L | medium | done | 2d743d3 | Primary SVG, Print, formats, overflow actions, Data dialog, and mobile actions |
+| P3-03 | Compact card rows and selected expansion | L | medium | done | 2d743d3 | Selected row expands; row actions, long values, and disabled future slots included |
+| P3-04 | Preview toolbar and scroll container | M | medium | done | 2d743d3 | Page tools, zoom/Fit, mobile Edit/Preview, and single preview scroll container |
 | P4-01 | Visual system and icon pass | L | medium | todo | - | |
 | P5-01 | Theme Studio gallery | L | high | todo | - | |
 | P5-02 | Theme side/bottom panel and custom actions | L | medium | todo | - | |
@@ -73,11 +73,8 @@
 | P10-01 | Visiting card layout | L | high | todo | - | |
 
 ## Known issue disposition
-All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reproduce them in a browser or make app changes.
-
-- B1/B6/B7/B8/B10/B11/B12/B14: source or logic indicates a likely issue; real behavior/visual verification still required.
-- B2/B3/B4/B5/B9/B13: source strongly indicates the reported issue; real-size verification still required.
-- U1-U16: source and CSS inspection provide risks; none is confirmed fixed or not an issue until screenshots/manual reproduction.
+- Phase 3 verified and addressed B4, B5, B14, and U1-U8 at desktop and 390px. U6's Surprise me/search controls are intentionally disabled placeholders for Phases 8-9.
+- Other audited issues remain at their table status; do not treat source-only observations as reproduced defects.
 
 ## Phase dependencies and decisions
 - Phase 2 is complete: `studioState` and the generic history module are in place. Later phases should add optional fields to canonical settings/card records and keep updates copy-on-write.
@@ -105,6 +102,7 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - a7635bc Refactor editor into canonical state
 - 329f59c Add in-memory Sheet Editor undo history
 - ef82ee2 Make bulk sheet transfers undoable
+- 2d743d3 Restructure Sheet Editor layout for Phase 3
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -173,11 +171,22 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - IndexedDB payload keys remain exactly `cards`, `count`, `settings`, and `v`.
 - Remaining manual checks: Phase 1 baseline exports were not captured in `.baseline/`, so unchanged SVG/PNG/PDF and real printer output parity still need manual verification. Later-phase border/stamp/export checks remain pending by design.
 
+## Phase 3 implementation and verification
+- Reorganized the Sheet Editor sidebar into Page, Look, Content, and Effects; added the editable title, persisted as optional `settings.sheetTitle` with a default for older sheets.
+- Moved Print, primary SVG export, other formats, batch actions, and the unified JSON Data dialog into the top bar. SVG remains primary because it was already the highlighted action; no usage telemetry was available to identify the actual most-used format.
+- Added selected-card expansion, compact card rows and menu actions; left disabled placeholders for Surprise me, search, Move stamps, and per-card Surprise this card.
+- Added a page/theme/duplicate/zoom toolbar and mobile Edit/Preview switch with a fixed Print/Export bar. At 390px, the page has no horizontal overflow; the Edit view exposes the panel, Preview scrolls in the stage, and the mobile action buttons are at least 44px tall. Undo, Redo, and the workspace menu are 40px targets.
+- Browser verification: title saved and restored from IndexedDB; history clears on reload. Duplicating a page showed Page 2 of 2 and 18 cards; Undo returned to Page 1 of 1 and 9 cards. Zoom/Fit worked; zoom did not change serialized SVG output. Theme Studio and Bulk Upload loaded at 390px without console errors or horizontal overflow.
+- The unchanged default ticket inner-markup SHA-256 remained `02fa9ed895dbd65ee64f56bb0f1432cc2d7e3095309012832cebb382f8f53c1b` (89,403 bytes). Print emulation hid the editor chrome and kept both rendered sheets at 210 × 297 mm.
+- Validation passed: `node tests/history.test.mjs`, JavaScript module syntax checks, 106 unique HTML IDs, and `git diff --check`.
+- Still blocked: no pre-change `.baseline/` exports exist, so exact SVG/PNG/PDF file comparisons and physical printer scaling cannot be certified. Print emulation is not a physical-printer test. Keyboard focus traversal across all three pages remains a manual check.
+
 ## Manual approval and remaining checks
-- Owner approval is required before starting Phase 3.
+- Owner approved Phase 3 before implementation; it is complete.
 - The Bulk Upload transfer behavior was selected by the owner: stay on Bulk Upload and show Undo/Open Editor actions.
 - Manual export/printer parity remains unverified because no pre-change `.baseline/` exports are available.
 
 ### Approval gate
 - Design approved by the owner before implementation.
 - No local history persistence is proposed.
+- The Phase 3 editable title is persisted in the optional settings field; no existing sheet/theme payload was otherwise changed.
