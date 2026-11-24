@@ -1,7 +1,7 @@
 // Stamp shapes, custom style resolution, placement math, presets & swatch renderer
 
-export const STAMP_MIN_NORM = -0.04;
-export const STAMP_MAX_NORM = 1.04;
+export const STAMP_MIN_NORM = 0.04;
+export const STAMP_MAX_NORM = 0.96;
 export const STAMP_MIN_SCALE = 0.4;
 export const STAMP_MAX_SCALE = 2.5;
 export const STAMP_PRESETS_KEY = "ticketgen.stampPresets.v1";
@@ -99,10 +99,23 @@ export function normalizeAngle(deg) {
   return Math.round(wrapped * 10) / 10;
 }
 
-export function clampStampNorm(nx, ny) {
+export function stampNormBounds({ CW = 170, CH = 239, effScale = 1 } = {}) {
+  const pad = Math.min(CW * 0.42, CH * 0.42, Math.max(8, 18 * (Number(effScale) || 1)));
   return {
-    nx: clamp(Number(nx) || 0, STAMP_MIN_NORM, STAMP_MAX_NORM),
-    ny: clamp(Number(ny) || 0, STAMP_MIN_NORM, STAMP_MAX_NORM)
+    minNx: pad / CW,
+    maxNx: 1 - pad / CW,
+    minNy: pad / CH,
+    maxNy: 1 - pad / CH
+  };
+}
+
+export function clampStampNorm(nx, ny, bounds = null) {
+  const { minNx, maxNx, minNy, maxNy } = bounds
+    ? stampNormBounds(bounds)
+    : { minNx: STAMP_MIN_NORM, maxNx: STAMP_MAX_NORM, minNy: STAMP_MIN_NORM, maxNy: STAMP_MAX_NORM };
+  return {
+    nx: clamp(Number(nx) || 0, minNx, maxNx),
+    ny: clamp(Number(ny) || 0, minNy, maxNy)
   };
 }
 
@@ -344,15 +357,17 @@ export function resolveStampTransform({ index = 0, stampIndex = 0, CW = 170, CH 
       isOverridden: false
     };
   }
-  const nx = Number.isFinite(override.x) ? clamp(override.x, STAMP_MIN_NORM, STAMP_MAX_NORM) : auto.x / CW;
-  const ny = Number.isFinite(override.y) ? clamp(override.y, STAMP_MIN_NORM, STAMP_MAX_NORM) : auto.y / CH;
-  const r = Number.isFinite(override.r) ? normalizeAngle(override.r) : auto.r;
   const mult = Number.isFinite(override.scale) ? clampStampScale(override.scale) : 1;
+  const effScale = auto.scale * mult;
+  const bounds = stampNormBounds({ CW, CH, effScale });
+  const nx = Number.isFinite(override.x) ? clamp(override.x, bounds.minNx, bounds.maxNx) : auto.x / CW;
+  const ny = Number.isFinite(override.y) ? clamp(override.y, bounds.minNy, bounds.maxNy) : auto.y / CH;
+  const r = Number.isFinite(override.r) ? normalizeAngle(override.r) : auto.r;
   return {
     x: nx * CW,
     y: ny * CH,
     r,
-    scale: auto.scale * mult,
+    scale: effScale,
     nx,
     ny,
     mult,
@@ -360,18 +375,19 @@ export function resolveStampTransform({ index = 0, stampIndex = 0, CW = 170, CH 
   };
 }
 
-export function sanitizeStampOverride(raw) {
+export function sanitizeStampOverride(raw, bounds = null) {
   if (!raw || typeof raw !== "object") return undefined;
   const out = {};
-  if (Number.isFinite(Number(raw.x))) out.x = Number(clamp(Number(raw.x), STAMP_MIN_NORM, STAMP_MAX_NORM).toFixed(4));
-  if (Number.isFinite(Number(raw.y))) out.y = Number(clamp(Number(raw.y), STAMP_MIN_NORM, STAMP_MAX_NORM).toFixed(4));
+  const b = bounds ? stampNormBounds(bounds) : { minNx: STAMP_MIN_NORM, maxNx: STAMP_MAX_NORM, minNy: STAMP_MIN_NORM, maxNy: STAMP_MAX_NORM };
+  if (Number.isFinite(Number(raw.x))) out.x = Number(clamp(Number(raw.x), b.minNx, b.maxNx).toFixed(4));
+  if (Number.isFinite(Number(raw.y))) out.y = Number(clamp(Number(raw.y), b.minNy, b.maxNy).toFixed(4));
   if (Number.isFinite(Number(raw.r))) out.r = normalizeAngle(raw.r);
   if (Number.isFinite(Number(raw.scale))) out.scale = Number(clampStampScale(raw.scale).toFixed(3));
   return Object.keys(out).length ? out : undefined;
 }
 
-export function snapStampNorm(nx, ny, { CW = 170, CH = 239, snapEnabled = true, bypass = false } = {}) {
-  const clamped = clampStampNorm(nx, ny);
+export function snapStampNorm(nx, ny, { CW = 170, CH = 239, effScale = 1, snapEnabled = true, bypass = false } = {}) {
+  const clamped = clampStampNorm(nx, ny, { CW, CH, effScale });
   if (!snapEnabled || bypass) {
     return { nx: clamped.nx, ny: clamped.ny, snappedX: false, snappedY: false, snapPxX: null, snapPxY: null };
   }

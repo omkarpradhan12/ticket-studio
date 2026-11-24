@@ -2389,10 +2389,12 @@ function bindEvents() {
         const dx = (event.clientX - stampDragState.startX) / stampDragState.cardScale;
         const dy = (event.clientY - stampDragState.startY) / stampDragState.cardScale;
         const CH = currentLayout?.CH || 239;
-        const raw = clampStampNorm(stampDragState.startNx + dx / CW, stampDragState.startNy + dy / CH);
+        const bounds = { CW, CH, effScale: st.scale };
+        const raw = clampStampNorm(stampDragState.startNx + dx / CW, stampDragState.startNy + dy / CH, bounds);
         const snapped = snapStampNorm(raw.nx, raw.ny, {
           CW,
           CH,
+          effScale: st.scale,
           snapEnabled: $("stamp-snap")?.checked ?? true,
           bypass: event.altKey || event.shiftKey
         });
@@ -2401,7 +2403,7 @@ function bindEvents() {
           y: snapped.ny,
           r: current?.r ?? st.r,
           scale: current?.scale ?? st.mult
-        });
+        }, bounds);
         updateCard(index, { [stampKeyFor(si)]: next });
         patchLiveStampDom(index, si, snapped);
         stampDragState.moved = true;
@@ -2458,13 +2460,14 @@ function bindEvents() {
     const CH = currentLayout?.CH || 239;
     const st = resolveCardStamp(index, si);
     const current = studioState.cards[index]?.[stampKeyFor(si)];
-    const clamped = clampStampNorm(st.nx + delta[0] / CW, st.ny + delta[1] / CH);
+    const bounds = { CW, CH, effScale: st.scale };
+    const clamped = clampStampNorm(st.nx + delta[0] / CW, st.ny + delta[1] / CH, bounds);
     const next = sanitizeStampOverride({
       x: clamped.nx,
       y: clamped.ny,
       r: current?.r ?? st.r,
       scale: current?.scale ?? st.mult
-    });
+    }, bounds);
     updateCard(index, { [stampKeyFor(si)]: next });
     patchLiveStampDom(index, si);
     const resetAllStampsBtn = $("reset-all-stamps");

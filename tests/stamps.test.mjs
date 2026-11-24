@@ -42,11 +42,14 @@ import {
   assert.equal(tarot.scale, 1.25);
 }
 
-// 3. Clamping allows slight edge overlap (-0.04..1.04) but never off card
+// 3. Clamping keeps stamps strictly inside the card boundary
 {
   const clamped = clampStampNorm(-0.5, 2.5);
-  assert.equal(clamped.nx, -0.04);
-  assert.equal(clamped.ny, 1.04);
+  assert.equal(clamped.nx, 0.04);
+  assert.equal(clamped.ny, 0.96);
+  const edge = resolveStampTransform({ index: 0, stampIndex: 0, CW: 170, CH: 239, stampSize: 100, override: { x: 0, y: 1 } });
+  assert.ok(edge.x >= 18 && edge.x <= 152);
+  assert.ok(edge.y >= 18 && edge.y <= 221);
   assert.equal(clampStampScale(0.1), 0.4);
   assert.equal(clampStampScale(4.0), 2.5);
   assert.equal(normalizeAngle(195), -165);
@@ -71,7 +74,7 @@ import {
   assert.equal(sanitizeStampOverride(null), undefined);
   assert.deepEqual(
     sanitizeStampOverride({ x: 2, y: -1, r: 370, scale: 9 }),
-    { x: 1.04, y: -0.04, r: 10, scale: 2.5 }
+    { x: 0.96, y: 0.04, r: 10, scale: 2.5 }
   );
 }
 
