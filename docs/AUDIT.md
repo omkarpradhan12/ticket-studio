@@ -154,9 +154,10 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - DOM controls are synchronized into settings at render boundaries; renderer configuration reads the resulting settings snapshot. `CUSTOM` and `THEMES` remain shared renderer/theme registries, with custom palette values captured in state.
 - Save remains debounced 450ms by `saveSoon()` after `render()`. `persistSession()` retains the existing `{v, count, settings, cards}` payload and IndexedDB/localStorage behavior.
 - Photo data URLs can make a snapshot very large. IndexedDB avoids the localStorage quota, but fallback intentionally drops only embedded `data:` photos, not external URLs.
-- Existing undo/history and unsaved-warning state were absent before Phase 2. History implementation remains in progress.
-- A history snapshot must include cards, count, selected card, active page, page themes, gradient angle and complete settings/custom palette. It excludes view-only state and Theme Studio drafts until Phase 5.
-- Snapshot restore must synchronize controls, custom controls, card rows, page tools and preview, then request the existing autosave once. Saved sheet data and renderer output must remain unchanged.
+- Phase 2 added in-memory undo/redo with a 100-entry limit, copy-on-write snapshots, coalescing, redo clearing, action labels and a subscription hook for future draft-scoped history.
+- Snapshots include cards, count, selected card, active page, page themes, gradient angle and complete settings/custom palette. They exclude view-only state and Theme Studio drafts until Phase 5.
+- Snapshot restore synchronizes controls, custom controls, card rows, page tools and preview, preserves current focus/expanded card details/scroll, and requests the existing debounced autosave once. History itself is never persisted.
+- Sheet Editor JSON import, card/image actions, settings, pages, Randomise, Load Samples and Reset All are undoable. Bulk Upload transfer stays on its page with a single in-memory Undo/Open Editor toast; the transfer undo is lost on leave/reload.
 
 ## 13. Responsive behavior
 - Desktop: redesign app grid is 390px sidebar + preview; main CSS 340-440px fallback.
@@ -196,10 +197,12 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - U16 color pickers have no hex fields.
 
 ## 16. Screenshots
-No screenshots or Playwright run are included in this audit. The environment exposes no currently loaded browser automation tool, and installing a dev screenshot dependency was not approved. Baseline or visual reproduction should happen after explicit approval for Playwright, or by a manual browser check.
+No screenshots or Playwright dependency were used. Manual browser checks on an isolated local origin are summarized under Phase 2; Phase 1 export parity still needs baseline/manual printer validation.
 
 ## Verification conclusions
-- Sheet Editor now has a canonical state layer suitable for history. Browser checks of initial load, card field edit, paper-size update, card duplicate/delete, page duplication, and save/reload passed without observed console errors.
+- Sheet Editor now has a canonical state layer and tested history module suitable for future optional card fields. Node tests cover coalescing, the 100-entry limit, redo clearing and snapshot sharing.
+- Browser checks cover settings and card edits, photo upload, import, page/card operations, batch actions, keyboard/native undo, mobile overflow, focus/expanded-state restoration and reload behavior. The three pages loaded without observed console errors.
+- IndexedDB's saved payload remains `{v, count, settings, cards}`; history is memory-only and saved state survives reload.
 - Phase 7 (draggable stamps) and Phase 8 (Surprise me) require per-card style override support for stamp position and randomised styling. Add optional per-card fields only and preserve old defaults.
 
 ## Phase 2 design follow-up

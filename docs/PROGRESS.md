@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: 2 - Undo/redo implementation
-- Approval: Phase 2 design approved.
+- Current phase: Phase 2 - Undo/redo complete
+- Next approval: owner approval before Phase 3 layout work.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -52,10 +52,10 @@
 | P1-32 | Verify UI issue U16 hex fields for pickers | M | medium | todo | - | |
 | P2-01 | Design and approve state/history architecture | M | high | done | 96b23af | Design approved before implementation |
 | P2-02 | Refactor Sheet Editor to canonical state | L | high | done | a7635bc | Immutable card/array updates; settings, pages, count and selection flow through `studioState`; saved payload unchanged |
-| P2-03 | Implement in-memory history module and tests | L | high | in progress | - | 100 entries; shared card objects; add standalone no-framework tests |
-| P2-04 | Wire undoable Sheet Editor actions and restore | L | high | todo | - | Settings, cards, pages, imports, reset/randomise/sample operations |
-| P2-05 | Add Undo/Redo controls, shortcuts, and undo toasts | M | medium | todo | - | Keep controls reachable on phone; native text-field undo takes precedence |
-| P2-06 | Verify coalescing, memory, restore, and persistence | L | high | todo | - | Include large-photo measurement and reload behavior |
+| P2-03 | Implement in-memory history module and tests | L | high | done | 329f59c | Generic snapshots, 100-entry cap, sharing/coalescing/redo tests |
+| P2-04 | Wire undoable Sheet Editor actions and restore | L | high | done | 329f59c | Settings, cards, images, pages, JSON imports, reset/randomise/sample operations |
+| P2-05 | Add Undo/Redo controls, shortcuts, and undo toasts | M | medium | done | 329f59c, ef82ee2 | Sticky topbar controls; native text undo; destructive-action toasts; Bulk Upload transfer Undo/Open Editor flow |
+| P2-06 | Verify coalescing, memory, restore, and persistence | L | high | done | - | Node/browser checks; 18-photo payload measurement; reload clears history but retains saved state |
 | P3-01 | Sheet Editor layout/sidebar accordions | L | high | todo | - | |
 | P3-02 | Top bar actions/menu | L | medium | todo | - | |
 | P3-03 | Compact card rows and selected expansion | L | medium | todo | - | |
@@ -80,18 +80,14 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - U1-U16: source and CSS inspection provide risks; none is confirmed fixed or not an issue until screenshots/manual reproduction.
 
 ## Phase dependencies and decisions
-- Phase 2 needs a state-layer refactor first or a robust snapshot/restore adapter. The current state is split across DOM, `cards`, `CUSTOM`, `THEMES`, `pageThemes`, `gradientAngle`, and localStorage/IndexedDB.
+- Phase 2 is complete: `studioState` and the generic history module are in place. Later phases should add optional fields to canonical settings/card records and keep updates copy-on-write.
 - Phases 7-8 need optional per-card style/position fields. New fields must be optional and existing cards must use current global defaults when absent.
 - Phase 6 is export-sensitive and requires baseline comparison for every existing border value across every card size.
 - Phase 7 is export-sensitive because stamp positions must serialize and render identically in preview, SVG, PNG, PDF and print.
 - Phase 10 is layout-sensitive and needs explicit dimensions/count approval before implementation if current sheet packing assumptions cannot support it.
 
-## Questions
-- Approve proceeding to Phase 1 bug fixes after the current audit and manual verification plan.
-- Approve installing/dev-using Playwright for desktop and 390px screenshots. No screenshot dependency has been installed.
-- For B10, should saving a theme with an existing name update the existing theme, prompt for a new name, or create a duplicate with a generated name?
+## Open decisions for later phases
 - For B12, should switching themes/pages/navigation warn only for Theme Studio drafts or also unsaved Sheet Editor changes?
-- For B9, should deleting a saved theme always require confirmation.
 - For F7, visiting-card dimensions/count should be confirmed if not defined by an approved mockup. No implementation assumptions are made here.
 
 ## Commit log
@@ -107,6 +103,8 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - 014d7d0 Refresh Phase 1 cache and print output
 - 96b23af Design Phase 2 undo history
 - a7635bc Refactor editor into canonical state
+- 329f59c Add in-memory Sheet Editor undo history
+- ef82ee2 Make bulk sheet transfers undoable
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -116,7 +114,7 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - Print emulation: topbar/panel hidden; A4-sized `.sheet` is 210mm x 297mm and one template/additional page is present.
 - Remaining manual checks: real printer/PDF scaling, blank trailing page, PNG/PDF export downloads, and external/CORS image raster exports.
 
-## Phase 2 design (approved)
+## Phase 2 design and implementation (approved)
 
 ### State-layer refactor plan
 The audit found state split between the Sheet Editor DOM, module variables, and mutable card objects. Before introducing history, create one canonical `studioState` containing all Sheet Editor settings (including the custom palette), card records, count, selected card, active page, and page theme overrides. DOM controls become a view of that state. Move each existing mutation path (control edits, card edits/operations, image loads, drag-photo updates, imports, randomise/samples/reset, page theme and duplication) to state update helpers, and make card records immutable on update so a past snapshot cannot be changed through an object alias. Keep rendering, export helpers, saved `{v, count, settings, cards}` payloads, and visible behavior unchanged. Land this refactor separately and verify it before adding history.
@@ -151,6 +149,34 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - No browser page or console errors were observed; title and paper settings were intact after reload.
 - Immutable card updates and image hydration resolve cards by stable identity, avoiding stale object references during asynchronous work.
 - No saved-data migration or payload shape change was introduced.
+
+### Implemented history behavior
+- `js/history.mjs` stores versioned snapshots by reference, shares unchanged card records/photos, coalesces same-control changes, caps undo history at 100, clears redo after a new action, and exposes labels/subscriptions for future draft-scoped history.
+- Sheet Editor captures all settings and card/page state. Undo/redo restore controls, custom palette, cards, preview, page toolbar, selected card, expanded card details, focus and scroll position, then schedule one normal debounced autosave. Zoom, accordion state, search, scroll, selection-only changes, menus, exports and print are not history actions.
+- Inputs/sliders/colors coalesce per control on change, pointer-up, blur or 600ms idle. Dial and photo drags coalesce per gesture. Batch operations create one step each.
+- Topbar Undo/Redo buttons are labelled with the action, disabled when empty, and remain within the sticky header on mobile. Ctrl/Cmd+Z and redo shortcuts are active outside text editing; editable fields retain native undo.
+- Delete, Reset All, Load Samples, JSON import and Randomise show an Undo toast. The separate Bulk Upload transfer now stays on that page and offers Undo/Open Editor; its single in-memory undo expires when leaving or reloading, per the owner's choice.
+- Saved payload remains `{v, count, settings, cards}`; no history is persisted.
+
+### History memory measurement
+- Test setup: 18 cards with distinct synthetic 256 KiB base64 data-URL payloads and 100 history actions (101 retained snapshots including current state).
+- Total unique photo payload: 6,291,918 bytes (about 6.00 MiB).
+- Serialized snapshot metadata/state without image strings: 52,604 bytes (about 51.4 KiB); measured retained V8 heap delta after GC: 65,992 bytes (about 64.4 KiB).
+- Naive full-state deep-copy comparison: estimated 635,552,701 bytes (about 606.11 MiB), calculated from the serialized full snapshot size multiplied by 101. This is an estimate, not allocated memory.
+
+### Phase 2 verification
+- `node tests/history.test.mjs`: coalescing, 100-entry limit, redo clearing, unchanged-card sharing, and future optional card fields passed.
+- Browser on isolated `127.0.0.1`: tested editor setting changes, count, title/card fields, photo crop, photo upload, card duplicate/delete/reorder, page duplication/theme, JSON import, Randomise, Load Samples, Reset All, Undo/Redo buttons and shortcuts, native text-field undo, reload clearing history with saved state intact.
+- Verified Undo restore preserves selected card, expanded card details, focused row control, and scroll position. Tested the 600ms text/slider coalescing and dial drag.
+- Bulk Upload: transfer Undo restored the previous saved sheet; Undo/Open Editor toast remained usable on mobile.
+- Sheet Editor, Theme Studio and Bulk Upload loaded without observed console errors. At 390px, all had no horizontal document overflow; Sheet Editor and Bulk Upload Undo controls/toast fit the viewport.
+- IndexedDB payload keys remain exactly `cards`, `count`, `settings`, and `v`.
+- Remaining manual checks: Phase 1 baseline exports were not captured in `.baseline/`, so unchanged SVG/PNG/PDF and real printer output parity still need manual verification. Later-phase border/stamp/export checks remain pending by design.
+
+## Manual approval and remaining checks
+- Owner approval is required before starting Phase 3.
+- The Bulk Upload transfer behavior was selected by the owner: stay on Bulk Upload and show Undo/Open Editor actions.
+- Manual export/printer parity remains unverified because no pre-change `.baseline/` exports are available.
 
 ### Approval gate
 - Design approved by the owner before implementation.
