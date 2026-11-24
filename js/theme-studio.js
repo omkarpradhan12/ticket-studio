@@ -136,9 +136,13 @@ function renderSavedList() {
     message(`Editing "${theme.config?.name || "theme"}". Save to update it.`);
   }));
   $("saved-list").querySelectorAll("[data-delete]").forEach(button => button.addEventListener("click", () => {
+    const target = getSavedCustomThemes().find(item => item.id === button.dataset.delete);
+    if (!target) return;
+    if (!window.confirm(`Delete "${target.config?.name || "Untitled theme"}"?`)) return;
     const next = getSavedCustomThemes().filter(item => item.id !== button.dataset.delete);
     saveCustomThemesList(next);
     if (editingId === button.dataset.delete) editingId = "";
+    populateCloneOptions();
     renderSavedList();
     message("Theme deleted.");
   }));
