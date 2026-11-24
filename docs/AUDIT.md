@@ -125,22 +125,22 @@ Photo area is X 17..153 and Y 16..`16 + 136 + D`, where `D = CH - 239`. `fitBox(
 - Stamps, mounts, crop marks and photo areas sit in separate groups and have independent indices/geometry.
 
 ## 9. Stamps
-- One primary stamp plus optional second rectangular stamp.
-- Controls: shape, size, primary text, year, second text, ink, accent-vs-fixed color, ink wear, and mixed shape.
-- Primary placement is deterministic-random inside the photo width and just below the photo area. Rotation is deterministic-random. No manual stamp position field exists.
+- Up to two stamps per card (`stamp` primary + optional `stamp2` rectangular stamp).
+- Controls: shape, size, primary text, year, second text, ink, accent-vs-fixed color, ink wear, mixed shape, plus Phase 7 `Move stamps` toolbar mode (mutually exclusive with `#drag`), snap toggle, and per-card rotary angle dial + scale controls.
+- Un-overridden stamps keep deterministic-random auto placement; per-card overrides live in optional `card.stampPos` / `card.stamp2Pos` (`{ x, y, r, scale }` in card-relative fractions of `CW`/`CH`), clamped to `[-0.04, 1.04]` with optional centre/margin snapping.
 - There are 15 named stamp shapes plus `mixed` and `none`.
-- Drag photos mode (`#drag`) adds transparent `.pp` rectangles on cards. `pointerdown` checks the card has a loaded image and intrinsic dimensions, captures screen-to-SVG scale from `getScreenCTM().a`, and updates card `px/py` during window pointermove. Pointerup/cancel calls `render()`. It supports mouse and touch through Pointer Events, subject to browser pointer capture support.
-- This is photo-only dragging, not stamps.
+- Drag photos mode (`#drag`) adds transparent `.pp` rectangles on cards; `Move stamps` adds `.st-ui` outlines, `.st-hit` drag/keyboard handles, and `.st-rot-hit` rotation knobs (stripped in exports and hidden in `@media print`). Both use `getScreenCTM()` and Pointer Events with `setPointerCapture`.
+- Photo mounts (`photoMounts`, up to 2): `0` Tape, `1` Pins, `2` Corners, `3` None, plus `4` Washi tape, `5` Brads, `6` Paperclip, `7` Staples, `8` Wax seal.
 
 ## 10. Global vs per-card
 - Global: paper, card size, cutter radius, crop/bleed/template/reg marks, global theme, title font, global doors/side labels, gradient angle/spread, custom quick palette, border/year/tear/filter/mount settings, NFC/serial/punch, stamp settings, texture/wear.
 - Per-page: `pageThemes[]` overrides the global theme.
-- Per-card: title, genre, place, year, code, photo, sampled HSL accent, photo zoom/X/Y, optional theme, stamp shape, stamp text, and optional `border` override (`card.border`).
-- Not currently per-card: stamp size/color/year/wear, title font, global doors/side, most texture/effects, manual stamp position (Phase 7).
+- Per-card: title, genre, place, year, code, photo, sampled HSL accent, photo zoom/X/Y, optional theme, stamp shape, stamp text, optional `border` (`card.border`), and optional stamp placements (`card.stampPos`, `card.stamp2Pos`).
+- Not currently per-card: stamp color/year/wear, title font, global doors/side, most texture/effects.
 
 ## 11. Card data model
 `blankCard()` fields: `title`, `genre`, `loc`, `year`, `code`, `img`, `imgUrl`, `corsLimited`, `h`, `s`.
-Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`, `border`.
+Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`, `border`, `stampPos`, `stamp2Pos`.
 - Saved in session payload `{v, count, settings, cards}` in IndexedDB/localStorage.
 - Bulk Import parses files, URLs, JSON, and CSV. JSON/CSV maps name/title/artist, genre, place/location/loc, year, abbreviation/abbr/code, and photo/photoUrl/image/url.
 - Bulk staged cards use the same shape and are appended/replaced in the session.
@@ -253,4 +253,9 @@ Browser checks used the existing browser harness; no Playwright dependency was a
 - Implemented `js/borders.mjs` with 16 border styles (`0..4` legacy exact fast-path, `5..15` appended), style-filtered customisation controls in a collapsed `Customise` fold, 16 live-themed visual picker swatches, named `localStorage` presets, per-card optional `card.border` overrides, JSON import/export support, and `#rnd` border style randomisation.
 - Local CSS, JS, module, test, and favicon references bumped uniformly to `?v=phase6`.
 - Verification: `node tests/borders.test.mjs`, `tests/history.test.mjs`, `tests/theme-studio-utils.test.mjs`, `tests/color-controls.test.mjs`, `tests/title-layout.test.html` (4 checks), and browser verification across Sheet Editor, Theme Studio, and Bulk Upload passed with 0 console errors, 0 duplicate DOM IDs, legacy v1 `Brackets` round-trip, 300 dpi PNG/PDF exports on filtered/gradient borders, print emulation at 210mm × 297mm, and 0 horizontal overflow at 390px.
-- Pre-existing Tarot observation (not introduced by Phase 6): `renderCard()` in `js/svg-engine.js` (from commit `84bcc50`) adds `+ D` inside `titleMarkup` while placing `${titleMarkup}` inside `<g transform="translate(0 ${D})">`, causing the card title on Tarot (`D = 52.4`) to double-offset downward below the bottom border. Left untouched per Phase 6 scope and safety rails; flagged for owner approval.
+- Pre-existing Tarot observation (not introduced by Phase 6): `renderCard()` in `js/svg-engine.js` (from commit `84bcc50`) adds `+ D` inside `titleMarkup` while placing `${titleMarkup}` inside `<g transform="translate(0 ${D})">`, causing the card title on Tarot (`D = 52.4`) to double-offset downward below the bottom border. Fixed in Phase 7 (`696cf73`) per owner Option A approval.
+
+## Phase 7 draggable stamps & extra mounts disposition
+- Implemented `js/stamps.mjs` (`resolveStampTransform`, `clampStampNorm`, `snapStampNorm`, `sanitizeStampOverride`) with optional `card.stampPos` and `card.stamp2Pos`, plus 5 extra photo mounts (`4` Washi tape, `5` Brads, `6` Paperclip, `7` Staples, `8` Wax seal) and the Tarot title `D` offset fix.
+- Wired `#move-stamps` (mutually exclusive with `#drag`), `#stamp-snap`, `#reset-all-stamps`, per-card rotary angle dial + scale controls, copy-to-page/all, keyboard arrow nudges, `.st-ui` export stripping, and `?v=phase7` cache bump.
+- Follow-up fix (`ced4597`) corrected `.closest("g[data-ci]:not(.st-ui)")` for second-stamp dragging and enlarged `.st-hit` (`92×92`) / `.st-rot-hit` (`r=44`) SVG hit regions for `>= 44 CSS px` touch targets at `390×844`. Browser re-verification of `ced4597` was paused at owner's request for the Stamp Shape Visual Picker proposal.

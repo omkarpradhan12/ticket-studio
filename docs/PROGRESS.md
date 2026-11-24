@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 7 (draggable stamps) & extra photo mounts — Step 1 design written, awaiting owner approval
-- Next approval: owner approval of the Phase 7 + photo mount design below before Step 2 implementation.
+- Current phase: Phase 7 implemented (`ced4597`); Visual Stamp Shape Picker & Customise proposal written — awaiting owner approval
+- Next approval: owner approval of the Visual Stamp Shape Picker & Customise proposal below (and re-verification of `ced4597` touch/second-stamp fixes) before proceeding.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -67,8 +67,8 @@
 | P5-04 | Optional card title scale | S | medium | done | b454575 | Owner approved optional `settings.titleScale`, 70-100% with an 85% default |
 | P6-01 | Customisable borders | L | high | done | 97892bb, 2c83c13, 14b8add | 16 styles (0..4 legacy + 5..15 new), visual picker, Customise fold, presets, per-card overrides, `#rnd` border randomisation |
 | P6-02 | Preserve old border render values | L | high | done | 97892bb | Exact legacy SVG fast-path verified for 0..4; legacy v1 sheet round-trip verified |
-| P7-01 | Per-card stamp position | L | high | todo | - | Step 1 design written; awaiting owner approval |
-| P7-02 | Stamp drag hit-test/touch/export/undo | L | high | todo | - | |
+| P7-01 | Per-card stamp position | L | high | done | 696cf73, 7b341db | Optional `stampPos`/`stamp2Pos` fractions, rotary angle dial, scale, copy/reset actions, 5 extra photo mounts, Tarot title fix |
+| P7-02 | Stamp drag hit-test/touch/export/undo | L | high | done | 7b341db, ced4597 | `Move stamps` mode, 1-step undo, `.st-ui` export stripping; `ced4597` fixed second-stamp hit-test & `>=44px` touch boxes (browser re-check paused for Stamp Picker design) |
 | P8-01 | Per-card Surprise me style overrides | L | high | todo | - | |
 | P8-02 | Surprise every card / one undo step | M | high | todo | - | |
 | P9-01 | Band search and match count | M | medium | todo | - | |
@@ -111,6 +111,11 @@
 - 97892bb Add customisable border styles and SVG renderer
 - 2c83c13 Add visual border picker and customise UI
 - 14b8add Wire border state, presets, per-card overrides, and phase6 cache version
+- 3f1dadb Document Phase 6 customisable borders completion
+- c4e5ce9 Design Phase 7 draggable stamps and extra photo mounts
+- 696cf73 Add stamp placement math, extra photo mounts, and Tarot title fix
+- 7b341db Wire Move stamps UI, rotation dials, touch drag, and phase7 cache
+- ced4597 Fix second-stamp pointer hit-testing and 44px touch targets
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -464,3 +469,58 @@ Every control below is practical in pure SVG with zero external dependencies, pr
 3. **Should we fix the pre-existing Tarot title double-`D` offset bug spotted in Phase 6?**
    - **Option A (Recommended)**: Fix `titleMarkup` in `js/svg-engine.js` (remove the redundant `+ D` inside `<g transform="translate(0 ${D})">`) alongside Step 2 so Tarot cards render titles inside the card cleanly. (Ticket size `D=0` is unaffected.)
    - **Option B**: Leave `titleMarkup` untouched for a separate fix.
+
+## Phase 7 implementation and verification
+- **Owner choices applied**: Option A (mutually exclusive `#move-stamps` and `#drag`); Option A with dials (rotary `[data-stamp-dial]` angle dial + numeric angle/scale controls in each card's `Photo & theme options` plus on-card `.st-rot-hit` rotation handle); Option A (fixed pre-existing Tarot `titleMarkup` double-`D` offset in `js/svg-engine.js`).
+- **Implemented (`js/stamps.mjs`, `js/svg-engine.js`, `js/app.js`, `js/export.js`, `index.html`, `css/app.css`)**:
+  - Added optional card-relative `card.stampPos` and `card.stamp2Pos` (`{ x, y, r, scale }`), clamped to `[-0.04, 1.04]` with optional centre/margin snapping (bypassed via `Alt`/`Shift` or `#stamp-snap`), preserving exact legacy auto-placement when absent.
+  - Added 5 extra photo mounts (`4` Washi tape, `5` Brads, `6` Paperclip, `7` Staples, `8` Wax seal) combinable up to 2 via `photoMounts`.
+  - Enabled `#move-stamps`, `.st-ui` drag/rotate overlays (stripped in `serializeSheetSvg` / `sheetCardPreviewSvg` and hidden in `@media print`), keyboard arrow/`Shift`+arrow nudges, `#reset-all-stamps` (Undo toast), `Reset stamp position`, `Copy to page`, `Copy to all cards`, and `?v=phase7` cache version.
+  - Follow-up commit `ced4597` fixed `.st-hit` / `.st-rot-hit` ancestor selection (`g[data-ci]:not(.st-ui)`) for second-stamp dragging and enlarged `.st-hit` (`92×92` SVG units) and `.st-rot-hit` (`r=44` with knob-vs-center distance disambiguation) so hit boxes exceed `44 CSS px` at `390×844`.
+- **Verification**:
+  - Node tests passed after `ced4597`: `node tests/stamps.test.mjs`, `tests/borders.test.mjs`, `tests/history.test.mjs`, `tests/theme-studio-utils.test.mjs`, `tests/color-controls.test.mjs`, `.mjs` syntax checks, and 160 unique HTML IDs.
+  - Browser check on `7b341db`: `index.html`, `theme-studio.html`, `bulk-import.html`, and `tests/title-layout.test.html` (4 passed) loaded with 0 console errors; verified mounts `4..8`, Tarot title placement inside card bounds (`y=199` above `y=214`), mutual exclusion between `#move-stamps` and `#drag`, clamping, snapping, rotary dial + numeric/scale controls, keyboard nudges, batch copy/reset + 1-step undo/redo, Ticket↔Tarot normalized placement parity, `#pvi` / 300 dpi PNG / 300 dpi PDF parity with 0 `.st-ui` overlays, and 0px stage scroll during stamp drag at `390×844`.
+  - Browser re-verification of `ced4597` (second-stamp pointer drag + `>=44px` touch measurements at `390×844`) was paused by the user's request for the Stamp Shape Visual Picker design below and will run right alongside it.
+
+## Proposal: Visual Stamp Shape picker & customisation (awaiting approval)
+
+### Goal
+Give **Stamp shape** in the **Effects** accordion the same visual, tactile UX as **Border style** in **Look**: a live-themed visual swatch picker followed by a collapsed **Customise** fold (with optional presets and per-card overrides).
+
+### 1. Visual Stamp Shape picker (replaces `<select id="sshape">`)
+- Replace `<select id="sshape">` with a 4-column responsive swatch grid (`#stamp-picker`, `role="radiogroup"`, keyboard arrow navigation), matching `#border-picker`.
+- **Existing keys preserved unchanged**: all 15 named shapes (`round`, `oval`, `rect`, `tri`, `shield`, `hex`, `diamond`, `seal`, `starburst`, `scallop`, `ticket`, `arch`, `ribbon`, `burst`, `cross`) plus `mixed` (collage icon) and `none` (dashed slash icon).
+- **Optional 6 new concert/music stamp shapes** appended to `STAMPS` (pure vector paths inside `[-20..20]` viewBox, clear text bounds `yr` / `nm` / `w`):
+  - `vinyl`: double-ring LP record with subtle centre groove arcs
+  - `pick`: rounded triangular guitar-pick silhouette
+  - `octagon`: bold chamfered octagon stop-badge
+  - `banner`: wide notched ticket/tour pennant banner
+  - `badge`: crest/shield with top star notch
+  - `bolt`: octagonal / angled rock-poster stamp frame with lightning accent
+- Each swatch renders a crisp live SVG (`viewBox="-24 -22 48 44"`) using the active theme's paper fill and resolved stamp ink (`stampAuto ? accent : stampColor`), using unique IDs (`st-sw-${key}`) with zero filter/DOM collisions.
+
+### 2. Collapsed `Customise` fold (only relevant controls shown)
+- Hidden for `none`; shows only applicable controls for the selected shape:
+  - **Ink style (`fillMode`)**: `Outline` (default, identical to legacy output), `Tinted fill` (12% ink wash inside outer stamp path), or `Solid badge` (solid ink fill with contrasting paper/light text).
+  - **Stroke weight (`weight`)**: `0.6× – 2.0×` (default `1.0×`).
+  - **Line pattern (`pattern`)**: `Solid` (default), `Dashed`, `Dotted`.
+  - **Ink opacity (`opacity`)**: `35% – 100%` (default `95%`, matching legacy `.95`).
+  - **Inner frame (`innerRing`)**: toggle on/off (default on).
+  - **Show year (`showYear`)**: toggle on/off (default on when stamp year is set).
+  - **Stamp ink wear**: `0 – 100` slider synced 2-way with `#wear` in Effects -> Advanced.
+- **Data model (optional fields only, backward compatible)**:
+  - Sheet-level customisations live in optional `settings.stampStyle` (omitted when at defaults); per-card overrides live in optional `card.stampStyle` alongside `card.sk`.
+  - Unmodified stamps take the exact legacy `mkS(...)` SVG path so existing saved sheets render byte-for-byte identically.
+- **Stamp presets & scope (mirroring Border presets)**:
+  - `ticketgen.stampPresets.v1` in `localStorage`: Save named preset, Apply to sheet, Apply to card #N, Apply to all cards, Reset defaults, and confirmed Delete.
+
+### Owner decisions needed before implementation
+1. **New stamp shapes**:
+   - **Option A (Recommended)**: Append the 6 new music/concert shapes (`vinyl`, `pick`, `octagon`, `banner`, `badge`, `bolt`) after the existing 15 + `mixed`/`none`.
+   - **Option B**: Keep only the existing 17 stamp shape options (`15` + `mixed` + `none`) with the new visual picker.
+2. **Stamp Customise & Presets scope**:
+   - **Option A (Recommended)**: Full parity with Borders — visual picker + `Customise` fold (`fillMode`, `weight`, `pattern`, `opacity`, `innerRing`, `showYear`, `wear`) + `localStorage` presets + `Apply to card #N` / `Apply to all cards`.
+   - **Option B**: Visual picker + `Customise` fold (sheet-level only; per-card stays shape/text/position only).
+3. **`#rnd` ("Randomise all")**:
+   - **Option A (Recommended)**: Include any newly added stamp shapes in `#rnd` (`Mixed` / random shape selection).
+   - **Option B**: Keep `#rnd` picking from the original 15 + `mixed` only.
