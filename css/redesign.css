@@ -188,6 +188,22 @@ label.fld {
   text-transform: uppercase;
   letter-spacing: 0.055em;
   font-size: 9.5px;
+  min-width: 0;
+}
+
+label.fld span.lbl-row {
+  align-items: flex-end;
+  gap: 6px;
+  line-height: 1.25;
+  min-height: 24px;
+}
+
+label.fld span.lbl-row .hint,
+label.fld span.lbl-row #pg {
+  min-width: 0;
+  text-align: right;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 input[type="text"],
