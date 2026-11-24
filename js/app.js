@@ -1,12 +1,55 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase5.2";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase5.2";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase5.2";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase5.2";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase5.2";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase5.2";
-import { History } from "./history.mjs?v=phase5.2";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase5.2";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase5.2";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase7.1";
+import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase7.1";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase7.1";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase7.1";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase7.1";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase7.1";
+import { History } from "./history.mjs?v=phase7.1";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase7.1";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase7.1";
+import {
+  BORDER_STYLES,
+  compactBorderOverrides,
+  getBorderPresets,
+  getBorderStyleMeta,
+  hasBorderOverrides,
+  renderBorderSwatchSvg,
+  resolveBorderConfig,
+  sanitizeBorderPatch,
+  saveBorderPresetsList,
+  uniquePresetName
+} from "./borders.mjs?v=phase7.1";
+import {
+  SKINDS,
+  STAMP_OPTIONS,
+  clampStampNorm,
+  clampStampScale,
+  compactStampStyle,
+  getStampPresets,
+  getStampShapeName,
+  hasStampStyleOverrides,
+  normalizeAngle,
+  renderStampSwatchSvg,
+  resolveStampStyle,
+  resolveStampTransform,
+  sanitizeStampOverride,
+  sanitizeStampStyle,
+  saveStampPresetsList,
+  snapStampNorm,
+  uniqueStampPresetName
+} from "./stamps.mjs?v=phase7.1";
+
+const MOUNT_NAMES = {
+  "0": "Tape",
+  "1": "Pins",
+  "2": "Corners",
+  "3": "None",
+  "4": "Washi tape",
+  "5": "Brads",
+  "6": "Paperclip",
+  "7": "Staples",
+  "8": "Wax seal"
+};
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
@@ -14,11 +57,11 @@ const HISTORY_LIMIT = 100;
 const SETTINGS_FIELDS = {
   sheetTitle: "sheet-title",
   style: "style", titleFont: "tfont", titleScale: "title-size", doors: "gdoors", side: "gside",
-  stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize", stampShape: "sshape",
+  stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize",
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
   grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc",
-  borderStyle: "design-border", yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
+  yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
 };
 const CHECK_FIELDS = {
   cropMarks: "marks", bleed: "bleed", nfc: "nfc", cutTemplate: "tpl",
@@ -35,14 +78,23 @@ const studioState = {
   activePage: 0,
   pageThemes: [],
   gradientAngle: SET0.gradientAngle,
+  borderStyle: SET0.borderStyle,
+  borderConfig: undefined,
+  stampShape: SET0.stampShape,
+  stampStyle: undefined,
   settings: { customTheme: { ...CUSTOM } }
 };
+let lastSwatchThemeKey = "";
+let lastStampSwatchKey = "";
 const cardIds = new WeakMap();
 let nextCardId = 0;
 let currentLayout;
 let renderFrame = 0;
 let saveTimer;
 let dragState = null;
+let stampDragState = null;
+let moveStampsMode = false;
+let selectedStampIndex = 0;
 let previewIndex = -1;
 let previousFocus = null;
 let historyReady = false;
@@ -85,6 +137,10 @@ function readSettings() {
   }
   for (const [key, id] of Object.entries(CHECK_FIELDS)) settings[key] = $(id).checked;
   settings.gradientAngle = studioState.gradientAngle;
+  settings.borderStyle = studioState.borderStyle;
+  if (studioState.borderConfig) settings.border = { ...studioState.borderConfig };
+  settings.stampShape = studioState.stampShape;
+  if (studioState.stampStyle) settings.stampStyle = { ...studioState.stampStyle };
   settings.customTheme = { ...studioState.settings.customTheme };
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
@@ -130,6 +186,20 @@ function applySettings(settings = {}) {
   if (settings.gradientAngle !== undefined && Number.isFinite(+settings.gradientAngle)) {
     studioState.gradientAngle = ((+settings.gradientAngle % 360) + 360) % 360;
   }
+  if (settings.borderStyle !== undefined) {
+    const styleId = Number.parseInt(settings.borderStyle, 10);
+    studioState.borderStyle = Number.isInteger(styleId) && styleId >= 0 && styleId < BORDER_STYLES.length ? styleId : 0;
+  }
+  studioState.borderConfig = settings.border && typeof settings.border === "object"
+    ? compactBorderOverrides(studioState.borderStyle, settings.border)
+    : undefined;
+  if (settings.stampShape !== undefined) {
+    const shapeId = String(settings.stampShape || "round");
+    studioState.stampShape = STAMP_OPTIONS.some(o => o.id === shapeId) ? shapeId : "round";
+  }
+  studioState.stampStyle = settings.stampStyle && typeof settings.stampStyle === "object"
+    ? compactStampStyle(settings.stampStyle)
+    : undefined;
   if (Array.isArray(settings.pageThemes)) studioState.pageThemes = settings.pageThemes.map(theme => String(theme || ""));
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
@@ -138,6 +208,8 @@ function applySettings(settings = {}) {
     const found = Object.keys(THEMES).find(key => THEMES[key].n.toLowerCase() === String(settings.style).toLowerCase());
     if (found) $("style").value = found;
   }
+  syncBorderControls();
+  syncStampControls();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -155,6 +227,7 @@ function renderConfig(one = false) {
     borderWear: settings.borderWear,
     stampSize: settings.stampSize,
     stampShape: settings.stampShape,
+    stampStyle: settings.stampStyle,
     stamp: settings.stamp,
     stampYear: settings.stampYear,
     stampColor: settings.stampColor,
@@ -172,6 +245,8 @@ function renderConfig(one = false) {
     nfc: settings.nfc,
     punchHole: settings.punchHole,
     borderStyle: settings.borderStyle,
+    border: settings.border,
+    borderScope: one ? "pv" : "",
     yearBadge: settings.yearBadge,
     tearStyle: settings.tearStyle,
     photoFilter: settings.photoFilter,
@@ -181,7 +256,10 @@ function renderConfig(one = false) {
     pageThemes: settings.pageThemes,
     doors: settings.doors,
     side: settings.side,
-    drag: $("drag").checked
+    drag: $("drag").checked,
+    moveStamps: moveStampsMode && !one,
+    selectedCard: studioState.selectedCard,
+    selectedStamp: selectedStampIndex
   };
 }
 
@@ -198,6 +276,8 @@ function captureSnapshot() {
       gradientAngle: studioState.gradientAngle,
       settings: {
         ...settings,
+        ...(settings.border ? { border: { ...settings.border } } : {}),
+        ...(settings.stampStyle ? { stampStyle: { ...settings.stampStyle } } : {}),
         customTheme: { ...settings.customTheme },
         photoMounts: settings.photoMounts.slice()
       }
@@ -375,6 +455,18 @@ function redo() {
   return result;
 }
 
+const BORDER_CONTROL_IDS = [
+  "bd-width", "bd-inset", "bd-opacity", "bd-linegap",
+  "bd-color-mode", "bd-color", "bd-pattern", "bd-dash", "bd-gap",
+  "bd-corner", "bd-corner-size", "bd-ornament", "bd-ornament-size",
+  "bd-wear", "bd-glow", "bd-inner", "bd-inner-width", "bd-inner-gap",
+  "bd-inner-color-mode", "bd-inner-color"
+];
+const STAMP_CONTROL_IDS = [
+  "st-fill-mode", "st-pattern", "st-weight", "st-opacity",
+  "st-wear", "st-inner-ring", "st-show-year"
+];
+
 function bindHistoryControlEvents() {
   const labels = {
     sheetTitle: "change sheet title",
@@ -386,7 +478,6 @@ function bindHistoryControlEvents() {
     stamp: "change stamp text",
     stampYear: "change stamp year",
     stampSize: "change stamp size",
-    stampShape: "change stamp shape",
     stampColor: "change stamp colour",
     stamp2: "change second stamp",
     stampWear: "change stamp wear",
@@ -399,7 +490,6 @@ function bindHistoryControlEvents() {
     edgeWear: "change edge wear",
     creases: "change paper creases",
     scuffs: "change surface scuffs",
-    borderStyle: "change border style",
     yearBadge: "change year badge",
     tearStyle: "change tear line",
     photoFilter: "change photo filter",
@@ -418,14 +508,361 @@ function bindHistoryControlEvents() {
   for (const [field, id] of Object.entries(SETTINGS_FIELDS)) controls.set(id, labels[field]);
   for (const [field, id] of Object.entries(CHECK_FIELDS)) controls.set(id, labels[field]);
   for (const key of CUSTOM_FIELDS) controls.set("ct_" + key, `change custom ${key} colour`);
+  for (const id of BORDER_CONTROL_IDS) controls.set(id, "customise border");
+  for (const id of STAMP_CONTROL_IDS) controls.set(id, "customise stamp");
   controls.forEach((label, id) => {
     const element = $(id);
     if (element) bindContinuousHistory(element, label, `setting:${id}`);
   });
   document.querySelectorAll("[data-quick-mount]").forEach(input => {
-    const name = ["Tape", "Pins", "Corners", "None"][Number(input.value)] || "mount";
+    const name = MOUNT_NAMES[input.value] || "mount";
     bindContinuousHistory(input, `toggle ${name.toLowerCase()} mount`, `mount:${input.value}`);
   });
+}
+
+function buildBorderPicker() {
+  const container = $("border-picker");
+  if (!container) return;
+  container.replaceChildren();
+  BORDER_STYLES.forEach(style => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "border-swatch";
+    btn.setAttribute("role", "radio");
+    btn.dataset.borderStyle = String(style.id);
+    btn.setAttribute("aria-checked", String(style.id === studioState.borderStyle));
+    btn.tabIndex = style.id === studioState.borderStyle ? 0 : -1;
+    btn.innerHTML = `<span class="border-swatch-svg"></span><span class="border-swatch-name">${escapeHtml(style.name)}</span>`;
+    container.append(btn);
+  });
+  lastSwatchThemeKey = "";
+  refreshBorderSwatches();
+}
+
+function refreshBorderSwatches() {
+  const container = $("border-picker");
+  if (!container) return;
+  const active = THEMES[$("style").value] || THEMES.cream;
+  const accent = active.fixed || "#ff5a36";
+  const key = `${active.bg || ""}|${active.ink || ""}|${accent}|${active.hi || ""}`;
+  if (key === lastSwatchThemeKey) return;
+  lastSwatchThemeKey = key;
+  container.querySelectorAll(".border-swatch").forEach(btn => {
+    const styleId = Number(btn.dataset.borderStyle);
+    btn.querySelector(".border-swatch-svg").innerHTML = renderBorderSwatchSvg(styleId, accent, active);
+  });
+}
+
+function syncBorderControls() {
+  const bwearEl = $("bwear");
+  const resolved = resolveBorderConfig({
+    borderStyle: studioState.borderStyle,
+    borderWear: bwearEl ? Number(bwearEl.value) : 35,
+    border: studioState.borderConfig
+  }, null);
+  const meta = getBorderStyleMeta(resolved.style);
+  const sup = meta.supports;
+
+  const activeLabel = $("border-style-active");
+  if (activeLabel) activeLabel.textContent = meta.name;
+
+  document.querySelectorAll("#border-picker .border-swatch").forEach(btn => {
+    const selected = Number(btn.dataset.borderStyle) === resolved.style;
+    btn.setAttribute("aria-checked", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+
+  const printNote = $("border-print-note");
+  if (printNote) {
+    printNote.textContent = meta.printNote || "";
+    printNote.hidden = !meta.printNote;
+  }
+  const noneNote = $("border-none-note");
+  if (noneNote) noneNote.hidden = meta.id !== 15;
+  const grid = $("border-controls-grid");
+  if (grid) grid.hidden = meta.id === 15;
+
+  const setVal = (id, value) => {
+    const el = $(id);
+    if (!el) return;
+    if (el.type === "checkbox") el.checked = Boolean(value);
+    else el.value = String(value);
+  };
+  setVal("bd-width", resolved.width);
+  setVal("bd-inset", resolved.inset);
+  setVal("bd-opacity", resolved.opacity);
+  setVal("bd-linegap", resolved.lineGap);
+  setVal("bd-color-mode", resolved.colorMode);
+  setVal("bd-color", resolved.color);
+  setVal("bd-pattern", resolved.pattern);
+  setVal("bd-dash", resolved.dash);
+  setVal("bd-gap", resolved.gap);
+  setVal("bd-corner", resolved.corner);
+  setVal("bd-corner-size", resolved.cornerSize);
+  setVal("bd-ornament", resolved.ornament);
+  setVal("bd-ornament-size", resolved.ornamentSize);
+  setVal("bd-wear", resolved.wear);
+  setVal("bd-glow", resolved.glow);
+  setVal("bd-inner", resolved.inner);
+  setVal("bd-inner-width", resolved.innerWidth);
+  setVal("bd-inner-gap", resolved.innerGap);
+  setVal("bd-inner-color-mode", resolved.innerColorMode);
+  setVal("bd-inner-color", resolved.innerColor);
+
+  $("bd-width-val").textContent = Number(resolved.width).toFixed(1);
+  $("bd-inset-val").textContent = Number(resolved.inset).toFixed(1);
+  $("bd-opacity-val").textContent = `${Math.round(resolved.opacity)}%`;
+  $("bd-linegap-val").textContent = Number(resolved.lineGap).toFixed(1);
+  $("bd-dash-val").textContent = String(resolved.dash);
+  $("bd-gap-val").textContent = String(resolved.gap);
+  $("bd-corner-size-val").textContent = String(resolved.cornerSize);
+  $("bd-ornament-size-val").textContent = String(resolved.ornamentSize);
+  $("bd-wear-val").textContent = `${Math.round(resolved.wear)}%`;
+  $("bd-glow-val").textContent = `${Math.round(resolved.glow)}%`;
+  $("bd-inner-width-val").textContent = Number(resolved.innerWidth).toFixed(1);
+  $("bd-inner-gap-val").textContent = Number(resolved.innerGap).toFixed(1);
+
+  const showGroup = (group, visible) => {
+    const el = document.querySelector(`[data-border-group="${group}"]`);
+    if (el) el.hidden = !visible;
+  };
+  showGroup("width", sup.width);
+  showGroup("inset", sup.inset);
+  showGroup("opacity", sup.opacity);
+  showGroup("lineGap", sup.lineGap);
+  showGroup("color", sup.color);
+  showGroup("customColor", sup.color && resolved.colorMode === "custom");
+  showGroup("pattern", sup.pattern);
+  showGroup("dash", sup.pattern && (resolved.pattern === "dashed" || resolved.pattern === "dashdot"));
+  showGroup("dashGap", sup.pattern && resolved.pattern !== "solid");
+  showGroup("corner", sup.corner);
+  showGroup("cornerSize", sup.corner && resolved.corner !== "square");
+  showGroup("ornament", sup.ornament);
+  showGroup("ornamentSize", sup.ornament && resolved.ornament !== "none");
+  showGroup("wear", sup.wear);
+  showGroup("glow", sup.glow);
+  showGroup("inner", sup.inner);
+
+  $("bd-inner-fields").hidden = !(sup.inner && resolved.inner);
+  $("bd-inner-color-wrap").hidden = !(sup.inner && resolved.inner && resolved.innerColorMode === "custom");
+
+  const metaEl = $("border-customise-meta");
+  if (metaEl) {
+    if (meta.id === 15) {
+      metaEl.textContent = "None";
+    } else if (hasBorderOverrides(resolved)) {
+      const tags = [`${Number(resolved.width).toFixed(1)}px`];
+      if (sup.corner && resolved.corner !== meta.defaults.corner) tags.push(resolved.corner);
+      if (resolved.ornament !== "none") tags.push(resolved.ornament);
+      if (resolved.inner) tags.push("+inner");
+      if (resolved.glow > 0 && resolved.glow !== meta.defaults.glow) tags.push("glow");
+      metaEl.textContent = tags.join(" · ");
+    } else {
+      metaEl.textContent = "Default";
+    }
+  }
+
+  const applySelBtn = $("bd-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
+  const activeEl = document.activeElement;
+  if (!activeEl?.classList?.contains("color-hex") || !$("border-customise")?.contains(activeEl)) {
+    syncColorHexFields($("border-customise"));
+  }
+}
+
+function readBorderControlsIntoState(syncBwear = true) {
+  const raw = {
+    width: Number($("bd-width").value),
+    inset: Number($("bd-inset").value),
+    opacity: Number($("bd-opacity").value),
+    lineGap: Number($("bd-linegap").value),
+    colorMode: $("bd-color-mode").value,
+    color: $("bd-color").value,
+    pattern: $("bd-pattern").value,
+    dash: Number($("bd-dash").value),
+    gap: Number($("bd-gap").value),
+    corner: $("bd-corner").value,
+    cornerSize: Number($("bd-corner-size").value),
+    ornament: $("bd-ornament").value,
+    ornamentSize: Number($("bd-ornament-size").value),
+    glow: Number($("bd-glow").value),
+    inner: $("bd-inner").checked,
+    innerWidth: Number($("bd-inner-width").value),
+    innerGap: Number($("bd-inner-gap").value),
+    innerColorMode: $("bd-inner-color-mode").value,
+    innerColor: $("bd-inner-color").value
+  };
+  studioState.borderConfig = compactBorderOverrides(studioState.borderStyle, raw);
+  if (syncBwear && $("bwear") && $("bd-wear")) {
+    $("bwear").value = $("bd-wear").value;
+  }
+  syncBorderControls();
+  scheduleRender();
+}
+
+function populateBorderPresets(selectedId = "") {
+  const select = $("bd-preset-select");
+  if (!select) return;
+  const presets = getBorderPresets();
+  select.innerHTML = `<option value="">Saved presets…</option>${presets.map(p =>
+    `<option value="${escapeHtml(p.id)}"${p.id === selectedId ? " selected" : ""}>${escapeHtml(p.name)} (${escapeHtml(getBorderStyleMeta(p.border.style).name)})</option>`
+  ).join("")}`;
+  syncPresetButtons();
+}
+
+function syncPresetButtons() {
+  const select = $("bd-preset-select");
+  if (!select) return;
+  const hasSelection = Boolean(select.value);
+  $("bd-preset-apply").disabled = !hasSelection;
+  $("bd-preset-apply-card").disabled = !hasSelection;
+  $("bd-preset-delete").disabled = !hasSelection;
+}
+
+function selectBorderStyle(styleId) {
+  const nextId = Math.max(0, Math.min(BORDER_STYLES.length - 1, Number(styleId) || 0));
+  if (nextId === studioState.borderStyle) return;
+  studioState.borderStyle = nextId;
+  studioState.borderConfig = undefined;
+  syncBorderControls();
+  recordDiscrete("change border style");
+  render();
+}
+
+function buildStampPicker() {
+  const container = $("stamp-picker");
+  if (!container) return;
+  container.replaceChildren();
+  STAMP_OPTIONS.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "border-swatch stamp-swatch";
+    btn.setAttribute("role", "radio");
+    btn.dataset.stampShape = opt.id;
+    btn.setAttribute("aria-checked", String(opt.id === studioState.stampShape));
+    btn.tabIndex = opt.id === studioState.stampShape ? 0 : -1;
+    btn.innerHTML = `<span class="border-swatch-svg"></span><span class="border-swatch-name">${escapeHtml(opt.name)}</span>`;
+    container.append(btn);
+  });
+  lastStampSwatchKey = "";
+  refreshStampSwatches();
+}
+
+function refreshStampSwatches() {
+  const container = $("stamp-picker");
+  if (!container) return;
+  const active = THEMES[$("style").value] || THEMES.cream;
+  const accent = $("sauto")?.checked ? (active.fixed || "#ff5a36") : ($("scol")?.value || "#d9322f");
+  const style = resolveStampStyle({ stampShape: studioState.stampShape, stampStyle: studioState.stampStyle }, null);
+  const key = `${active.bg || ""}|${active.ink || ""}|${accent}|${JSON.stringify(style)}`;
+  if (key === lastStampSwatchKey) return;
+  lastStampSwatchKey = key;
+  container.querySelectorAll(".stamp-swatch").forEach(btn => {
+    const shapeKey = btn.dataset.stampShape;
+    btn.querySelector(".border-swatch-svg").innerHTML = renderStampSwatchSvg(shapeKey, accent, active, style);
+  });
+}
+
+function syncStampControls() {
+  const wearEl = $("wear");
+  const resolved = resolveStampStyle({
+    stampShape: studioState.stampShape,
+    stampStyle: studioState.stampStyle
+  }, null);
+  const wearVal = wearEl ? Number(wearEl.value) : 35;
+
+  const activeLabel = $("stamp-shape-active");
+  if (activeLabel) activeLabel.textContent = getStampShapeName(studioState.stampShape);
+
+  document.querySelectorAll("#stamp-picker .stamp-swatch").forEach(btn => {
+    const selected = btn.dataset.stampShape === studioState.stampShape;
+    btn.setAttribute("aria-checked", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+
+  const isNone = studioState.stampShape === "none";
+  const noneNote = $("stamp-none-note");
+  if (noneNote) noneNote.hidden = !isNone;
+  const grid = $("stamp-controls-grid");
+  if (grid) grid.hidden = isNone;
+
+  if ($("st-fill-mode")) $("st-fill-mode").value = resolved.fillMode;
+  if ($("st-pattern")) $("st-pattern").value = resolved.pattern;
+  if ($("st-weight")) $("st-weight").value = String(resolved.weight);
+  if ($("st-opacity")) $("st-opacity").value = String(resolved.opacity);
+  if ($("st-wear")) $("st-wear").value = String(wearVal);
+  if ($("st-inner-ring")) $("st-inner-ring").checked = Boolean(resolved.innerRing);
+  if ($("st-show-year")) $("st-show-year").checked = Boolean(resolved.showYear);
+
+  if ($("st-weight-val")) $("st-weight-val").textContent = `${Number(resolved.weight).toFixed(1)}×`;
+  if ($("st-opacity-val")) $("st-opacity-val").textContent = `${Math.round(resolved.opacity)}%`;
+  if ($("st-wear-val")) $("st-wear-val").textContent = `${Math.round(wearVal)}%`;
+
+  const metaEl = $("stamp-customise-meta");
+  if (metaEl) {
+    if (isNone) {
+      metaEl.textContent = "None";
+    } else if (hasStampStyleOverrides(resolved)) {
+      const tags = [];
+      if (resolved.fillMode !== "outline") tags.push(resolved.fillMode);
+      if (resolved.weight !== 1) tags.push(`${Number(resolved.weight).toFixed(1)}×`);
+      if (resolved.pattern !== "solid") tags.push(resolved.pattern);
+      if (resolved.opacity !== 95) tags.push(`${resolved.opacity}%`);
+      if (!resolved.innerRing) tags.push("no inner");
+      if (!resolved.showYear) tags.push("no year");
+      metaEl.textContent = tags.join(" · ");
+    } else {
+      metaEl.textContent = "Default";
+    }
+  }
+
+  const applySelBtn = $("st-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
+}
+
+function readStampControlsIntoState(syncWear = true) {
+  const raw = {
+    fillMode: $("st-fill-mode").value,
+    pattern: $("st-pattern").value,
+    weight: Number($("st-weight").value),
+    opacity: Number($("st-opacity").value),
+    innerRing: $("st-inner-ring").checked,
+    showYear: $("st-show-year").checked
+  };
+  studioState.stampStyle = compactStampStyle(raw);
+  if (syncWear && $("wear") && $("st-wear")) {
+    $("wear").value = $("st-wear").value;
+  }
+  syncStampControls();
+  refreshStampSwatches();
+  scheduleRender();
+}
+
+function selectStampShape(shapeKey) {
+  if (!STAMP_OPTIONS.some(o => o.id === shapeKey) || shapeKey === studioState.stampShape) return;
+  studioState.stampShape = shapeKey;
+  syncStampControls();
+  recordDiscrete("change stamp shape");
+  render();
+}
+
+function populateStampPresets(selectedId = "") {
+  const select = $("st-preset-select");
+  if (!select) return;
+  const presets = getStampPresets();
+  select.innerHTML = `<option value="">Saved presets…</option>${presets.map(p =>
+    `<option value="${escapeHtml(p.id)}"${p.id === selectedId ? " selected" : ""}>${escapeHtml(p.name)} (${escapeHtml(getStampShapeName(p.stamp.shape))})</option>`
+  ).join("")}`;
+  syncStampPresetButtons();
+}
+
+function syncStampPresetButtons() {
+  const select = $("st-preset-select");
+  if (!select) return;
+  const hasSelection = Boolean(select.value);
+  $("st-preset-apply").disabled = !hasSelection;
+  $("st-preset-apply-card").disabled = !hasSelection;
+  $("st-preset-delete").disabled = !hasSelection;
 }
 
 function isTextEditingTarget(target) {
@@ -436,11 +873,139 @@ function isTextEditingTarget(target) {
 }
 
 function updateMountStatus() {
-  const names = { "0": "Tape", "1": "Pins", "2": "Corners", "3": "None" };
   const checked = [...document.querySelectorAll("[data-quick-mount]:checked")];
   $("quick-mount-status").textContent = checked.length
-    ? `Active mounts: ${checked.map(element => names[element.value]).join(" + ")}`
+    ? `Active mounts: ${checked.map(element => MOUNT_NAMES[element.value] || "Mount").join(" + ")}`
     : "Active mounts: None";
+}
+
+function stampKeyFor(stampIndex) {
+  return stampIndex === 1 ? "stamp2Pos" : "stampPos";
+}
+
+function resolveCardStamp(index, stampIndex = 0) {
+  const card = studioState.cards[index];
+  if (!card) return null;
+  const CH = currentLayout?.CH || 239;
+  const stampSize = Number($("ssize")?.value) || 100;
+  return resolveStampTransform({
+    index,
+    stampIndex,
+    CW,
+    CH,
+    stampSize,
+    override: card[stampKeyFor(stampIndex)]
+  });
+}
+
+function syncCardStampRow(index) {
+  const row = $("rows").children[index];
+  if (!row) return;
+  const box = row.querySelector(".card-stamp-pos");
+  if (!box) return;
+  const hasSecond = Boolean($("gs2")?.value.trim());
+  const targetSelect = box.querySelector("[data-stamp-target]");
+  const targetWrap = box.querySelector("[data-stamp-target-wrap]");
+  if (!hasSecond && selectedStampIndex === 1) selectedStampIndex = 0;
+  if (targetWrap) targetWrap.hidden = !hasSecond;
+  if (targetSelect) targetSelect.value = String(selectedStampIndex);
+
+  const st = resolveCardStamp(index, selectedStampIndex);
+  if (!st) return;
+  const card = studioState.cards[index];
+  const hasOverride = Boolean(card?.[stampKeyFor(selectedStampIndex)]);
+  const angleDeg = Math.round(st.r);
+  const scalePct = Math.round(st.mult * 100);
+
+  const dial = box.querySelector("[data-stamp-dial]");
+  const needle = box.querySelector("[data-stamp-needle]");
+  const rotInput = box.querySelector("[data-stamp-rot]");
+  const scaleRange = box.querySelector("[data-stamp-scale-range]");
+  const scaleInput = box.querySelector("[data-stamp-scale]");
+  const posLabel = box.querySelector("[data-stamp-pos-label]");
+  const resetBtn = box.querySelector("[data-action='reset-stamp']");
+
+  if (needle) needle.style.transform = `rotate(${angleDeg}deg)`;
+  if (dial) dial.setAttribute("aria-valuenow", String(angleDeg));
+  if (rotInput && document.activeElement !== rotInput) rotInput.value = String(angleDeg);
+  if (scaleRange) scaleRange.value = String(scalePct);
+  if (scaleInput && document.activeElement !== scaleInput) scaleInput.value = String(scalePct);
+  if (posLabel) {
+    posLabel.textContent = hasOverride
+      ? `Custom · ${Math.round(st.nx * 100)}% × ${Math.round(st.ny * 100)}%`
+      : `Auto · ${Math.round(st.nx * 100)}% × ${Math.round(st.ny * 100)}%`;
+  }
+  if (resetBtn) resetBtn.disabled = !(card?.stampPos || card?.stamp2Pos);
+}
+
+function updateSnapGuides(cardGroup, snapInfo) {
+  if (!cardGroup) return;
+  cardGroup.querySelectorAll(".st-snap-guide").forEach(node => node.remove());
+  if (!snapInfo || (!snapInfo.snappedX && !snapInfo.snappedY)) return;
+  const CH = currentLayout?.CH || 239;
+  const ns = "http://www.w3.org/2000/svg";
+  if (snapInfo.snappedX && snapInfo.snapPxX !== null) {
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("class", "st-snap-guide");
+    line.setAttribute("x1", snapInfo.snapPxX.toFixed(1));
+    line.setAttribute("y1", "0");
+    line.setAttribute("x2", snapInfo.snapPxX.toFixed(1));
+    line.setAttribute("y2", String(CH));
+    cardGroup.append(line);
+  }
+  if (snapInfo.snappedY && snapInfo.snapPxY !== null) {
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("class", "st-snap-guide");
+    line.setAttribute("x1", "0");
+    line.setAttribute("y1", snapInfo.snapPxY.toFixed(1));
+    line.setAttribute("x2", String(CW));
+    line.setAttribute("y2", snapInfo.snapPxY.toFixed(1));
+    cardGroup.append(line);
+  }
+}
+
+function patchLiveStampDom(index, si, snapInfo = null) {
+  const st = resolveCardStamp(index, si);
+  if (!st) return;
+  const stampEl = $(`st${si}-${index}`);
+  if (stampEl) {
+    stampEl.setAttribute("transform", `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)}) scale(${Number(st.scale.toFixed(3))})`);
+  }
+  const uiEl = $("sheets")?.querySelector(`.st-ui[data-ci="${index}"][data-si="${si}"]`);
+  if (uiEl) {
+    uiEl.setAttribute("transform", `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})`);
+    const hit = uiEl.querySelector(".st-hit");
+    if (hit) hit.setAttribute("aria-valuetext", `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`);
+  }
+  const cardGroup = $("sheets")?.querySelector(`.sheet [data-ci="${index}"]`);
+  updateSnapGuides(cardGroup, snapInfo);
+  syncCardStampRow(index);
+}
+
+function copyStampPlacement(sourceIndex, targetIndices, label) {
+  const src = studioState.cards[sourceIndex];
+  if (!src) return;
+  const st0 = resolveCardStamp(sourceIndex, 0);
+  const stampPos = src.stampPos
+    ? sanitizeStampOverride(src.stampPos)
+    : sanitizeStampOverride({ x: st0.nx, y: st0.ny, r: st0.r, scale: 1 });
+  const hasSecond = Boolean($("gs2")?.value.trim());
+  const st1 = hasSecond ? resolveCardStamp(sourceIndex, 1) : null;
+  const stamp2Pos = src.stamp2Pos
+    ? sanitizeStampOverride(src.stamp2Pos)
+    : (st1 ? sanitizeStampOverride({ x: st1.nx, y: st1.ny, r: st1.r, scale: 1 }) : undefined);
+
+  const targetSet = new Set(targetIndices);
+  studioState.cards = studioState.cards.map((card, i) => {
+    if (!targetSet.has(i) || i === sourceIndex) return card;
+    const next = { ...card, stampPos: { ...stampPos } };
+    if (stamp2Pos) next.stamp2Pos = { ...stamp2Pos };
+    cardIds.set(next, cardIdentity(card));
+    return next;
+  });
+  recordDiscrete(label);
+  buildRows();
+  render();
 }
 
 function scheduleRender() {
@@ -496,11 +1061,27 @@ function render() {
     ? "Drag the dial or use arrow keys to set the angle."
     : "Choose a gradient theme to enable the angle control.";
   syncPageTools(pages);
+  refreshBorderSwatches();
+  refreshStampSwatches();
+  const moveBtn = $("move-stamps");
+  if (moveBtn) moveBtn.setAttribute("aria-pressed", String(moveStampsMode));
+  const snapWrap = $("stamp-snap-wrap");
+  if (snapWrap) snapWrap.hidden = !moveStampsMode;
+  const resetAllStampsBtn = $("reset-all-stamps");
+  if (resetAllStampsBtn) {
+    const anyStampOverride = activeCards.some(c => Boolean(c.stampPos || c.stamp2Pos));
+    resetAllStampsBtn.hidden = !(moveStampsMode || anyStampOverride);
+  }
+  const applySelBtn = $("bd-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
+  const applyStBtn = $("st-apply-selected");
+  if (applyStBtn) applyStBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === studioState.selectedCard);
     row.setAttribute("aria-expanded", String(i === studioState.selectedCard));
     if (i === studioState.selectedCard) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
+    syncCardStampRow(i);
   });
   if (!$("pv").hidden) refreshPreview();
   if (historyReady) history.refresh(captureSnapshot());
@@ -510,6 +1091,10 @@ function render() {
 function selectCard(index, scroll = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
+  const applySelBtn = $("bd-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${index + 1}`;
+  const applyStBtn = $("st-apply-selected");
+  if (applyStBtn) applyStBtn.textContent = `Apply to card #${index + 1}`;
   if (historyReady) history.refresh(captureSnapshot());
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === index);
@@ -517,6 +1102,13 @@ function selectCard(index, scroll = false) {
     if (i === index) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
   });
+  if (moveStampsMode) {
+    $("sheets")?.querySelectorAll(".st-ui").forEach(el => {
+      const sel = Number(el.dataset.ci) === index && Number(el.dataset.si) === selectedStampIndex;
+      el.classList.toggle("is-selected", sel);
+    });
+  }
+  syncCardStampRow(index);
   if (scroll) $("rows").children[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -531,7 +1123,7 @@ function buildRows() {
     const imageUrl = card.imgUrl || (String(card.img || "").startsWith("http") ? card.img : "");
     const genre = String(card.genre || "");
     const themeOptions = `<option value="">Same as sheet</option>${Object.entries(THEMES).map(([key, theme]) => `<option value="${key}"${card.theme === key ? " selected" : ""}>${escapeHtml(theme.n)}</option>`).join("")}`;
-    const stampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, key[0].toUpperCase() + key.slice(1)]), ["mixed", "Mixed"]]
+    const stampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
       .map(([value, name]) => `<option value="${value}"${(card.sk || "") === value ? " selected" : ""}>${name}</option>`).join("");
     row.innerHTML = `
       <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
@@ -570,6 +1162,40 @@ function buildRows() {
             <label><span>Theme</span><select data-option="theme">${themeOptions}</select></label>
             <label><span>Stamp</span><select data-option="sk">${stampOptions}</select></label>
             <label><span>Stamp text</span><input type="text" data-option="stx" placeholder="Same as sheet" value="${escapeHtml(card.stx || "")}"></label>
+            <div class="card-border-row">
+              <span>${card.border ? `Border: Custom (${escapeHtml(getBorderStyleMeta(card.border.style ?? studioState.borderStyle).name)})` : "Border: Same as sheet"}</span>
+              ${card.border ? `<button class="g sm" type="button" data-action="reset-border">Use sheet border</button>` : ""}
+            </div>
+            ${card.sk || card.stampStyle ? `<div class="card-border-row"><span>Stamp look: Custom (${escapeHtml(getStampShapeName(card.sk || studioState.stampShape))})</span><button class="g sm" type="button" data-action="reset-stamp-style">Use sheet stamp</button></div>` : ""}
+            <div class="card-stamp-pos">
+              <div class="card-stamp-header">
+                <span>Stamp placement</span>
+                <span class="hint" data-stamp-pos-label>Auto</span>
+              </div>
+              <label data-stamp-target-wrap hidden><span>Edit stamp</span><select data-stamp-target><option value="0">Primary stamp</option><option value="1">Second stamp</option></select></label>
+              <div class="card-stamp-dials">
+                <div class="card-stamp-dial-wrap">
+                  <div class="dial stamp-dial" data-stamp-dial role="slider" tabindex="0" aria-label="Card ${index + 1} stamp angle" aria-valuemin="-180" aria-valuemax="180" aria-valuenow="0">
+                    <i data-stamp-needle></i><b></b>
+                  </div>
+                  <div class="card-stamp-num-col">
+                    <label><span>Angle (°)</span><input type="number" min="-180" max="180" step="1" value="0" data-stamp-rot aria-label="Card ${index + 1} stamp angle degrees"></label>
+                  </div>
+                </div>
+                <div class="card-stamp-scale-wrap">
+                  <label><span>Scale (%)</span></label>
+                  <div class="card-stamp-scale-row">
+                    <input type="range" min="40" max="250" step="5" value="100" data-stamp-scale-range aria-label="Card ${index + 1} stamp scale slider">
+                    <input type="number" min="40" max="250" step="5" value="100" data-stamp-scale aria-label="Card ${index + 1} stamp scale percent">
+                  </div>
+                </div>
+              </div>
+              <div class="card-stamp-actions">
+                <button class="g sm" type="button" data-action="reset-stamp">Reset stamp position</button>
+                <button class="g sm" type="button" data-action="copy-stamp-page">Copy to page</button>
+                <button class="g sm" type="button" data-action="copy-stamp-all">Copy to all cards</button>
+              </div>
+            </div>
           </details>
         </div>
       </div>`;
@@ -637,6 +1263,94 @@ function buildRows() {
       scheduleRender();
     });
     bindContinuousHistory(row.querySelector("[data-accent]"), "change card accent colour", `card:${index}:accent`);
+
+    const applyStampEdit = (si, patch) => {
+      const st = resolveCardStamp(index, si);
+      const current = studioState.cards[index]?.[stampKeyFor(si)];
+      const next = sanitizeStampOverride({
+        x: current?.x ?? st.nx,
+        y: current?.y ?? st.ny,
+        r: current?.r ?? st.r,
+        scale: current?.scale ?? st.mult,
+        ...patch
+      });
+      updateCard(index, { [stampKeyFor(si)]: next });
+      patchLiveStampDom(index, si);
+      scheduleRender();
+    };
+
+    row.querySelector("[data-stamp-target]")?.addEventListener("change", event => {
+      selectedStampIndex = Number(event.target.value) === 1 ? 1 : 0;
+      selectCard(index);
+    });
+
+    const stampDial = row.querySelector("[data-stamp-dial]");
+    if (stampDial) {
+      const stampAngleFromEvent = event => {
+        const rect = stampDial.getBoundingClientRect();
+        return Math.atan2(event.clientX - (rect.left + rect.width / 2), -(event.clientY - (rect.top + rect.height / 2))) * 180 / Math.PI;
+      };
+      stampDial.addEventListener("pointerdown", event => {
+        stampDial.setPointerCapture(event.pointerId);
+        stampDial.dataset.dragging = "true";
+        const rawAngle = stampAngleFromEvent(event);
+        const angle = normalizeAngle(event.shiftKey ? rawAngle : Math.round(rawAngle / 5) * 5);
+        applyStampEdit(selectedStampIndex, { r: angle });
+        recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+      });
+      stampDial.addEventListener("pointermove", event => {
+        if (!stampDial.dataset.dragging) return;
+        const rawAngle = stampAngleFromEvent(event);
+        const angle = normalizeAngle(event.shiftKey ? rawAngle : Math.round(rawAngle / 5) * 5);
+        applyStampEdit(selectedStampIndex, { r: angle });
+        recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+      });
+      ["pointerup", "pointercancel"].forEach(name => stampDial.addEventListener(name, () => {
+        if (!stampDial.dataset.dragging) return;
+        delete stampDial.dataset.dragging;
+        finishContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+      }));
+      stampDial.addEventListener("keydown", event => {
+        const step = event.shiftKey ? 15 : 5;
+        const delta = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step }[event.key];
+        if (delta !== undefined) {
+          event.preventDefault();
+          const st = resolveCardStamp(index, selectedStampIndex);
+          applyStampEdit(selectedStampIndex, { r: normalizeAngle(st.r + delta) });
+          recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          applyStampEdit(selectedStampIndex, { r: 0 });
+          recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+        }
+      });
+    }
+
+    const rotNum = row.querySelector("[data-stamp-rot]");
+    if (rotNum) {
+      rotNum.addEventListener("input", () => {
+        if (rotNum.value === "" || rotNum.value === "-") return;
+        applyStampEdit(selectedStampIndex, { r: normalizeAngle(Number(rotNum.value)) });
+      });
+      bindContinuousHistory(rotNum, "rotate stamp", `card:${index}:stamp-rot`);
+    }
+
+    const scaleRange = row.querySelector("[data-stamp-scale-range]");
+    const scaleNum = row.querySelector("[data-stamp-scale]");
+    if (scaleRange) {
+      scaleRange.addEventListener("input", () => {
+        applyStampEdit(selectedStampIndex, { scale: clampStampScale(Number(scaleRange.value) / 100) });
+      });
+      bindContinuousHistory(scaleRange, "scale stamp", `card:${index}:stamp-scale`);
+    }
+    if (scaleNum) {
+      scaleNum.addEventListener("input", () => {
+        const val = Number(scaleNum.value);
+        if (!Number.isFinite(val) || val < 20) return;
+        applyStampEdit(selectedStampIndex, { scale: clampStampScale(val / 100) });
+      });
+      bindContinuousHistory(scaleNum, "scale stamp", `card:${index}:stamp-scale`);
+    }
     row.querySelector("[data-action='load-url']").addEventListener("click", async () => {
       const url = row.querySelector("[data-url]").value.trim();
       await setImage(index, () => processImageUrl(url));
@@ -684,10 +1398,57 @@ function buildRows() {
         recordDiscrete("reset photo crop");
         buildRows();
         render();
+      } else if (action === "reset-border") {
+        const current = studioState.cards[index];
+        if (current && current.border) {
+          const { border: _removed, ...rest } = current;
+          const next = { ...rest };
+          cardIds.set(next, cardIdentity(current));
+          studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+          recordDiscrete("reset card border");
+          buildRows();
+          render();
+        }
+      } else if (action === "reset-stamp-style") {
+        const current = studioState.cards[index];
+        if (current && (current.sk || current.stampStyle)) {
+          const { stampStyle: _removed, ...rest } = current;
+          const next = { ...rest, sk: "" };
+          cardIds.set(next, cardIdentity(current));
+          studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+          recordDiscrete("reset card stamp");
+          buildRows();
+          render();
+          message(`Reset card #${index + 1} stamp to sheet default.`);
+        }
+      } else if (action === "reset-stamp") {
+        const current = studioState.cards[index];
+        if (current && (current.stampPos || current.stamp2Pos)) {
+          const { stampPos: _p1, stamp2Pos: _p2, ...rest } = current;
+          const next = { ...rest };
+          cardIds.set(next, cardIdentity(current));
+          studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+          recordDiscrete("reset stamp position");
+          buildRows();
+          render();
+          message(`Reset stamp position for card #${index + 1}.`);
+        }
+      } else if (action === "copy-stamp-page") {
+        const per = currentLayout?.PER || 9;
+        const pageStart = Math.floor(index / per) * per;
+        const pageEnd = Math.min(studioState.count, pageStart + per);
+        const indices = Array.from({ length: pageEnd - pageStart }, (_, k) => pageStart + k);
+        copyStampPlacement(index, indices, "copy stamp placement to page");
+        message(`Copied stamp placement to page ${Math.floor(index / per) + 1}.`);
+      } else if (action === "copy-stamp-all") {
+        const indices = Array.from({ length: studioState.count }, (_, k) => k);
+        copyStampPlacement(index, indices, "copy stamp placement to all cards");
+        message("Copied stamp placement to all cards.");
       }
       button.closest(".card-menu")?.removeAttribute("open");
     }));
     $("rows").append(row);
+    syncCardStampRow(index);
   });
 }
 
@@ -777,6 +1538,10 @@ async function importJson(text) {
       theme: String(item.theme || ""),
       sk: String(item.stampShape || ""),
       stx: String(item.stampText || ""),
+      ...(item.border && typeof item.border === "object" ? { border: sanitizeBorderPatch(item.border) } : {}),
+      ...(item.stampStyle && typeof item.stampStyle === "object" ? { stampStyle: sanitizeStampStyle(item.stampStyle) } : {}),
+      ...(item.stampPos && typeof item.stampPos === "object" ? { stampPos: sanitizeStampOverride(item.stampPos) } : {}),
+      ...(item.stamp2Pos && typeof item.stamp2Pos === "object" ? { stamp2Pos: sanitizeStampOverride(item.stamp2Pos) } : {}),
       autoAccent: !accent,
       ...(accent || {})
     };
@@ -914,7 +1679,8 @@ function loadSamples() {
 function randomise() {
   const themeKeys = Object.keys(THEMES).filter(key => key !== "custom");
   $("style").value = themeKeys[Math.floor(Math.random() * themeKeys.length)];
-  $("sshape").value = [...Object.keys(STAMPS), "mixed"][Math.floor(Math.random() * (Object.keys(STAMPS).length + 1))];
+  studioState.stampShape = [...SKINDS, "mixed"][Math.floor(Math.random() * (SKINDS.length + 1))];
+  studioState.stampStyle = undefined;
   $("wear").value = 15 + Math.floor(Math.random() * 60);
   $("bwear").value = 15 + Math.floor(Math.random() * 60);
   $("ssize").value = 50 + 25 * Math.floor(Math.random() * 9);
@@ -923,9 +1689,13 @@ function randomise() {
   $("tcr").value = Math.random() > .5 ? Math.floor(Math.random() * 50) : 0;
   $("tsc").value = Math.random() > .5 ? Math.floor(Math.random() * 40) : 0;
   $("gspread").value = 25 + Math.floor(Math.random() * 45);
+  studioState.borderStyle = Math.floor(Math.random() * (BORDER_STYLES.length - 1));
+  studioState.borderConfig = undefined;
+  syncBorderControls();
+  syncStampControls();
   setGradientAngle(Math.floor(Math.random() * 24) * 15, false);
   recordDiscrete("randomise styling");
-  message("Randomised theme and surface details.");
+  message("Randomised theme, border, stamp and surface details.");
   showUndoToast("Sheet styling randomised.");
 }
 
@@ -954,15 +1724,21 @@ function sheetCardPreviewSvg(index) {
   if (!source) return previewSvg(index);
   const clone = source.cloneNode(true);
   clone.removeAttribute("class");
-  clone.querySelectorAll(".pp").forEach(node => node.remove());
+  clone.querySelectorAll(".pp, .st-ui, .st-snap-guide").forEach(node => node.remove());
   clone.setAttribute("transform", "translate(8 8) scale(1)");
   const height = currentLayout.CH;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${clone.outerHTML}</svg>`;
 }
 
+function scopePreviewSvgIds(markup, prefix = "pv-") {
+  return markup
+    .replace(/\bid="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
+    .replace(/\burl\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
+}
+
 function refreshPreview() {
   if (previewIndex < 0 || $("pv").hidden) return;
-  $("pvi").innerHTML = sheetCardPreviewSvg(previewIndex);
+  $("pvi").innerHTML = scopePreviewSvgIds(sheetCardPreviewSvg(previewIndex));
   $("pvt").textContent = `Card ${previewIndex + 1} of ${studioState.count}`;
 }
 
@@ -1038,8 +1814,300 @@ function bindEvents() {
     if (row) selectCard(+row.dataset.index);
   });
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "drag", "style", "sshape", "sauto", "design-border", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
-  ["wear", "bwear", "ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "style", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  $("drag").addEventListener("change", () => {
+    if ($("drag").checked && moveStampsMode) {
+      moveStampsMode = false;
+      message("Drag photos on (turned off Move stamps).");
+    }
+    render();
+  });
+  $("move-stamps")?.addEventListener("click", () => {
+    moveStampsMode = !moveStampsMode;
+    if (moveStampsMode && $("drag").checked) {
+      $("drag").checked = false;
+      message("Move stamps on (turned off photo drag).");
+    } else {
+      message(moveStampsMode ? "Move stamps on: drag or use arrow keys on a stamp." : "Move stamps off.");
+    }
+    render();
+  });
+  $("reset-all-stamps")?.addEventListener("click", () => {
+    let changed = false;
+    studioState.cards = studioState.cards.map(card => {
+      if (!card.stampPos && !card.stamp2Pos) return card;
+      changed = true;
+      const { stampPos: _p1, stamp2Pos: _p2, ...rest } = card;
+      const next = { ...rest };
+      cardIds.set(next, cardIdentity(card));
+      return next;
+    });
+    if (!changed) {
+      message("All stamps are already using auto placement.");
+      return;
+    }
+    recordDiscrete("reset all stamps");
+    buildRows();
+    render();
+    showUndoToast("All stamp positions reset.");
+  });
+  ["ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  $("wear").addEventListener("input", () => {
+    syncStampControls();
+    scheduleRender();
+  });
+  $("bwear").addEventListener("input", () => {
+    syncBorderControls();
+    scheduleRender();
+  });
+
+  $("stamp-picker")?.addEventListener("click", event => {
+    const swatch = event.target.closest("[data-stamp-shape]");
+    if (swatch) selectStampShape(swatch.dataset.stampShape);
+  });
+  $("stamp-picker")?.addEventListener("keydown", event => {
+    const buttons = [...$("stamp-picker").querySelectorAll("[data-stamp-shape]")];
+    const current = buttons.indexOf(event.target.closest("[data-stamp-shape]"));
+    if (current < 0) return;
+    const step = { ArrowRight: 1, ArrowDown: 4, ArrowLeft: -1, ArrowUp: -4 }[event.key];
+    if (step !== undefined) {
+      event.preventDefault();
+      const nextIndex = (current + step + buttons.length) % buttons.length;
+      const nextBtn = buttons[nextIndex];
+      nextBtn.focus();
+      selectStampShape(nextBtn.dataset.stampShape);
+    }
+  });
+
+  for (const id of STAMP_CONTROL_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const handler = () => readStampControlsIntoState(id === "st-wear");
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
+  }
+
+  $("st-apply-selected")?.addEventListener("click", () => {
+    const index = studioState.selectedCard;
+    const style = studioState.stampStyle ? { ...studioState.stampStyle } : undefined;
+    const current = studioState.cards[index];
+    if (!current) return;
+    const { stampStyle: _old, ...rest } = current;
+    const next = { ...rest, sk: studioState.stampShape, ...(style ? { stampStyle: style } : {}) };
+    cardIds.set(next, cardIdentity(current));
+    studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+    recordDiscrete("apply stamp to card");
+    buildRows();
+    render();
+    message(`Applied stamp look to card #${index + 1}.`);
+  });
+
+  $("st-apply-all")?.addEventListener("click", () => {
+    studioState.cards = studioState.cards.map(card => {
+      if (!card.sk && !card.stampStyle) return card;
+      const { stampStyle: _removed, ...rest } = card;
+      const next = { ...rest, sk: "" };
+      cardIds.set(next, cardIdentity(card));
+      return next;
+    });
+    recordDiscrete("apply stamp to all cards");
+    buildRows();
+    render();
+    message("Applied stamp look to all cards.");
+  });
+
+  $("st-reset-style")?.addEventListener("click", () => {
+    studioState.stampStyle = undefined;
+    syncStampControls();
+    refreshStampSwatches();
+    recordDiscrete("reset stamp customisation");
+    render();
+    message("Reset stamp customisations to defaults.");
+  });
+
+  $("st-preset-select")?.addEventListener("change", syncStampPresetButtons);
+  $("st-preset-save")?.addEventListener("click", () => {
+    const presets = getStampPresets();
+    const rawName = $("st-preset-name").value;
+    const name = uniqueStampPresetName(rawName || getStampShapeName(studioState.stampShape), presets.map(p => p.name));
+    const id = `sp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const stamp = {
+      shape: studioState.stampShape,
+      ...(studioState.stampStyle ? { style: { ...studioState.stampStyle } } : {}),
+      wear: Number($("wear").value)
+    };
+    const next = [...presets, { id, name, stamp }];
+    if (!saveStampPresetsList(next)) {
+      message("Could not save stamp preset.");
+      return;
+    }
+    $("st-preset-name").value = "";
+    populateStampPresets(id);
+    message(`Saved stamp preset "${name}".`);
+  });
+
+  $("st-preset-apply")?.addEventListener("click", () => {
+    const id = $("st-preset-select").value;
+    const preset = getStampPresets().find(p => p.id === id);
+    if (!preset) return;
+    const shape = String(preset.stamp.shape || "round");
+    studioState.stampShape = STAMP_OPTIONS.some(o => o.id === shape) ? shape : "round";
+    if (preset.stamp.wear !== undefined) $("wear").value = String(preset.stamp.wear);
+    studioState.stampStyle = compactStampStyle(preset.stamp.style);
+    syncStampControls();
+    refreshStampSwatches();
+    recordDiscrete("apply stamp preset");
+    render();
+    message(`Applied preset "${preset.name}" to sheet.`);
+  });
+
+  $("st-preset-apply-card")?.addEventListener("click", () => {
+    const id = $("st-preset-select").value;
+    const preset = getStampPresets().find(p => p.id === id);
+    if (!preset) return;
+    const index = studioState.selectedCard;
+    const current = studioState.cards[index];
+    if (!current) return;
+    const shape = String(preset.stamp.shape || "round");
+    const style = compactStampStyle(preset.stamp.style);
+    const { stampStyle: _old, ...rest } = current;
+    const next = { ...rest, sk: shape, ...(style ? { stampStyle: style } : {}) };
+    cardIds.set(next, cardIdentity(current));
+    studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+    recordDiscrete("apply stamp preset to card");
+    buildRows();
+    render();
+    message(`Applied preset "${preset.name}" to card #${index + 1}.`);
+  });
+
+  $("st-preset-delete")?.addEventListener("click", () => {
+    const id = $("st-preset-select").value;
+    const presets = getStampPresets();
+    const preset = presets.find(p => p.id === id);
+    if (!preset || !window.confirm(`Delete stamp preset "${preset.name}"?`)) return;
+    saveStampPresetsList(presets.filter(p => p.id !== id));
+    populateStampPresets();
+    message(`Deleted stamp preset "${preset.name}".`);
+  });
+
+  $("border-picker")?.addEventListener("click", event => {
+    const swatch = event.target.closest("[data-border-style]");
+    if (swatch) selectBorderStyle(Number(swatch.dataset.borderStyle));
+  });
+  $("border-picker")?.addEventListener("keydown", event => {
+    const buttons = [...$("border-picker").querySelectorAll("[data-border-style]")];
+    const current = buttons.indexOf(event.target.closest("[data-border-style]"));
+    if (current < 0) return;
+    const step = { ArrowRight: 1, ArrowDown: 4, ArrowLeft: -1, ArrowUp: -4 }[event.key];
+    if (step !== undefined) {
+      event.preventDefault();
+      const nextIndex = (current + step + buttons.length) % buttons.length;
+      const nextBtn = buttons[nextIndex];
+      nextBtn.focus();
+      selectBorderStyle(Number(nextBtn.dataset.borderStyle));
+    }
+  });
+
+  for (const id of BORDER_CONTROL_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const handler = () => readBorderControlsIntoState(id === "bd-wear");
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
+  }
+
+  $("bd-apply-selected")?.addEventListener("click", () => {
+    const index = studioState.selectedCard;
+    const patch = sanitizeBorderPatch({
+      style: studioState.borderStyle,
+      ...(studioState.borderConfig || {}),
+      wear: Number($("bwear").value)
+    });
+    updateCard(index, { border: patch });
+    recordDiscrete("apply border to card");
+    buildRows();
+    render();
+    message(`Applied border to card #${index + 1}.`);
+  });
+
+  $("bd-apply-all")?.addEventListener("click", () => {
+    studioState.cards = studioState.cards.map(card => {
+      if (!card.border) return card;
+      const { border: _removed, ...rest } = card;
+      const next = { ...rest };
+      cardIds.set(next, cardIdentity(card));
+      return next;
+    });
+    recordDiscrete("apply border to all cards");
+    buildRows();
+    render();
+    message("Applied border to all cards.");
+  });
+
+  $("bd-reset-style")?.addEventListener("click", () => {
+    studioState.borderConfig = undefined;
+    syncBorderControls();
+    recordDiscrete("reset border customisation");
+    render();
+    message("Reset border customisations to style defaults.");
+  });
+
+  $("bd-preset-select")?.addEventListener("change", syncPresetButtons);
+  $("bd-preset-save")?.addEventListener("click", () => {
+    const presets = getBorderPresets();
+    const rawName = $("bd-preset-name").value;
+    const name = uniquePresetName(rawName || getBorderStyleMeta(studioState.borderStyle).name, presets.map(p => p.name));
+    const id = `bp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const border = sanitizeBorderPatch({
+      style: studioState.borderStyle,
+      ...(studioState.borderConfig || {}),
+      wear: Number($("bwear").value)
+    });
+    const next = [...presets, { id, name, border }];
+    if (!saveBorderPresetsList(next)) {
+      message("Could not save border preset.");
+      return;
+    }
+    $("bd-preset-name").value = "";
+    populateBorderPresets(id);
+    message(`Saved border preset "${name}".`);
+  });
+
+  $("bd-preset-apply")?.addEventListener("click", () => {
+    const id = $("bd-preset-select").value;
+    const preset = getBorderPresets().find(p => p.id === id);
+    if (!preset) return;
+    const patch = sanitizeBorderPatch(preset.border) || {};
+    studioState.borderStyle = patch.style ?? 0;
+    if (patch.wear !== undefined) $("bwear").value = String(patch.wear);
+    studioState.borderConfig = compactBorderOverrides(studioState.borderStyle, patch);
+    syncBorderControls();
+    recordDiscrete("apply border preset");
+    render();
+    message(`Applied preset "${preset.name}" to sheet.`);
+  });
+
+  $("bd-preset-apply-card")?.addEventListener("click", () => {
+    const id = $("bd-preset-select").value;
+    const preset = getBorderPresets().find(p => p.id === id);
+    if (!preset) return;
+    const index = studioState.selectedCard;
+    updateCard(index, { border: sanitizeBorderPatch(preset.border) });
+    recordDiscrete("apply border preset to card");
+    buildRows();
+    render();
+    message(`Applied preset "${preset.name}" to card #${index + 1}.`);
+  });
+
+  $("bd-preset-delete")?.addEventListener("click", () => {
+    const id = $("bd-preset-select").value;
+    const presets = getBorderPresets();
+    const preset = presets.find(p => p.id === id);
+    if (!preset || !window.confirm(`Delete border preset "${preset.name}"?`)) return;
+    saveBorderPresetsList(presets.filter(p => p.id !== id));
+    populateBorderPresets();
+    message(`Deleted border preset "${preset.name}".`);
+  });
   ["gdoors", "gside", "gstamp", "gsyear"].forEach(id => $(id).addEventListener("input", scheduleRender));
   document.querySelectorAll("[data-quick-mount]").forEach(input => {
     input.addEventListener("change", () => {
@@ -1148,7 +2216,7 @@ function bindEvents() {
     } catch (error) { message("Card PNG export failed: " + error.message); }
   });
   $("sheets").addEventListener("click", event => {
-    if (event.target.closest(".pp")) return;
+    if (event.target.closest(".pp, .st-ui")) return;
     const cardElement = event.target.closest("[data-ci]");
     if (cardElement) openPreview(+cardElement.dataset.ci);
   });
@@ -1215,6 +2283,83 @@ function bindEvents() {
   });
 
   $("sheets").addEventListener("pointerdown", event => {
+    const rotTarget = event.target.closest(".st-rot-hit");
+    if (rotTarget && moveStampsMode) {
+      event.preventDefault();
+      const index = Number(rotTarget.dataset.ci);
+      let si = Number(rotTarget.dataset.si) === 1 ? 1 : 0;
+      const cardGroup = rotTarget.closest("g[data-ci]:not(.st-ui)");
+      const ctm = cardGroup.getScreenCTM();
+      const st = resolveCardStamp(index, si);
+      const pt = new DOMPoint(st.x, st.y).matrixTransform(ctm);
+      const uiGroup = rotTarget.closest(".st-ui");
+      const knobPt = new DOMPoint(0, Number(rotTarget.getAttribute("cy")) || -32).matrixTransform(uiGroup.getScreenCTM());
+      const dKnob = Math.hypot(event.clientX - knobPt.x, event.clientY - knobPt.y);
+      const dCenter = Math.hypot(event.clientX - pt.x, event.clientY - pt.y);
+      if (dCenter < dKnob) {
+        if ($("gs2")?.value.trim()) {
+          const s0 = resolveCardStamp(index, 0);
+          const s1 = resolveCardStamp(index, 1);
+          const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
+          const p1 = new DOMPoint(s1.x, s1.y).matrixTransform(ctm);
+          si = Math.hypot(event.clientX - p1.x, event.clientY - p1.y) < Math.hypot(event.clientX - p0.x, event.clientY - p0.y) ? 1 : 0;
+        }
+        selectedStampIndex = si;
+        selectCard(index);
+        const targetSt = resolveCardStamp(index, si);
+        rotTarget.setPointerCapture?.(event.pointerId);
+        stampDragState = {
+          mode: "move",
+          index,
+          stampIndex: si,
+          startX: event.clientX,
+          startY: event.clientY,
+          startNx: targetSt.nx,
+          startNy: targetSt.ny,
+          cardScale: ctm.a,
+          moved: false
+        };
+        return;
+      }
+      selectedStampIndex = si;
+      selectCard(index);
+      rotTarget.setPointerCapture?.(event.pointerId);
+      stampDragState = { mode: "rotate", index, stampIndex: si, cx: pt.x, cy: pt.y, moved: false };
+      return;
+    }
+
+    const stTarget = event.target.closest(".st-hit");
+    if (stTarget && moveStampsMode) {
+      event.preventDefault();
+      const index = Number(stTarget.dataset.ci);
+      const cardGroup = stTarget.closest("g[data-ci]:not(.st-ui)");
+      const ctm = cardGroup.getScreenCTM();
+      let si = Number(stTarget.dataset.si) === 1 ? 1 : 0;
+      if ($("gs2")?.value.trim()) {
+        const s0 = resolveCardStamp(index, 0);
+        const s1 = resolveCardStamp(index, 1);
+        const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
+        const p1 = new DOMPoint(s1.x, s1.y).matrixTransform(ctm);
+        si = Math.hypot(event.clientX - p1.x, event.clientY - p1.y) < Math.hypot(event.clientX - p0.x, event.clientY - p0.y) ? 1 : 0;
+      }
+      selectedStampIndex = si;
+      selectCard(index);
+      const st = resolveCardStamp(index, si);
+      stTarget.setPointerCapture?.(event.pointerId);
+      stampDragState = {
+        mode: "move",
+        index,
+        stampIndex: si,
+        startX: event.clientX,
+        startY: event.clientY,
+        startNx: st.nx,
+        startNy: st.ny,
+        cardScale: ctm.a,
+        moved: false
+      };
+      return;
+    }
+
     const target = event.target.closest(".pp");
     if (!target) return;
     const index = +target.dataset.ci, card = studioState.cards[index];
@@ -1223,6 +2368,49 @@ function bindEvents() {
     dragState = { index, x: event.clientX, y: event.clientY, px: card.px || 0, py: card.py || 0, scale: target.ownerSVGElement.getScreenCTM().a };
   });
   window.addEventListener("pointermove", event => {
+    if (stampDragState) {
+      const { mode, index, stampIndex: si } = stampDragState;
+      const st = resolveCardStamp(index, si);
+      const current = studioState.cards[index]?.[stampKeyFor(si)];
+      if (mode === "rotate") {
+        const raw = Math.atan2(event.clientX - stampDragState.cx, -(event.clientY - stampDragState.cy)) * 180 / Math.PI;
+        const angle = normalizeAngle(event.shiftKey ? Math.round(raw / 15) * 15 : raw);
+        const next = sanitizeStampOverride({
+          x: current?.x ?? st.nx,
+          y: current?.y ?? st.ny,
+          r: angle,
+          scale: current?.scale ?? st.mult
+        });
+        updateCard(index, { [stampKeyFor(si)]: next });
+        patchLiveStampDom(index, si);
+        stampDragState.moved = true;
+      } else {
+        if (!stampDragState.moved && Math.hypot(event.clientX - stampDragState.startX, event.clientY - stampDragState.startY) < 2) return;
+        const dx = (event.clientX - stampDragState.startX) / stampDragState.cardScale;
+        const dy = (event.clientY - stampDragState.startY) / stampDragState.cardScale;
+        const CH = currentLayout?.CH || 239;
+        const bounds = { CW, CH, effScale: st.scale };
+        const raw = clampStampNorm(stampDragState.startNx + dx / CW, stampDragState.startNy + dy / CH, bounds);
+        const snapped = snapStampNorm(raw.nx, raw.ny, {
+          CW,
+          CH,
+          effScale: st.scale,
+          snapEnabled: $("stamp-snap")?.checked ?? true,
+          bypass: event.altKey || event.shiftKey
+        });
+        const next = sanitizeStampOverride({
+          x: snapped.nx,
+          y: snapped.ny,
+          r: current?.r ?? st.r,
+          scale: current?.scale ?? st.mult
+        }, bounds);
+        updateCard(index, { [stampKeyFor(si)]: next });
+        patchLiveStampDom(index, si, snapped);
+        stampDragState.moved = true;
+      }
+      return;
+    }
+
     if (!dragState) return;
     const card = studioState.cards[dragState.index], box = fitBox(card, currentLayout.CH);
     if (!box) return;
@@ -1245,11 +2433,55 @@ function bindEvents() {
     }
   });
   ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, () => {
+    if (stampDragState) {
+      const { mode, moved } = stampDragState;
+      stampDragState = null;
+      $("sheets")?.querySelectorAll(".st-snap-guide").forEach(node => node.remove());
+      if (moved) {
+        recordDiscrete(mode === "rotate" ? "rotate stamp" : "move stamp");
+        render();
+      }
+    }
     if (!dragState) return;
     finishContinuous("reposition card photo", `card:${dragState.index}:photo-position`);
     dragState = null;
     render();
   }));
+  $("sheets").addEventListener("keydown", event => {
+    const target = event.target.closest(".st-hit");
+    if (!target || !moveStampsMode) return;
+    const step = event.shiftKey ? 10 : 2;
+    const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    const index = Number(target.dataset.ci);
+    const si = Number(target.dataset.si) === 1 ? 1 : 0;
+    selectedStampIndex = si;
+    const CH = currentLayout?.CH || 239;
+    const st = resolveCardStamp(index, si);
+    const current = studioState.cards[index]?.[stampKeyFor(si)];
+    const bounds = { CW, CH, effScale: st.scale };
+    const clamped = clampStampNorm(st.nx + delta[0] / CW, st.ny + delta[1] / CH, bounds);
+    const next = sanitizeStampOverride({
+      x: clamped.nx,
+      y: clamped.ny,
+      r: current?.r ?? st.r,
+      scale: current?.scale ?? st.mult
+    }, bounds);
+    updateCard(index, { [stampKeyFor(si)]: next });
+    patchLiveStampDom(index, si);
+    const resetAllStampsBtn = $("reset-all-stamps");
+    if (resetAllStampsBtn) resetAllStampsBtn.hidden = false;
+    recordContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
+    saveSoon();
+  });
+  $("sheets").addEventListener("focusout", event => {
+    const target = event.target.closest(".st-hit");
+    if (!target) return;
+    const index = Number(target.dataset.ci);
+    const si = Number(target.dataset.si) === 1 ? 1 : 0;
+    finishContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
+  });
 }
 
 function cycleTheme(direction) {
@@ -1317,6 +2549,12 @@ async function init() {
   bindTapTooltips();
   attachColorHexFields();
   populateThemeSelect($("style"));
+  buildBorderPicker();
+  populateBorderPresets();
+  syncBorderControls();
+  buildStampPicker();
+  populateStampPresets();
+  syncStampControls();
   syncCustomControls();
   updatePreviewZoom(1);
   const printStyle = document.createElement("style");

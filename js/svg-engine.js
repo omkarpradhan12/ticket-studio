@@ -1,6 +1,10 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase5.2";
-import { hsl } from "./image-utils.js?v=phase5.2";
+import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase7.1";
+import { hsl } from "./image-utils.js?v=phase7.1";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase7.1";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase7.1";
+
+export { SKINDS, STAMPS };
 
 export const CW = 170;
 export const SIZES = {
@@ -121,54 +125,6 @@ function gradDir(ga, gd, CH) {
   return `x1="${(x2 - dx * L).toFixed(1)}" y1="${(y2 - dy * L).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"`;
 }
 
-const star = (n, ro, ri) => {
-  const p = [];
-  for (let k = 0; k < n * 2; k++) {
-    const r = k % 2 ? ri : ro, a = Math.PI * k / n;
-    p.push((r * Math.sin(a)).toFixed(2) + "," + (-r * Math.cos(a)).toFixed(2));
-  }
-  return p.join(" ");
-};
-
-const hexp = r => [0, 1, 2, 3, 4, 5].map(k => {
-  const a = Math.PI / 3 * k;
-  return (r * Math.cos(a)).toFixed(2) + "," + (r * Math.sin(a)).toFixed(2);
-}).join(" ");
-
-export const STAMPS = {
-  round:   { o: '<circle r="17" stroke-width="1"/><circle r="14.5" stroke-width=".5"/>', yr: -5, nm: 3, w: 22, r: "M-7 7h14" },
-  oval:    { o: '<ellipse rx="19" ry="12" stroke-width="1"/><ellipse rx="16.5" ry="9.5" stroke-width=".5"/>', yr: -2.5, nm: 4, w: 24, r: "M-7 6.5h14" },
-  rect:    { o: '<rect x="-19" y="-11" width="38" height="22" rx="1.5" stroke-width="1"/><rect x="-16.5" y="-8.5" width="33" height="17" rx="1" stroke-width=".5"/>', yr: -2.5, nm: 5, w: 30 },
-  tri:     { o: '<path d="M0 -19L18 12H-18Z" stroke-width="1" stroke-linejoin="round"/><path d="M0 -14.9L14.4 9.9H-14.4Z" stroke-width=".5" stroke-linejoin="round"/>', yr: 1, nm: 7.2, w: 19, ys: 3.4 },
-  shield:  { o: '<path d="M-14 -15H14V2Q14 12 0 18Q-14 12 -14 2Z" stroke-width="1" stroke-linejoin="round"/><path d="M-11.5 -12.5H11.5V1.5Q11.5 9.5 0 14.8Q-11.5 9.5 -11.5 1.5Z" stroke-width=".5" stroke-linejoin="round"/>', yr: -6, nm: 1, w: 20, r: "M-6 4.5h12" },
-  hex:     { o: `<polygon points="${hexp(17)}" stroke-width="1" stroke-linejoin="round"/><polygon points="${hexp(14.5)}" stroke-width=".5" stroke-linejoin="round"/>`, yr: -5, nm: 3, w: 22, r: "M-7 7h14" },
-  diamond: { o: '<path d="M0 -19L19 0L0 19L-19 0Z" stroke-width="1" stroke-linejoin="round"/><path d="M0 -15.6L15.6 0L0 15.6L-15.6 0Z" stroke-width=".5" stroke-linejoin="round"/>', yr: -4.5, nm: 2.5, w: 20, r: "M-4.5 6.5h9" },
-  seal:    { o: `<polygon points="${star(16, 17.6, 15.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="12.8" stroke-width=".5"/>`, yr: -4.5, nm: 3, w: 19, r: "M-6 6.5h12" },
-  starburst: { o: `<polygon points="${star(12, 20, 14.5)}" stroke-width="1" stroke-linejoin="round"/><circle r="12" stroke-width=".5"/>`, yr: -4.5, nm: 3.5, w: 20, r: "M-6.5 7h13" },
-  scallop: { o: `<polygon points="${star(20, 17.8, 16.2)}" stroke-width=".9" stroke-linejoin="round"/><circle r="13.5" stroke-width=".5"/>`, yr: -5, nm: 3, w: 20, r: "M-6 7h12" },
-  ticket: { o: '<path d="M-20 -12H20V-7A7 7 0 0 0 20 7V12H-20V7A7 7 0 0 0-20-7Z" stroke-width="1" stroke-linejoin="round"/><rect x="-16.5" y="-8.5" width="33" height="17" rx="2" stroke-width=".5"/><path d="M-12 -5V5M12 -5V5" stroke-width=".5"/>', yr: -3, nm: 5.5, w: 27, r: "M-7 8h14" },
-  arch: { o: '<path d="M-18 13V-3A18 18 0 0 1 18-3V13Z" stroke-width="1" stroke-linejoin="round"/><path d="M-14.5 10V-2A14.5 14.5 0 0 1 14.5-2V10Z" stroke-width=".5"/>', yr: -5, nm: 3, w: 21, r: "M-6 6.5h12" },
-  ribbon: { o: '<path d="M-18 -12H18V8H7L4 14L0 8H-18Z" stroke-width="1" stroke-linejoin="round"/><rect x="-15" y="-9" width="30" height="14" rx="1" stroke-width=".5"/>', yr: -4, nm: 4.5, w: 25, r: "M-7 7h14" },
-  burst: { o: `<polygon points="${star(16, 21, 17)}" stroke-width=".9" stroke-linejoin="round"/><circle r="13" stroke-width=".5"/>`, yr: -4.5, nm: 3.5, w: 19, r: "M-6 7h12" },
-  cross: { o: '<path d="M-7 -18H7V-7H18V7H7V18H-7V7H-18V-7H-7Z" stroke-width="1" stroke-linejoin="round"/><path d="M-4.5 -14.5H4.5V-4.5H14.5V4.5H4.5V14.5H-4.5V4.5H-14.5V-4.5H-4.5Z" stroke-width=".5"/>', yr: -4.5, nm: 3.5, w: 19, r: "M-5.5 7h11" }
-};
-export const SKINDS = Object.keys(STAMPS);
-
-function frame(i, A, bs, CH, bwear) {
-  const f = n => `<g${bwear > 0 ? ` filter="url(#bd${i})"` : ""} fill="none" stroke="${A}">${n}</g>`;
-  if (bs === 1) return f(`<rect x="3" y="3" width="${CW - 6}" height="${CH - 6}" stroke-width="2.6"/>`);
-  if (bs === 2) {
-    let o = "";
-    [[3, 3, 1, 1], [CW - 3, 3, -1, 1], [3, CH - 3, 1, -1], [CW - 3, CH - 3, -1, -1]].forEach(([bx, by, dx, dy]) => {
-      o += `<path d="M${bx} ${by + dy * 22}V${by}H${bx + dx * 22}" stroke-width="2.2"/>`;
-    });
-    return f(o);
-  }
-  if (bs === 3) return f(`<rect x="4" y="4" width="${CW - 8}" height="${CH - 8}" stroke-width="1.1" stroke-dasharray="4 2.5"/>`);
-  if (bs === 4) return f(`<rect x="2.5" y="2.5" width="${CW - 5}" height="${CH - 5}" rx="9" stroke-width="1.5"/><rect x="5.8" y="5.8" width="${CW - 11.6}" height="${CH - 11.6}" rx="6" stroke-width=".7" opacity=".8"/>`);
-  return f(`<rect x="2.5" y="2.5" width="${CW - 5}" height="${CH - 5}" stroke-width="1.5"/><rect x="5.8" y="5.8" width="${CW - 11.6}" height="${CH - 11.6}" stroke-width=".7" opacity=".8"/>`);
-}
-
 function mount(tt, PX, PY, PS, PB, odd, i, A, T) {
   if (Array.isArray(T.mounts)) {
     return T.mounts.slice(0, 2).map((mountType, mountIndex) =>
@@ -189,6 +145,30 @@ function mountSingle(tt, PX, PY, PS, PB, odd, i, A, T) {
     return [[PX, PY, 1, 1], [PX + PS, PY, -1, 1], [PX, PB, 1, -1], [PX + PS, PB, -1, -1]].map(([a, b, dx, dy]) =>
       `<path d="M${a} ${b}h${dx * 14}l${-dx * 14} ${dy * 14}z" fill="${T.tape}" stroke="${T.te}" stroke-width=".4"/>`
     ).join("");
+  }
+  if (tt === 4) {
+    const strips = odd ? [[PX + PS - 2, PY + 2, 34], [PX + 2, PB - 2, 34]] : [[PX + 2, PY + 2, -34], [PX + PS - 2, PB - 2, -34]];
+    return strips.map(([wx, wy, wr]) =>
+      `<g transform="translate(${wx} ${wy}) rotate(${wr})"><rect x="-12" y="-3.8" width="24" height="7.6" rx=".6" fill="${T.tape}" fill-opacity=".75" stroke="${T.te}" stroke-width=".3"/><path d="M-9 -3.8L-6 3.8M-3 -3.8L0 3.8M3 -3.8L6 3.8M9 -3.8L11.5 2.4" stroke="${A}" stroke-width="1.3" stroke-opacity=".55"/></g>`
+    ).join("");
+  }
+  if (tt === 5) {
+    return [[PX + 4.5, PY + 4.5], [PX + PS - 4.5, PY + 4.5], [PX + 4.5, PB - 4.5], [PX + PS - 4.5, PB - 4.5]].map(([bx, by], k) =>
+      `<g transform="translate(${bx} ${by}) rotate(${(i * 37 + k * 53) % 180})"><circle cx=".3" cy=".5" r="2.6" fill="#000" opacity=".28"/><circle r="2.6" fill="${T.mt}" stroke="${T.dk}" stroke-width=".35"/><circle r="1.8" fill="none" stroke="${T.hi}" stroke-width=".3" opacity=".75"/><path d="M-1.5 0H1.5" stroke="${T.dk}" stroke-width=".45"/></g>`
+    ).join("");
+  }
+  if (tt === 6) {
+    const cx = odd ? PX + PS - 22 : PX + 22;
+    return `<g transform="translate(${cx} ${PY})"><path d="M-3 12V-2.5A3.2 3.2 0 0 1 3.4-2.5V14.5A2.2 2.2 0 0 1-1 14.5V1.5A1.2 1.2 0 0 1 1.4 1.5V11" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="1.4" stroke-linecap="round" transform="translate(.6 .8)"/><path d="M-3 12V-2.5A3.2 3.2 0 0 1 3.4-2.5V14.5A2.2 2.2 0 0 1-1 14.5V1.5A1.2 1.2 0 0 1 1.4 1.5V11" fill="none" stroke="${T.hi}" stroke-width="1.15" stroke-linecap="round"/><path d="M-3 12V-2.5A3.2 3.2 0 0 1 3.4-2.5V14.5" fill="none" stroke="${T.mt}" stroke-width=".45" stroke-linecap="round"/></g>`;
+  }
+  if (tt === 7) {
+    return [[PX + 9, PY + 5, -35], [PX + PS - 9, PY + 5, 35]].map(([sx, sy, sr]) =>
+      `<g transform="translate(${sx} ${sy}) rotate(${sr})"><circle cx="-4.2" cy=".4" r=".7" fill="#000" opacity=".4"/><circle cx="4.2" cy=".4" r=".7" fill="#000" opacity=".4"/><path d="M-4.2 .4H4.2" stroke="#000" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round" transform="translate(.4 .6)"/><path d="M-4.2 0H4.2" stroke="${T.hi}" stroke-width="1.05" stroke-linecap="round"/><path d="M-3.4 -.2H3.4" stroke="#fff" stroke-opacity=".5" stroke-width=".35" stroke-linecap="round"/></g>`
+    ).join("");
+  }
+  if (tt === 8) {
+    const wx = odd ? PX + 11 : PX + PS - 11, wy = PB - 10;
+    return `<g transform="translate(${wx} ${wy})"><circle cx=".8" cy="1" r="6.8" fill="#000" opacity=".28"/><path d="M0 -7.2Q4.2 -7.4 6.5 -3.6Q7.8 .5 5.4 4.8Q2 7.5 -2.8 6.4Q-7 4.4 -6.8 -0.6Q-6.2 -5.8 0 -7.2Z" fill="${A}" stroke="#000" stroke-opacity=".35" stroke-width=".45"/><circle r="4.5" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".55"/><circle r="4.1" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width=".35"/></g>`;
   }
   return odd
     ? tape(PX + PS - 2, PY + 2, 35, i * 2, T) + tape(PX + 2, PB - 2, 35, i * 2 + 1, T)
@@ -244,22 +224,64 @@ export function renderCard(c0, i, cfg) {
     : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
 
   const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
-  const ss = (cfg.stampSize || 100) / 100, rr = 17 * ss;
+  const ss = (cfg.stampSize || 100) / 100;
   const rn = k => { const v = Math.sin((i + 1) * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
-  const sx = PX + rr * 0.6 + rn(1) * (PS - rr * 1.2);
-  const sy = PB + (rn(2) - 0.5) * 8;
-  const sr = (rn(3) - 0.5) * 50;
 
   const skw = c0.sk || cfg.stampShape || "round";
   const sk = skw === "mixed" ? SKINDS[Math.floor(rn(4) * SKINDS.length)] : skw;
-  const sd = STAMPS[sk] || STAMPS.round;
   const sco = cfg.stampAuto ? A : (cfg.stampColor || "#d9322f");
+  const resolvedStampStyle = resolveStampStyle(cfg, c0);
 
-  const mkS = (d, txt, yr, sz, px, py, r) =>
-    `<g${(cfg.stampWear || 0) > 0 ? ` filter="url(#ink${i})"` : ""} transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${r.toFixed(1)}) scale(${sz})" fill="none" stroke="${sco}" opacity=".95">${d.o}${yr ? `<text y="${d.yr}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(yr)}</text>` : ""}<text y="${d.nm}" text-anchor="middle" fill="${sco}" stroke="none" font-size="${fit(txt, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(txt)}</text>${d.r ? `<path d="${d.r}" stroke-width=".5"/>` : ""}</g>`;
+  const st0 = resolveStampTransform({ index: i, stampIndex: 0, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stampPos });
+  const st1 = resolveStampTransform({ index: i, stampIndex: 1, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stamp2Pos });
+  const st0Scale = st0.isOverridden ? Number(st0.scale.toFixed(3)) : ss;
+  const st1Scale = st1.isOverridden ? Number(st1.scale.toFixed(3)) : ss * 0.85;
 
-  const stamp = skw === "none" ? "" : mkS(sd, c0.stx || cfg.stamp || "Soul Fuel", cfg.stampYear || "2026", ss, sx, sy, sr);
-  const stamp2 = cfg.stamp2 ? mkS(STAMPS.rect, cfg.stamp2, "", ss * 0.85, PX + 30 + rn(8) * (PS - 60), PB + 32 + rn(9) * 26, (rn(10) - 0.5) * 30) : "";
+  const stamp = skw === "none" ? "" : renderStampMarkup({
+    shapeKey: sk,
+    text: c0.stx || cfg.stamp || "Soul Fuel",
+    year: cfg.stampYear || "2026",
+    scale: st0Scale,
+    px: st0.x,
+    py: st0.y,
+    rotation: st0.r,
+    color: sco,
+    wear: cfg.stampWear || 0,
+    filterId: `ink${i}`,
+    idAttr: cfg.moveStamps && !cfg.one ? `st0-${i}` : "",
+    style: resolvedStampStyle,
+    themeBg: T.bg
+  });
+  const stamp2 = cfg.stamp2 ? renderStampMarkup({
+    shapeKey: "rect",
+    text: cfg.stamp2,
+    year: "",
+    scale: st1Scale,
+    px: st1.x,
+    py: st1.y,
+    rotation: st1.r,
+    color: sco,
+    wear: cfg.stampWear || 0,
+    filterId: `ink${i}`,
+    idAttr: cfg.moveStamps && !cfg.one ? `st1-${i}` : "",
+    style: resolvedStampStyle,
+    themeBg: T.bg
+  }) : "";
+
+  const mkStUi = (si, st, sz) => {
+    const bw = Math.max(28, 42 * sz);
+    const bh = Math.max(28, 36 * sz);
+    const hw = Math.max(92, bw + 16);
+    const hh = Math.max(92, bh + 16);
+    const rotY = -bh / 2 - 18;
+    const isSel = cfg.selectedCard === i && (cfg.selectedStamp ?? 0) === si;
+    const label = `Card ${i + 1} ${si === 0 ? "primary" : "second"} stamp position`;
+    const vText = `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`;
+    return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${rotY.toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${rotY.toFixed(1)}" r="44" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${rotY.toFixed(1)}" r="4.8"/></g>`;
+  };
+  const stampUi = cfg.moveStamps && !cfg.one
+    ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
+    : "";
 
   const tf = TF[cfg.titleFont] || TF.pirata;
   const lumB = lum(T.bg), dkp = lumB < 0.45, tcol = dkp ? "#fff" : "#3a2a18";
@@ -330,27 +352,45 @@ export function renderCard(c0, i, cfg) {
   const titleSize = titleLayoutResult.size;
   const titleMarkup = titleLayoutResult.wrapped
     ? titleLines.map((line, lineIndex) =>
-        `<text x="${tx}" y="${(191 + lineIndex * 11 + D).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(line)}</text>`
+        `<text x="${tx}" y="${(191 + lineIndex * 11).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(line)}</text>`
       ).join("")
-    : `<text x="${tx}" y="${199 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
+    : `<text x="${tx}" y="199"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
+
+  const resolvedBorder = resolveBorderConfig(cfg, c0);
+  const borderRendered = renderBorder({
+    index: i,
+    CW,
+    CH,
+    accent: A,
+    theme: T,
+    border: resolvedBorder,
+    scope: cfg.borderScope || "",
+    seed: i + 21
+  });
 
   if (cfg.minimalLayout === true) {
+    const useCustomMinimalBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
+    const minimalBorderDefs = useCustomMinimalBorder ? borderRendered.defs : "";
+    const minimalBorderMarkup = useCustomMinimalBorder
+      ? borderRendered.markup
+      : `<rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>`;
     const minimalTitleMarkup = titleLayoutResult.wrapped
       ? titleLines.map((line, lineIndex) => `<text x="17" y="${(188 + lineIndex * 11 + D).toFixed(1)}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
       : `<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
-    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs><clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g><rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${minimalBorderDefs}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
   }
 
   const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(cfg.gradientAngle ?? 180, cfg.gradientSpread ?? 32, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
+  const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, cfg.borderWear || 0) : borderRendered.defs;
 
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
-   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${inkFilter("bd" + i, i + 21, cfg.borderWear || 0)}${grayDef}${halftoneDef}
+   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${borderDefs}${grayDef}${halftoneDef}
    <clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath>
    <clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs>
    <g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
-   ${frame(i, A, design.borderStyle, CH, cfg.borderWear || 0)}${sc}
+   ${borderRendered.markup}${sc}
    <text x="17" y="11.5" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>★ ADMIT ONE</text>
    <text x="${CW - 17}" y="11.5" text-anchor="end" fill="${ink}" font-size="5.2" font-weight="800" letter-spacing=".4" ${FT}>${U(cfg.doors || "Doors 7PM")}</text>
    <text transform="translate(13 ${PMY}) rotate(-90)" text-anchor="middle" fill="${mute}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(no)}</text>
@@ -361,7 +401,7 @@ export function renderCard(c0, i, cfg) {
    <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
    ${titleMarkup}
    <text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>
-   </g>${nfc}${serial}${tex}${stamp}${stamp2}${drag}${mk}</g>`;
+   </g>${nfc}${serial}${tex}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
 }
 
 export function regMarksSvg(W, H, enabled) {
