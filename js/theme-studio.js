@@ -1,12 +1,12 @@
-import { BUILTIN_THEMES, DEFAULT_CUSTOM, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js?v=phase5.2";
-import { SAMPLE_CARDS } from "./storage.js?v=phase5.2";
-import { computeLayout, renderCard } from "./svg-engine.js?v=phase5.2";
-import { triggerDownload } from "./export.js?v=phase5.2";
-import { FONTCSS } from "./fonts.js?v=phase5.2";
-import { History } from "./history.mjs?v=phase5.2";
-import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase5.2";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase5.2";
-import { configForTheme, nextCustomThemeName, PREVIEW_OPTIONS, uniqueThemeName } from "./theme-studio-utils.mjs?v=phase5.2";
+import { BUILTIN_THEMES, DEFAULT_CUSTOM, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js?v=phase6";
+import { SAMPLE_CARDS } from "./storage.js?v=phase6";
+import { computeLayout, renderCard } from "./svg-engine.js?v=phase6";
+import { triggerDownload } from "./export.js?v=phase6";
+import { FONTCSS } from "./fonts.js?v=phase6";
+import { History } from "./history.mjs?v=phase6";
+import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase6";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase6";
+import { configForTheme, nextCustomThemeName, PREVIEW_OPTIONS, uniqueThemeName } from "./theme-studio-utils.mjs?v=phase6";
 
 const $ = id => document.getElementById(id);
 const FIELD_MAP = {

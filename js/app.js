@@ -1,12 +1,24 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase5.2";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase5.2";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase5.2";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase5.2";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase5.2";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase5.2";
-import { History } from "./history.mjs?v=phase5.2";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase5.2";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase5.2";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase6";
+import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase6";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase6";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase6";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase6";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase6";
+import { History } from "./history.mjs?v=phase6";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase6";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase6";
+import {
+  BORDER_STYLES,
+  compactBorderOverrides,
+  getBorderPresets,
+  getBorderStyleMeta,
+  hasBorderOverrides,
+  renderBorderSwatchSvg,
+  resolveBorderConfig,
+  sanitizeBorderPatch,
+  saveBorderPresetsList,
+  uniquePresetName
+} from "./borders.mjs?v=phase6";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
@@ -18,7 +30,7 @@ const SETTINGS_FIELDS = {
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
   grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc",
-  borderStyle: "design-border", yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
+  yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
 };
 const CHECK_FIELDS = {
   cropMarks: "marks", bleed: "bleed", nfc: "nfc", cutTemplate: "tpl",
@@ -35,8 +47,11 @@ const studioState = {
   activePage: 0,
   pageThemes: [],
   gradientAngle: SET0.gradientAngle,
+  borderStyle: SET0.borderStyle,
+  borderConfig: undefined,
   settings: { customTheme: { ...CUSTOM } }
 };
+let lastSwatchThemeKey = "";
 const cardIds = new WeakMap();
 let nextCardId = 0;
 let currentLayout;
@@ -85,6 +100,8 @@ function readSettings() {
   }
   for (const [key, id] of Object.entries(CHECK_FIELDS)) settings[key] = $(id).checked;
   settings.gradientAngle = studioState.gradientAngle;
+  settings.borderStyle = studioState.borderStyle;
+  if (studioState.borderConfig) settings.border = { ...studioState.borderConfig };
   settings.customTheme = { ...studioState.settings.customTheme };
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
@@ -130,6 +147,13 @@ function applySettings(settings = {}) {
   if (settings.gradientAngle !== undefined && Number.isFinite(+settings.gradientAngle)) {
     studioState.gradientAngle = ((+settings.gradientAngle % 360) + 360) % 360;
   }
+  if (settings.borderStyle !== undefined) {
+    const styleId = Number.parseInt(settings.borderStyle, 10);
+    studioState.borderStyle = Number.isInteger(styleId) && styleId >= 0 && styleId < BORDER_STYLES.length ? styleId : 0;
+  }
+  studioState.borderConfig = settings.border && typeof settings.border === "object"
+    ? compactBorderOverrides(studioState.borderStyle, settings.border)
+    : undefined;
   if (Array.isArray(settings.pageThemes)) studioState.pageThemes = settings.pageThemes.map(theme => String(theme || ""));
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
@@ -138,6 +162,7 @@ function applySettings(settings = {}) {
     const found = Object.keys(THEMES).find(key => THEMES[key].n.toLowerCase() === String(settings.style).toLowerCase());
     if (found) $("style").value = found;
   }
+  syncBorderControls();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -172,6 +197,8 @@ function renderConfig(one = false) {
     nfc: settings.nfc,
     punchHole: settings.punchHole,
     borderStyle: settings.borderStyle,
+    border: settings.border,
+    borderScope: one ? "pv" : "",
     yearBadge: settings.yearBadge,
     tearStyle: settings.tearStyle,
     photoFilter: settings.photoFilter,
@@ -198,6 +225,7 @@ function captureSnapshot() {
       gradientAngle: studioState.gradientAngle,
       settings: {
         ...settings,
+        ...(settings.border ? { border: { ...settings.border } } : {}),
         customTheme: { ...settings.customTheme },
         photoMounts: settings.photoMounts.slice()
       }
@@ -375,6 +403,14 @@ function redo() {
   return result;
 }
 
+const BORDER_CONTROL_IDS = [
+  "bd-width", "bd-inset", "bd-opacity", "bd-linegap",
+  "bd-color-mode", "bd-color", "bd-pattern", "bd-dash", "bd-gap",
+  "bd-corner", "bd-corner-size", "bd-ornament", "bd-ornament-size",
+  "bd-wear", "bd-glow", "bd-inner", "bd-inner-width", "bd-inner-gap",
+  "bd-inner-color-mode", "bd-inner-color"
+];
+
 function bindHistoryControlEvents() {
   const labels = {
     sheetTitle: "change sheet title",
@@ -399,7 +435,6 @@ function bindHistoryControlEvents() {
     edgeWear: "change edge wear",
     creases: "change paper creases",
     scuffs: "change surface scuffs",
-    borderStyle: "change border style",
     yearBadge: "change year badge",
     tearStyle: "change tear line",
     photoFilter: "change photo filter",
@@ -418,6 +453,7 @@ function bindHistoryControlEvents() {
   for (const [field, id] of Object.entries(SETTINGS_FIELDS)) controls.set(id, labels[field]);
   for (const [field, id] of Object.entries(CHECK_FIELDS)) controls.set(id, labels[field]);
   for (const key of CUSTOM_FIELDS) controls.set("ct_" + key, `change custom ${key} colour`);
+  for (const id of BORDER_CONTROL_IDS) controls.set(id, "customise border");
   controls.forEach((label, id) => {
     const element = $(id);
     if (element) bindContinuousHistory(element, label, `setting:${id}`);
@@ -426,6 +462,215 @@ function bindHistoryControlEvents() {
     const name = ["Tape", "Pins", "Corners", "None"][Number(input.value)] || "mount";
     bindContinuousHistory(input, `toggle ${name.toLowerCase()} mount`, `mount:${input.value}`);
   });
+}
+
+function buildBorderPicker() {
+  const container = $("border-picker");
+  if (!container) return;
+  container.replaceChildren();
+  BORDER_STYLES.forEach(style => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "border-swatch";
+    btn.setAttribute("role", "radio");
+    btn.dataset.borderStyle = String(style.id);
+    btn.setAttribute("aria-checked", String(style.id === studioState.borderStyle));
+    btn.tabIndex = style.id === studioState.borderStyle ? 0 : -1;
+    btn.innerHTML = `<span class="border-swatch-svg"></span><span class="border-swatch-name">${escapeHtml(style.name)}</span>`;
+    container.append(btn);
+  });
+  lastSwatchThemeKey = "";
+  refreshBorderSwatches();
+}
+
+function refreshBorderSwatches() {
+  const container = $("border-picker");
+  if (!container) return;
+  const active = THEMES[$("style").value] || THEMES.cream;
+  const accent = active.fixed || "#ff5a36";
+  const key = `${active.bg || ""}|${active.ink || ""}|${accent}|${active.hi || ""}`;
+  if (key === lastSwatchThemeKey) return;
+  lastSwatchThemeKey = key;
+  container.querySelectorAll(".border-swatch").forEach(btn => {
+    const styleId = Number(btn.dataset.borderStyle);
+    btn.querySelector(".border-swatch-svg").innerHTML = renderBorderSwatchSvg(styleId, accent, active);
+  });
+}
+
+function syncBorderControls() {
+  const bwearEl = $("bwear");
+  const resolved = resolveBorderConfig({
+    borderStyle: studioState.borderStyle,
+    borderWear: bwearEl ? Number(bwearEl.value) : 35,
+    border: studioState.borderConfig
+  }, null);
+  const meta = getBorderStyleMeta(resolved.style);
+  const sup = meta.supports;
+
+  const activeLabel = $("border-style-active");
+  if (activeLabel) activeLabel.textContent = meta.name;
+
+  document.querySelectorAll("#border-picker .border-swatch").forEach(btn => {
+    const selected = Number(btn.dataset.borderStyle) === resolved.style;
+    btn.setAttribute("aria-checked", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+
+  const printNote = $("border-print-note");
+  if (printNote) {
+    printNote.textContent = meta.printNote || "";
+    printNote.hidden = !meta.printNote;
+  }
+  const noneNote = $("border-none-note");
+  if (noneNote) noneNote.hidden = meta.id !== 15;
+  const grid = $("border-controls-grid");
+  if (grid) grid.hidden = meta.id === 15;
+
+  const setVal = (id, value) => {
+    const el = $(id);
+    if (!el) return;
+    if (el.type === "checkbox") el.checked = Boolean(value);
+    else el.value = String(value);
+  };
+  setVal("bd-width", resolved.width);
+  setVal("bd-inset", resolved.inset);
+  setVal("bd-opacity", resolved.opacity);
+  setVal("bd-linegap", resolved.lineGap);
+  setVal("bd-color-mode", resolved.colorMode);
+  setVal("bd-color", resolved.color);
+  setVal("bd-pattern", resolved.pattern);
+  setVal("bd-dash", resolved.dash);
+  setVal("bd-gap", resolved.gap);
+  setVal("bd-corner", resolved.corner);
+  setVal("bd-corner-size", resolved.cornerSize);
+  setVal("bd-ornament", resolved.ornament);
+  setVal("bd-ornament-size", resolved.ornamentSize);
+  setVal("bd-wear", resolved.wear);
+  setVal("bd-glow", resolved.glow);
+  setVal("bd-inner", resolved.inner);
+  setVal("bd-inner-width", resolved.innerWidth);
+  setVal("bd-inner-gap", resolved.innerGap);
+  setVal("bd-inner-color-mode", resolved.innerColorMode);
+  setVal("bd-inner-color", resolved.innerColor);
+
+  $("bd-width-val").textContent = Number(resolved.width).toFixed(1);
+  $("bd-inset-val").textContent = Number(resolved.inset).toFixed(1);
+  $("bd-opacity-val").textContent = `${Math.round(resolved.opacity)}%`;
+  $("bd-linegap-val").textContent = Number(resolved.lineGap).toFixed(1);
+  $("bd-dash-val").textContent = String(resolved.dash);
+  $("bd-gap-val").textContent = String(resolved.gap);
+  $("bd-corner-size-val").textContent = String(resolved.cornerSize);
+  $("bd-ornament-size-val").textContent = String(resolved.ornamentSize);
+  $("bd-wear-val").textContent = `${Math.round(resolved.wear)}%`;
+  $("bd-glow-val").textContent = `${Math.round(resolved.glow)}%`;
+  $("bd-inner-width-val").textContent = Number(resolved.innerWidth).toFixed(1);
+  $("bd-inner-gap-val").textContent = Number(resolved.innerGap).toFixed(1);
+
+  const showGroup = (group, visible) => {
+    const el = document.querySelector(`[data-border-group="${group}"]`);
+    if (el) el.hidden = !visible;
+  };
+  showGroup("width", sup.width);
+  showGroup("inset", sup.inset);
+  showGroup("opacity", sup.opacity);
+  showGroup("lineGap", sup.lineGap);
+  showGroup("color", sup.color);
+  showGroup("customColor", sup.color && resolved.colorMode === "custom");
+  showGroup("pattern", sup.pattern);
+  showGroup("dash", sup.pattern && (resolved.pattern === "dashed" || resolved.pattern === "dashdot"));
+  showGroup("dashGap", sup.pattern && resolved.pattern !== "solid");
+  showGroup("corner", sup.corner);
+  showGroup("cornerSize", sup.corner && resolved.corner !== "square");
+  showGroup("ornament", sup.ornament);
+  showGroup("ornamentSize", sup.ornament && resolved.ornament !== "none");
+  showGroup("wear", sup.wear);
+  showGroup("glow", sup.glow);
+  showGroup("inner", sup.inner);
+
+  $("bd-inner-fields").hidden = !(sup.inner && resolved.inner);
+  $("bd-inner-color-wrap").hidden = !(sup.inner && resolved.inner && resolved.innerColorMode === "custom");
+
+  const metaEl = $("border-customise-meta");
+  if (metaEl) {
+    if (meta.id === 15) {
+      metaEl.textContent = "None";
+    } else if (hasBorderOverrides(resolved)) {
+      const tags = [`${Number(resolved.width).toFixed(1)}px`];
+      if (sup.corner && resolved.corner !== meta.defaults.corner) tags.push(resolved.corner);
+      if (resolved.ornament !== "none") tags.push(resolved.ornament);
+      if (resolved.inner) tags.push("+inner");
+      if (resolved.glow > 0 && resolved.glow !== meta.defaults.glow) tags.push("glow");
+      metaEl.textContent = tags.join(" · ");
+    } else {
+      metaEl.textContent = "Default";
+    }
+  }
+
+  const applySelBtn = $("bd-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
+  const activeEl = document.activeElement;
+  if (!activeEl?.classList?.contains("color-hex") || !$("border-customise")?.contains(activeEl)) {
+    syncColorHexFields($("border-customise"));
+  }
+}
+
+function readBorderControlsIntoState(syncBwear = true) {
+  const raw = {
+    width: Number($("bd-width").value),
+    inset: Number($("bd-inset").value),
+    opacity: Number($("bd-opacity").value),
+    lineGap: Number($("bd-linegap").value),
+    colorMode: $("bd-color-mode").value,
+    color: $("bd-color").value,
+    pattern: $("bd-pattern").value,
+    dash: Number($("bd-dash").value),
+    gap: Number($("bd-gap").value),
+    corner: $("bd-corner").value,
+    cornerSize: Number($("bd-corner-size").value),
+    ornament: $("bd-ornament").value,
+    ornamentSize: Number($("bd-ornament-size").value),
+    glow: Number($("bd-glow").value),
+    inner: $("bd-inner").checked,
+    innerWidth: Number($("bd-inner-width").value),
+    innerGap: Number($("bd-inner-gap").value),
+    innerColorMode: $("bd-inner-color-mode").value,
+    innerColor: $("bd-inner-color").value
+  };
+  studioState.borderConfig = compactBorderOverrides(studioState.borderStyle, raw);
+  if (syncBwear && $("bwear") && $("bd-wear")) {
+    $("bwear").value = $("bd-wear").value;
+  }
+  syncBorderControls();
+  scheduleRender();
+}
+
+function populateBorderPresets(selectedId = "") {
+  const select = $("bd-preset-select");
+  if (!select) return;
+  const presets = getBorderPresets();
+  select.innerHTML = `<option value="">Saved presets…</option>${presets.map(p =>
+    `<option value="${escapeHtml(p.id)}"${p.id === selectedId ? " selected" : ""}>${escapeHtml(p.name)} (${escapeHtml(getBorderStyleMeta(p.border.style).name)})</option>`
+  ).join("")}`;
+  syncPresetButtons();
+}
+
+function syncPresetButtons() {
+  const select = $("bd-preset-select");
+  if (!select) return;
+  const hasSelection = Boolean(select.value);
+  $("bd-preset-apply").disabled = !hasSelection;
+  $("bd-preset-apply-card").disabled = !hasSelection;
+  $("bd-preset-delete").disabled = !hasSelection;
+}
+
+function selectBorderStyle(styleId) {
+  const nextId = Math.max(0, Math.min(BORDER_STYLES.length - 1, Number(styleId) || 0));
+  if (nextId === studioState.borderStyle) return;
+  studioState.borderStyle = nextId;
+  studioState.borderConfig = undefined;
+  syncBorderControls();
+  recordDiscrete("change border style");
+  render();
 }
 
 function isTextEditingTarget(target) {
@@ -496,6 +741,9 @@ function render() {
     ? "Drag the dial or use arrow keys to set the angle."
     : "Choose a gradient theme to enable the angle control.";
   syncPageTools(pages);
+  refreshBorderSwatches();
+  const applySelBtn = $("bd-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === studioState.selectedCard);
     row.setAttribute("aria-expanded", String(i === studioState.selectedCard));
@@ -510,6 +758,8 @@ function render() {
 function selectCard(index, scroll = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
+  const applySelBtn = $("bd-apply-selected");
+  if (applySelBtn) applySelBtn.textContent = `Apply to card #${index + 1}`;
   if (historyReady) history.refresh(captureSnapshot());
   document.querySelectorAll(".row").forEach((row, i) => {
     row.classList.toggle("selected", i === index);
@@ -570,6 +820,10 @@ function buildRows() {
             <label><span>Theme</span><select data-option="theme">${themeOptions}</select></label>
             <label><span>Stamp</span><select data-option="sk">${stampOptions}</select></label>
             <label><span>Stamp text</span><input type="text" data-option="stx" placeholder="Same as sheet" value="${escapeHtml(card.stx || "")}"></label>
+            <div class="card-border-row">
+              <span>${card.border ? `Border: Custom (${escapeHtml(getBorderStyleMeta(card.border.style ?? studioState.borderStyle).name)})` : "Border: Same as sheet"}</span>
+              ${card.border ? `<button class="g sm" type="button" data-action="reset-border">Use sheet border</button>` : ""}
+            </div>
           </details>
         </div>
       </div>`;
@@ -684,6 +938,17 @@ function buildRows() {
         recordDiscrete("reset photo crop");
         buildRows();
         render();
+      } else if (action === "reset-border") {
+        const current = studioState.cards[index];
+        if (current && current.border) {
+          const { border: _removed, ...rest } = current;
+          const next = { ...rest };
+          cardIds.set(next, cardIdentity(current));
+          studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+          recordDiscrete("reset card border");
+          buildRows();
+          render();
+        }
       }
       button.closest(".card-menu")?.removeAttribute("open");
     }));
@@ -777,6 +1042,7 @@ async function importJson(text) {
       theme: String(item.theme || ""),
       sk: String(item.stampShape || ""),
       stx: String(item.stampText || ""),
+      ...(item.border && typeof item.border === "object" ? { border: sanitizeBorderPatch(item.border) } : {}),
       autoAccent: !accent,
       ...(accent || {})
     };
@@ -923,9 +1189,12 @@ function randomise() {
   $("tcr").value = Math.random() > .5 ? Math.floor(Math.random() * 50) : 0;
   $("tsc").value = Math.random() > .5 ? Math.floor(Math.random() * 40) : 0;
   $("gspread").value = 25 + Math.floor(Math.random() * 45);
+  studioState.borderStyle = Math.floor(Math.random() * (BORDER_STYLES.length - 1));
+  studioState.borderConfig = undefined;
+  syncBorderControls();
   setGradientAngle(Math.floor(Math.random() * 24) * 15, false);
   recordDiscrete("randomise styling");
-  message("Randomised theme and surface details.");
+  message("Randomised theme, border and surface details.");
   showUndoToast("Sheet styling randomised.");
 }
 
@@ -960,9 +1229,15 @@ function sheetCardPreviewSvg(index) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${clone.outerHTML}</svg>`;
 }
 
+function scopePreviewSvgIds(markup, prefix = "pv-") {
+  return markup
+    .replace(/\bid="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
+    .replace(/\burl\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
+}
+
 function refreshPreview() {
   if (previewIndex < 0 || $("pv").hidden) return;
-  $("pvi").innerHTML = sheetCardPreviewSvg(previewIndex);
+  $("pvi").innerHTML = scopePreviewSvgIds(sheetCardPreviewSvg(previewIndex));
   $("pvt").textContent = `Card ${previewIndex + 1} of ${studioState.count}`;
 }
 
@@ -1038,8 +1313,131 @@ function bindEvents() {
     if (row) selectCard(+row.dataset.index);
   });
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "drag", "style", "sshape", "sauto", "design-border", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
-  ["wear", "bwear", "ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "drag", "style", "sshape", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["wear", "ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  $("bwear").addEventListener("input", () => {
+    syncBorderControls();
+    scheduleRender();
+  });
+
+  $("border-picker")?.addEventListener("click", event => {
+    const swatch = event.target.closest("[data-border-style]");
+    if (swatch) selectBorderStyle(Number(swatch.dataset.borderStyle));
+  });
+  $("border-picker")?.addEventListener("keydown", event => {
+    const buttons = [...$("border-picker").querySelectorAll("[data-border-style]")];
+    const current = buttons.indexOf(event.target.closest("[data-border-style]"));
+    if (current < 0) return;
+    const step = { ArrowRight: 1, ArrowDown: 4, ArrowLeft: -1, ArrowUp: -4 }[event.key];
+    if (step !== undefined) {
+      event.preventDefault();
+      const nextIndex = (current + step + buttons.length) % buttons.length;
+      const nextBtn = buttons[nextIndex];
+      nextBtn.focus();
+      selectBorderStyle(Number(nextBtn.dataset.borderStyle));
+    }
+  });
+
+  for (const id of BORDER_CONTROL_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const handler = () => readBorderControlsIntoState(id === "bd-wear");
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
+  }
+
+  $("bd-apply-selected")?.addEventListener("click", () => {
+    const index = studioState.selectedCard;
+    const patch = sanitizeBorderPatch({
+      style: studioState.borderStyle,
+      ...(studioState.borderConfig || {}),
+      wear: Number($("bwear").value)
+    });
+    updateCard(index, { border: patch });
+    recordDiscrete("apply border to card");
+    buildRows();
+    render();
+    message(`Applied border to card #${index + 1}.`);
+  });
+
+  $("bd-apply-all")?.addEventListener("click", () => {
+    studioState.cards = studioState.cards.map(card => {
+      if (!card.border) return card;
+      const { border: _removed, ...rest } = card;
+      const next = { ...rest };
+      cardIds.set(next, cardIdentity(card));
+      return next;
+    });
+    recordDiscrete("apply border to all cards");
+    buildRows();
+    render();
+    message("Applied border to all cards.");
+  });
+
+  $("bd-reset-style")?.addEventListener("click", () => {
+    studioState.borderConfig = undefined;
+    syncBorderControls();
+    recordDiscrete("reset border customisation");
+    render();
+    message("Reset border customisations to style defaults.");
+  });
+
+  $("bd-preset-select")?.addEventListener("change", syncPresetButtons);
+  $("bd-preset-save")?.addEventListener("click", () => {
+    const presets = getBorderPresets();
+    const rawName = $("bd-preset-name").value;
+    const name = uniquePresetName(rawName || getBorderStyleMeta(studioState.borderStyle).name, presets.map(p => p.name));
+    const id = `bp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const border = sanitizeBorderPatch({
+      style: studioState.borderStyle,
+      ...(studioState.borderConfig || {}),
+      wear: Number($("bwear").value)
+    });
+    const next = [...presets, { id, name, border }];
+    if (!saveBorderPresetsList(next)) {
+      message("Could not save border preset.");
+      return;
+    }
+    $("bd-preset-name").value = "";
+    populateBorderPresets(id);
+    message(`Saved border preset "${name}".`);
+  });
+
+  $("bd-preset-apply")?.addEventListener("click", () => {
+    const id = $("bd-preset-select").value;
+    const preset = getBorderPresets().find(p => p.id === id);
+    if (!preset) return;
+    const patch = sanitizeBorderPatch(preset.border) || {};
+    studioState.borderStyle = patch.style ?? 0;
+    if (patch.wear !== undefined) $("bwear").value = String(patch.wear);
+    studioState.borderConfig = compactBorderOverrides(studioState.borderStyle, patch);
+    syncBorderControls();
+    recordDiscrete("apply border preset");
+    render();
+    message(`Applied preset "${preset.name}" to sheet.`);
+  });
+
+  $("bd-preset-apply-card")?.addEventListener("click", () => {
+    const id = $("bd-preset-select").value;
+    const preset = getBorderPresets().find(p => p.id === id);
+    if (!preset) return;
+    const index = studioState.selectedCard;
+    updateCard(index, { border: sanitizeBorderPatch(preset.border) });
+    recordDiscrete("apply border preset to card");
+    buildRows();
+    render();
+    message(`Applied preset "${preset.name}" to card #${index + 1}.`);
+  });
+
+  $("bd-preset-delete")?.addEventListener("click", () => {
+    const id = $("bd-preset-select").value;
+    const presets = getBorderPresets();
+    const preset = presets.find(p => p.id === id);
+    if (!preset || !window.confirm(`Delete border preset "${preset.name}"?`)) return;
+    saveBorderPresetsList(presets.filter(p => p.id !== id));
+    populateBorderPresets();
+    message(`Deleted border preset "${preset.name}".`);
+  });
   ["gdoors", "gside", "gstamp", "gsyear"].forEach(id => $(id).addEventListener("input", scheduleRender));
   document.querySelectorAll("[data-quick-mount]").forEach(input => {
     input.addEventListener("change", () => {
@@ -1317,6 +1715,9 @@ async function init() {
   bindTapTooltips();
   attachColorHexFields();
   populateThemeSelect($("style"));
+  buildBorderPicker();
+  populateBorderPresets();
+  syncBorderControls();
   syncCustomControls();
   updatePreviewZoom(1);
   const printStyle = document.createElement("style");
