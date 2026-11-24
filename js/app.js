@@ -1967,13 +1967,42 @@ function bindEvents() {
     if (rotTarget && moveStampsMode) {
       event.preventDefault();
       const index = Number(rotTarget.dataset.ci);
-      const si = Number(rotTarget.dataset.si) === 1 ? 1 : 0;
-      selectedStampIndex = si;
-      selectCard(index);
-      const cardGroup = rotTarget.closest("[data-ci]");
+      let si = Number(rotTarget.dataset.si) === 1 ? 1 : 0;
+      const cardGroup = rotTarget.closest("g[data-ci]:not(.st-ui)");
       const ctm = cardGroup.getScreenCTM();
       const st = resolveCardStamp(index, si);
       const pt = new DOMPoint(st.x, st.y).matrixTransform(ctm);
+      const uiGroup = rotTarget.closest(".st-ui");
+      const knobPt = new DOMPoint(0, Number(rotTarget.getAttribute("cy")) || -32).matrixTransform(uiGroup.getScreenCTM());
+      const dKnob = Math.hypot(event.clientX - knobPt.x, event.clientY - knobPt.y);
+      const dCenter = Math.hypot(event.clientX - pt.x, event.clientY - pt.y);
+      if (dCenter < dKnob) {
+        if ($("gs2")?.value.trim()) {
+          const s0 = resolveCardStamp(index, 0);
+          const s1 = resolveCardStamp(index, 1);
+          const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
+          const p1 = new DOMPoint(s1.x, s1.y).matrixTransform(ctm);
+          si = Math.hypot(event.clientX - p1.x, event.clientY - p1.y) < Math.hypot(event.clientX - p0.x, event.clientY - p0.y) ? 1 : 0;
+        }
+        selectedStampIndex = si;
+        selectCard(index);
+        const targetSt = resolveCardStamp(index, si);
+        rotTarget.setPointerCapture?.(event.pointerId);
+        stampDragState = {
+          mode: "move",
+          index,
+          stampIndex: si,
+          startX: event.clientX,
+          startY: event.clientY,
+          startNx: targetSt.nx,
+          startNy: targetSt.ny,
+          cardScale: ctm.a,
+          moved: false
+        };
+        return;
+      }
+      selectedStampIndex = si;
+      selectCard(index);
       rotTarget.setPointerCapture?.(event.pointerId);
       stampDragState = { mode: "rotate", index, stampIndex: si, cx: pt.x, cy: pt.y, moved: false };
       return;
@@ -1983,7 +2012,7 @@ function bindEvents() {
     if (stTarget && moveStampsMode) {
       event.preventDefault();
       const index = Number(stTarget.dataset.ci);
-      const cardGroup = stTarget.closest("[data-ci]");
+      const cardGroup = stTarget.closest("g[data-ci]:not(.st-ui)");
       const ctm = cardGroup.getScreenCTM();
       let si = Number(stTarget.dataset.si) === 1 ? 1 : 0;
       if ($("gs2")?.value.trim()) {

@@ -277,12 +277,13 @@ export function renderCard(c0, i, cfg) {
   const mkStUi = (si, st, sz) => {
     const bw = Math.max(28, 42 * sz);
     const bh = Math.max(28, 36 * sz);
-    const hw = Math.max(74, bw + 12);
-    const hh = Math.max(74, bh + 12);
+    const hw = Math.max(92, bw + 16);
+    const hh = Math.max(92, bh + 16);
+    const rotY = -bh / 2 - 18;
     const isSel = cfg.selectedCard === i && (cfg.selectedStamp ?? 0) === si;
     const label = `Card ${i + 1} ${si === 0 ? "primary" : "second"} stamp position`;
     const vText = `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`;
-    return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${(-bh / 2 - 14).toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${(-bh / 2 - 14).toFixed(1)}" r="20" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${(-bh / 2 - 14).toFixed(1)}" r="4.8"/></g>`;
+    return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${rotY.toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${rotY.toFixed(1)}" r="44" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${rotY.toFixed(1)}" r="4.8"/></g>`;
   };
   const stampUi = cfg.moveStamps && !cfg.one
     ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
