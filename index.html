@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase5.2">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase6">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase5.2">
-<link rel="stylesheet" href="css/app.css?v=phase5.2">
+<link rel="stylesheet" href="css/tokens.css?v=phase6">
+<link rel="stylesheet" href="css/app.css?v=phase6">
 </head>
 <body>
 <header class="topbar">
@@ -145,13 +145,156 @@
           <span class="lbl-row"><span>Card title size</span><output id="title-size-value" for="title-size">85%</output></span>
           <input type="range" id="title-size" min="70" max="100" step="1" value="85" data-live aria-valuetext="85%">
         </label>
-        <label class="fld">
-          <span>Border style</span>
-          <select id="design-border">
-            <option value="0">Double</option><option value="1">Thick</option>
-            <option value="2">Brackets</option><option value="3">Dashed</option><option value="4">Rounded</option>
-          </select>
-        </label>
+        <div class="border-picker-block full">
+          <div class="lbl-row">
+            <span>Border style</span>
+            <span class="hint" id="border-style-active">Double</span>
+          </div>
+          <div id="border-picker" class="border-picker" role="radiogroup" aria-label="Border style"></div>
+          <details class="border-customise" id="border-customise">
+            <summary>
+              <span>Customise</span>
+              <span class="border-customise-meta" id="border-customise-meta"></span>
+              <span class="disclosure-icon" data-icon="chevron"></span>
+            </summary>
+            <div class="border-customise-body">
+              <p class="hint border-print-note" id="border-print-note" hidden></p>
+              <p class="hint" id="border-none-note" hidden>No border is drawn for None. Use Crop marks or Bleed in Page for cut guides.</p>
+              <div class="ctrl-grid" id="border-controls-grid">
+                <label class="fld" data-border-group="width">
+                  <span class="lbl-row"><span>Line width</span><output id="bd-width-val" for="bd-width">1.5</output></span>
+                  <input type="range" id="bd-width" min="0.5" max="5" step="0.1" value="1.5">
+                </label>
+                <label class="fld" data-border-group="inset">
+                  <span class="lbl-row"><span>Inset</span><output id="bd-inset-val" for="bd-inset">2.5</output></span>
+                  <input type="range" id="bd-inset" min="1.5" max="10" step="0.5" value="2.5">
+                </label>
+                <label class="fld" data-border-group="opacity">
+                  <span class="lbl-row"><span>Opacity</span><output id="bd-opacity-val" for="bd-opacity">100%</output></span>
+                  <input type="range" id="bd-opacity" min="10" max="100" step="5" value="100">
+                </label>
+                <label class="fld" data-border-group="lineGap">
+                  <span class="lbl-row"><span>Line gap</span><output id="bd-linegap-val" for="bd-linegap">3.3</output></span>
+                  <input type="range" id="bd-linegap" min="1.5" max="8" step="0.2" value="3.3">
+                </label>
+                <label class="fld" data-border-group="color">
+                  <span>Border colour</span>
+                  <select id="bd-color-mode">
+                    <option value="accent">Theme accent</option>
+                    <option value="ink">Theme text</option>
+                    <option value="frame">Theme frame</option>
+                    <option value="mute">Theme muted</option>
+                    <option value="custom">Custom hex</option>
+                  </select>
+                </label>
+                <label class="fld" data-border-group="customColor" hidden>
+                  <span>Custom colour</span>
+                  <input type="color" id="bd-color" value="#ff5a36" aria-label="Border custom colour">
+                </label>
+                <label class="fld" data-border-group="pattern">
+                  <span>Line pattern</span>
+                  <select id="bd-pattern">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                    <option value="dashdot">Dash-dot</option>
+                  </select>
+                </label>
+                <label class="fld" data-border-group="dash" hidden>
+                  <span class="lbl-row"><span>Dash length</span><output id="bd-dash-val" for="bd-dash">4</output></span>
+                  <input type="range" id="bd-dash" min="1" max="16" step="0.5" value="4">
+                </label>
+                <label class="fld" data-border-group="dashGap" hidden>
+                  <span class="lbl-row"><span>Dash gap</span><output id="bd-gap-val" for="bd-gap">2.5</output></span>
+                  <input type="range" id="bd-gap" min="1" max="16" step="0.5" value="2.5">
+                </label>
+                <label class="fld" data-border-group="corner">
+                  <span>Corner style</span>
+                  <select id="bd-corner">
+                    <option value="square">Square</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="notched">Notched</option>
+                    <option value="chamfered">Chamfered</option>
+                  </select>
+                </label>
+                <label class="fld" data-border-group="cornerSize" hidden>
+                  <span class="lbl-row"><span>Corner size</span><output id="bd-corner-size-val" for="bd-corner-size">9</output></span>
+                  <input type="range" id="bd-corner-size" min="2" max="18" step="0.5" value="9">
+                </label>
+                <label class="fld" data-border-group="ornament">
+                  <span>Corner ornament</span>
+                  <select id="bd-ornament">
+                    <option value="none">None</option>
+                    <option value="diamond">Diamond</option>
+                    <option value="dot">Dot</option>
+                    <option value="star">Star</option>
+                    <option value="cross">Cross</option>
+                    <option value="bracket">Corner tick</option>
+                  </select>
+                </label>
+                <label class="fld" data-border-group="ornamentSize" hidden>
+                  <span class="lbl-row"><span>Ornament size</span><output id="bd-ornament-size-val" for="bd-ornament-size">5</output></span>
+                  <input type="range" id="bd-ornament-size" min="2" max="10" step="0.5" value="5">
+                </label>
+                <label class="fld" data-border-group="wear">
+                  <span class="lbl-row"><span>Border wear</span><output id="bd-wear-val" for="bd-wear">35%</output></span>
+                  <input type="range" id="bd-wear" min="0" max="100" step="1" value="35">
+                </label>
+                <label class="fld" data-border-group="glow">
+                  <span class="lbl-row"><span>Glow amount</span><output id="bd-glow-val" for="bd-glow">0%</output></span>
+                  <input type="range" id="bd-glow" min="0" max="100" step="5" value="0">
+                </label>
+                <div class="border-inner-block full" data-border-group="inner">
+                  <label class="chk"><input type="checkbox" id="bd-inner"> Add second inner border</label>
+                  <div class="ctrl-grid border-inner-fields" id="bd-inner-fields" hidden>
+                    <label class="fld">
+                      <span class="lbl-row"><span>Inner width</span><output id="bd-inner-width-val" for="bd-inner-width">0.7</output></span>
+                      <input type="range" id="bd-inner-width" min="0.4" max="3" step="0.1" value="0.7">
+                    </label>
+                    <label class="fld">
+                      <span class="lbl-row"><span>Inner gap</span><output id="bd-inner-gap-val" for="bd-inner-gap">3.0</output></span>
+                      <input type="range" id="bd-inner-gap" min="1.5" max="10" step="0.5" value="3">
+                    </label>
+                    <label class="fld">
+                      <span>Inner colour</span>
+                      <select id="bd-inner-color-mode">
+                        <option value="accent">Theme accent</option>
+                        <option value="ink">Theme text</option>
+                        <option value="frame">Theme frame</option>
+                        <option value="mute">Theme muted</option>
+                        <option value="custom">Custom hex</option>
+                      </select>
+                    </label>
+                    <label class="fld" id="bd-inner-color-wrap" hidden>
+                      <span>Inner hex</span>
+                      <input type="color" id="bd-inner-color" value="#ff5a36" aria-label="Inner border custom colour">
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="border-actions-bar">
+                <button class="g sm" type="button" id="bd-apply-selected">Apply to selected card</button>
+                <button class="g sm" type="button" id="bd-apply-all">Apply to all cards</button>
+                <button class="g sm" type="button" id="bd-reset-style">Reset defaults</button>
+              </div>
+              <fieldset class="border-presets-box">
+                <legend>Border presets</legend>
+                <div class="border-preset-save">
+                  <input type="text" id="bd-preset-name" maxlength="48" placeholder="Preset name…" aria-label="New border preset name">
+                  <button class="g sm" type="button" id="bd-preset-save">Save preset</button>
+                </div>
+                <div class="border-preset-apply">
+                  <select id="bd-preset-select" aria-label="Saved border presets">
+                    <option value="">Saved presets…</option>
+                  </select>
+                  <button class="g sm" type="button" id="bd-preset-apply" disabled>Apply to sheet</button>
+                  <button class="g sm" type="button" id="bd-preset-apply-card" disabled>Apply to card</button>
+                  <button class="danger sm" type="button" id="bd-preset-delete" disabled aria-label="Delete selected border preset" data-tooltip="Delete preset"><span data-icon="delete"></span></button>
+                </div>
+              </fieldset>
+            </div>
+          </details>
+        </div>
         <label class="fld">
           <span>Year badge</span>
           <select id="design-badge">
@@ -413,6 +556,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase5.2"></script>
+<script type="module" src="js/app.js?v=phase6"></script>
 </body>
 </html>
