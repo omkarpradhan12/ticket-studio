@@ -171,7 +171,15 @@ function render() {
   if ($("tpl").checked) svgPages.push(tplSvg(currentLayout, cfg.regMarks));
   $("sheets").innerHTML = svgPages.join("");
   const printStyle = $("print-page-style");
-  if (printStyle) printStyle.textContent = `@media print { @page { size: ${$("paper").value === "letter" ? "letter" : "A4"} portrait; margin: 0; } }`;
+  if (printStyle) {
+    const paperSize = $("paper").value === "letter" ? "letter" : "A4";
+    const paperWidth = $("paper").value === "letter" ? "215.9mm" : "210mm";
+    const paperHeight = $("paper").value === "letter" ? "279.4mm" : "297mm";
+    printStyle.textContent = `@media print {
+      @page { size: ${paperSize} portrait; margin: 0; }
+      .sheet { width: ${paperWidth} !important; height: ${paperHeight} !important; }
+    }`;
+  }
   $("pg").textContent = `${pages + ($("tpl").checked ? 1 : 0)} page${pages + ($("tpl").checked ? 1 : 0) === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
   const paperName = $("paper").value === "letter" ? "US Letter" : "A4";
   $("sub-info").textContent = `${count} cards across ${pages} ${paperName} page${pages === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
@@ -564,6 +572,21 @@ function closePreview() {
   if (previousFocus?.isConnected) previousFocus.focus();
 }
 
+async function printSheet() {
+  if (document.fonts?.ready) await document.fonts.ready;
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const images = [...document.querySelectorAll("#sheets image")];
+  await Promise.all(images.map(image => new Promise(resolve => {
+    if (typeof image.complete === "boolean" && image.complete) {
+      resolve();
+      return;
+    }
+    image.addEventListener("load", resolve, { once: true });
+    image.addEventListener("error", resolve, { once: true });
+  }))).catch(() => {});
+  window.print();
+}
+
 function downloadCardSvg() {
   const markup = sheetCardPreviewSvg(previewIndex);
   triggerDownload(new Blob([markup], { type: "image/svg+xml" }), `card-${previewIndex + 1}.svg`);
@@ -620,7 +643,9 @@ function bindEvents() {
 
   $("prev-style").addEventListener("click", () => cycleTheme(-1));
   $("next-style").addEventListener("click", () => cycleTheme(1));
-  $("print").addEventListener("click", () => window.print());
+  $("print").addEventListener("click", () => {
+    printSheet().catch(() => window.print());
+  });
   $("svg").addEventListener("click", () => exportAllSvgs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("png").addEventListener("click", () => exportAllPngs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("pdf").addEventListener("click", () => exportPdf([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));

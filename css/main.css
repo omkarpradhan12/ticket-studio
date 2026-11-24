@@ -680,8 +680,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
   body {
     background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  .topbar, .panel, h1, p.subtitle {
+  .topbar, .panel, h1, p.subtitle, .page-tools, #pv {
     display: none !important;
   }
   .app {
@@ -701,18 +703,28 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     overflow: visible;
     box-shadow: none;
     gap: 0;
+    transform: none !important;
+    zoom: 1 !important;
   }
   .sheet {
     display: block;
     max-width: none;
-    width: 100%;
-    height: auto;
+    width: 210mm;
+    height: 297mm;
     border-radius: 0;
     box-shadow: none;
     break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    transform: none !important;
+    zoom: 1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .sheet:last-child {
     break-after: auto;
+    page-break-after: auto;
   }
   .pp {
     display: none !important;
