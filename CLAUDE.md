@@ -37,6 +37,9 @@
 - The editable Sheet Editor title is stored in the optional `settings.sheetTitle` field; older sheets use the default title.
 - Sheet Editor state is centralized in `studioState`; card records and arrays use copy-on-write updates so history snapshots can share unchanged photos safely.
 - Bulk Upload commits now stay on that page until the user chooses Undo or Open Editor; its single transfer undo is memory-only and expires on leave/reload.
+- The Phase 4 visual system uses `css/tokens.css` plus layered `css/app.css`; keep local CSS, scripts, modules, and the favicon on the same `?v=` cache version.
+- Use the shared `js/icons.mjs` SVG set for interface icons. Icon-only controls need accessible labels and hover, focus, and tap tooltips; retain card-art glyphs and renderer output.
+- Pair every color picker with a validated hex field. Sheet Editor hex edits must use the existing history/autosave path; Theme Studio draft-scoped undo remains a Phase 5 task.
 
 ## Verification checklist
 1. Load all three pages with no console errors.
@@ -56,3 +59,7 @@
 15. Confirm band search is non-destructive and outside history/export/layout.
 16. Confirm the visiting-card layout, borders, stamps, print, and exports once Phase 10 is complete.
 17. Update `docs/PROGRESS.md` and commit. Explicitly list anything needing manual approval.
+
+## Phase status
+- Phase 4 visual-system, accessibility, icon, and color-control work is complete on `ui-overhaul`.
+- Resume at Phase 5 only after owner approval; Theme Studio draft undo remains planned there.

@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 3 - Sheet Editor layout complete
-- Next approval: owner approval before Phase 4 visual system and icon work.
+- Current phase: Phase 4 - visual system and icon work complete
+- Next approval: owner approval before Phase 5 Theme Studio work.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -42,14 +42,14 @@
 | P1-22 | Verify UI issue U6 long card list | M | medium | done | 2d743d3 | Compact rows; only selected card expands; future controls remain disabled placeholders |
 | P1-23 | Verify UI issue U7 preview toolbar/scroll | M | medium | done | 2d743d3 | Slim toolbar, page count, zoom and mobile single-stage scrolling verified |
 | P1-24 | Verify UI issue U8 checkbox/paper swatch cluster | S | low | done | 2d743d3 | Labelled swatches and grouped NFC/serial/punch controls verified |
-| P1-25 | Verify UI issue U9 jargon/help | M | low | todo | - | |
-| P1-26 | Verify UI issue U10 uppercase/letter spacing | S | low | todo | - | |
-| P1-27 | Verify UI issue U11 muted contrast | S | medium | todo | - | |
-| P1-28 | Verify UI issue U12 accordion arrows | S | low | todo | - | |
-| P1-29 | Verify UI issue U13 icons | M | medium | todo | - | |
-| P1-30 | Verify UI issue U14 Ink/Text terminology | S | low | todo | - | |
-| P1-31 | Consolidate U15 CSS/inline/cache issues | L | medium | todo | - | Preserve behavior |
-| P1-32 | Verify UI issue U16 hex fields for pickers | M | medium | todo | - | |
+| P1-25 | Verify UI issue U9 jargon/help | M | low | done | 6271eeb | Helper text and click/tap/keyboard JSON popover |
+| P1-26 | Verify UI issue U10 uppercase/letter spacing | S | low | done | 6271eeb | Sentence case except section headers and navigation |
+| P1-27 | Verify UI issue U11 muted contrast | S | medium | not an issue | 6271eeb | Existing muted token is at least 5.25:1 on sampled dark surfaces |
+| P1-28 | Verify UI issue U12 accordion arrows | S | low | done | 6271eeb | Shared rotating chevrons |
+| P1-29 | Verify UI issue U13 icons | M | medium | done | 6271eeb | Shared currentColor SVG icon set and accessible tooltips |
+| P1-30 | Verify UI issue U14 Ink/Text terminology | S | low | done | 6271eeb | Visible palette role is Text; saved key remains `ink` |
+| P1-31 | Consolidate U15 CSS/inline/cache issues | L | medium | done | 6271eeb | Layered `app.css`; static styles/classes and local asset cache version |
+| P1-32 | Verify UI issue U16 hex fields for pickers | M | medium | done | 6271eeb | Validated pairs; Sheet Editor hex edits use existing undo history |
 | P2-01 | Design and approve state/history architecture | M | high | done | 96b23af | Design approved before implementation |
 | P2-02 | Refactor Sheet Editor to canonical state | L | high | done | a7635bc | Immutable card/array updates; settings, pages, count and selection flow through `studioState`; saved payload unchanged |
 | P2-03 | Implement in-memory history module and tests | L | high | done | 329f59c | Generic snapshots, 100-entry cap, sharing/coalescing/redo tests |
@@ -60,7 +60,7 @@
 | P3-02 | Top bar actions/menu | L | medium | done | 2d743d3 | Primary SVG, Print, formats, overflow actions, Data dialog, and mobile actions |
 | P3-03 | Compact card rows and selected expansion | L | medium | done | 2d743d3 | Selected row expands; row actions, long values, and disabled future slots included |
 | P3-04 | Preview toolbar and scroll container | M | medium | done | 2d743d3 | Page tools, zoom/Fit, mobile Edit/Preview, and single preview scroll container |
-| P4-01 | Visual system and icon pass | L | medium | todo | - | |
+| P4-01 | Visual system and icon pass | L | medium | done | 6271eeb | See Phase 4 verification below |
 | P5-01 | Theme Studio gallery | L | high | todo | - | |
 | P5-02 | Theme side/bottom panel and custom actions | L | medium | todo | - | |
 | P6-01 | Customisable borders | L | high | todo | - | |
@@ -74,6 +74,7 @@
 
 ## Known issue disposition
 - Phase 3 verified and addressed B4, B5, B14, and U1-U8 at desktop and 390px. U6's Surprise me/search controls are intentionally disabled placeholders for Phases 8-9.
+- Phase 4 addressed U9, U10, U12-U16. U11 is not an issue: the current muted token already passes 4.5:1 on sampled surfaces. Theme Studio draft-scoped undo remains a Phase 5 item.
 - Other audited issues remain at their table status; do not treat source-only observations as reproduced defects.
 
 ## Phase dependencies and decisions
@@ -181,10 +182,23 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - Validation passed: `node tests/history.test.mjs`, JavaScript module syntax checks, 106 unique HTML IDs, and `git diff --check`.
 - Still blocked: no pre-change `.baseline/` exports exist, so exact SVG/PNG/PDF file comparisons and physical printer scaling cannot be certified. Print emulation is not a physical-printer test. Keyboard focus traversal across all three pages remains a manual check.
 
+## Phase 4 visual system implementation and verification
+- Consolidated the previous stylesheets into layered `css/app.css` over `css/tokens.css`; removed dead tooltip, duplicate accordion-arrow, and hidden stage-pseudo rules. Static inline presentation moved to CSS classes; data-dependent image/preview styles remain dynamic.
+- Local CSS, JavaScript modules, and favicon now use the same `?v=phase4` cache version. No framework, bundler, or runtime dependency was added.
+- Added `js/icons.mjs`, a shared inline SVG set using `currentColor` and one stroke width. Replaced interface icon glyphs, added accessible labels/tooltips for icon-only controls, and preserved renderer/card-art output. Added workspace menus to Theme Studio and Bulk Upload at mobile widths.
+- Labels use sentence case; uppercase is limited to section headers and navigation. Accordions use rotating SVG chevrons, all interactive controls use visible `:focus-visible` outlines, and Plotter/cutter/punch-hole helpers are visible. JSON help is an anchored click/tap/keyboard disclosure.
+- Palette terminology is “Text” on both editor pages while the saved theme key remains `ink`.
+- Every rendered color picker has a paired `#RRGGBB` text field with live synchronization and inline validation. Sheet Editor hex edits flow through the existing color input events and undo history. Theme Studio draft-scoped app undo remains planned for Phase 5; Bulk Upload staging remains local until transfer.
+- Muted text `#9a928c` contrast against sampled dark surfaces: `#141211` 6.11:1, `#1f1c1a` 5.54:1, `#181614` 5.90:1, `#0c0b0a` 6.43:1, `#121210` 6.13:1, `#1d1b18` 5.62:1, `#23211d` 5.25:1, `#151412` 6.02:1, and `#0d0c0b` 6.39:1. Minimum is 5.25:1, so U11 required no color adjustment.
+- Browser verification at 1440px and 390px: all three pages loaded without observed console errors or horizontal overflow; every rendered color picker had a hex partner; all icons hydrated; no legacy stylesheet links or `title` tooltips remained. Verified invalid hex handling, editor hex undo/restore, Theme Studio preview synchronization and gradient visibility, Bulk Upload staged hex changes, tap and keyboard disclosure behavior, and visible keyboard focus.
+- The default rendered-card inner-markup SHA-256 still matches the pre-change value `02fa9ed895dbd65ee64f56bb0f1432cc2d7e3095309012832cebb382f8f53c1b` (89,403 JavaScript characters). No pre-change `.baseline/` SVG/PNG/PDF exports exist, so exact file and printer parity remain unverified.
+- Validation: `node tests/color-controls.test.mjs`, module syntax checks, and `git diff --check` passed.
+
 ## Manual approval and remaining checks
 - Owner approved Phase 3 before implementation; it is complete.
 - The Bulk Upload transfer behavior was selected by the owner: stay on Bulk Upload and show Undo/Open Editor actions.
 - Manual export/printer parity remains unverified because no pre-change `.baseline/` exports are available.
+- Phase 4 is complete; wait for owner approval before Phase 5. Theme Studio draft-scoped undo is intentionally deferred to that phase.
 
 ### Approval gate
 - Design approved by the owner before implementation.

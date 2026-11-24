@@ -167,13 +167,14 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - The preview toolbar contains page count/theme, duplicate page, a disabled Move stamps placeholder, and zoom/Fit controls.
 
 ## 14. Accessibility
-- Focus-visible outlines exist for controls, card thumbnails and dial.
-- Several card/toolbar controls have aria labels, preview modal is labelled, and `#msg`/`#sv` status uses partial live status.
+- A shared `:focus-visible` rule covers links, buttons, form controls, summaries, tabindex targets, and role-based buttons/sliders. Keyboard Tab checks showed a 3px visible outline on the workspace menu controls across all pages.
+- Icon-only controls have accessible labels. Tooltips display on hover, keyboard focus, and tap; the SVG icon set uses `currentColor` with a consistent stroke width.
+- The preview modal is labelled, and `#msg`/`#sv` status uses partial live status.
 - Theme Studio status message is not `aria-live`.
 - Bulk/dropzone and card staging have some labels but staging drag reorder is mouse/desktop drag with no keyboard equivalent.
-- Color controls lack a visible hex field and are coupled to `.chk`.
-- JSON tooltip is hover-only.
-- Muted text contrast needs real theme-dependent validation. Redesign overrides token muted to `#aaa49a`, main defines other values.
+- Every rendered color picker has a separate validated hex text field with two-way synchronization. Sheet Editor hex changes use the existing undo path. Theme Studio draft-scoped app undo remains planned for Phase 5.
+- JSON format help is an anchored `<details>` popover operable by click/tap and keyboard, not a hover-only tooltip.
+- The effective muted token `#9a928c` measures at least 5.25:1 on the sampled dark UI surfaces; see Phase 4 disposition below. No contrast token change was needed.
 - Gradient dial remains visible but is disabled for non-gradient themes, removed from keyboard tab order, guarded against pointer/keyboard input, and accompanied by a helper message.
 - Modal keyboard focus trap and full dialog focus management are incomplete for nested/preview use.
 
@@ -191,10 +192,16 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - B11: import validates only object shape, not hex strings, grad lightness range, or field types.
 - B12: no unsaved warning exists in either sheet or theme page navigation.
 - B13: theme status `#st-msg` is not live.
-- B14: gradient dial lacks active state/disabled reason.
+- B14: addressed in Phase 3; gradient dial is disabled for non-gradient themes with a visible explanation.
 - B2-B5 and B1/B6/B7 remain verification-dependent, not assumed defects.
-- U15 inline styles and cache-buster inconsistencies.
-- U16 color pickers have no hex fields.
+- U9: Plotter registration, cutter radius, and punch-hole helper text is now visible; JSON help uses a click/tap/keyboard popover.
+- U10: field labels and general controls use sentence case; uppercase is limited to section headers and navigation.
+- U11: not an issue; sampled muted-text contrast is above 4.5:1.
+- U12: accordions use rotating SVG chevrons.
+- U13: UI icon glyphs are replaced with a shared inline SVG set; card-art glyphs are unchanged.
+- U14: visible theme palette terminology is “Text”; saved data still uses the `ink` key.
+- U15: old stylesheets are consolidated into layered `css/app.css`; static inline styles and cache versions are normalized, and known dead/overridden rules were removed.
+- U16: all color pickers have validated, synchronized hex fields; Sheet Editor hex edits are undoable.
 
 ## 16. Screenshots
 Browser checks used the existing browser harness; no Playwright dependency was added. Phase 1 screenshots cover the three pages at desktop and 390px. Phase 2 and Phase 3 browser checks are summarized in `docs/PROGRESS.md`. No pre-change export files were captured in `.baseline/`, so exact export and physical-printer parity remain unverified.
@@ -216,4 +223,13 @@ Browser checks used the existing browser harness; no Playwright dependency was a
 - The top bar uses SVG as its primary export because that was the previously highlighted action. Usage telemetry is unavailable, so the actual most-used format could not be determined.
 - Cards use compact rows with only the selected card expanded; disabled placeholders reserve future Surprise me/search/Move stamps entry points.
 - At 390px the page had no horizontal overflow; the mobile action bar remained fixed and Undo/Redo/workspace menu controls stayed reachable.
+
+## Phase 4 visual system disposition
+- Replaced the old `main.css`, `redesign.css`, and `studio.css` links with `tokens.css` and layered `app.css`. Static inline presentation was moved into CSS; remaining script-set styles are data-dependent (for example photo URLs and preview transforms). Local CSS/JS/module/favicon references use the `?v=phase4` cache query.
+- The shared `js/icons.mjs` renders currentColor SVGs with `stroke-width="2"`. Interface arrows, action glyphs, and the NFC word badge were replaced; SVG card art and its stars remain unchanged.
+- The prior rendered-card inner-markup SHA-256 is unchanged: `02fa9ed895dbd65ee64f56bb0f1432cc2d7e3095309012832cebb382f8f53c1b`. Browser checks found no console errors or horizontal overflow at 1440px and 390px on Sheet Editor, Theme Studio, and Bulk Upload.
+- Color fields were paired and checked on all three pages, including dynamically staged Bulk Upload cards. Invalid values set `aria-invalid` and show inline guidance; editor hex changes undo through the existing history. Theme Studio draft history remains Phase 5 scope.
+- Muted contrast pairs for `--mute: #9a928c` on the touched dark surfaces: `#141211` 6.11:1; `#1f1c1a` 5.54:1; `#181614` 5.90:1; `#0c0b0a` 6.43:1; `#121210` 6.13:1; `#1d1b18` 5.62:1; `#23211d` 5.25:1; `#151412` 6.02:1; `#0d0c0b` 6.39:1. All exceed 4.5:1.
+- Browser verification covered tap and keyboard disclosure behavior, visible keyboard focus, gradient option visibility, hex synchronization/validation/undo, local asset links, and mobile workspace menus. `node tests/color-controls.test.mjs`, module syntax checks, and `git diff --check` passed.
+- Pre-change `.baseline/` exports are still absent; byte-for-byte export and physical-printer parity are not claimed. No saved-data migration or renderer change was made.
 - The default rendered card inner markup matched the pre-change baseline hash; changing preview zoom left serialized SVG output unchanged. Print emulation hid editor chrome and retained the 210 × 297 mm sheet dimensions, but does not certify physical printer output.
