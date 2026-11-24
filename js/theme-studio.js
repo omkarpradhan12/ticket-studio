@@ -45,6 +45,13 @@ function writeForm(config) {
 
 function configForTheme(key, theme) {
   if (theme._raw) return { ...DEFAULT_CUSTOM, ...theme._raw };
+  if (theme.acc !== undefined || theme.pa !== undefined || theme.name !== undefined) {
+    return {
+      ...DEFAULT_CUSTOM,
+      ...theme,
+      name: String(theme.name || "My theme").trim() || "My theme"
+    };
+  }
   return {
     ...DEFAULT_CUSTOM,
     name: theme.n || key,

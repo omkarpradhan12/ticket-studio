@@ -27,7 +27,7 @@
 | P1-07 | Fix B5 card list input truncation | S | low | todo | - | |
 | P1-08 | Verify/fix B6 photo aspect ratios | M | high | done | - | Known-dimension photo images now use cover-style xMidYMid slice; rerun Ticket/Tarot visual check after baseline |
 | P1-09 | Verify/fix B7 print behavior | L | high | done | - | Added print-only CSS, exact color adjustment, all-sheet page breaks, zoom reset and font/image wait before window.print |
-| P1-10 | Fix B8 saved-theme cloning | M | medium | todo | - | |
+| P1-10 | Fix B8 saved-theme cloning | M | medium | done | - | configForTheme now recognizes saved acc/pa/name configs and never uses a UUID as the name |
 | P1-11 | Fix B9 saved-theme delete refresh/confirmation | S | medium | todo | - | |
 | P1-12 | Fix B10 theme save/duplicate names | M | medium | todo | - | Ask before changing name semantics |
 | P1-13 | Fix B11 theme import validation | M | medium | todo | - | |
