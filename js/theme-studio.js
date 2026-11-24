@@ -159,6 +159,13 @@ function populateCloneOptions() {
 function saveDraft() {
   const config = readForm();
   const saved = getSavedCustomThemes();
+  const baseName = String(config.name || "Untitled theme").trim().slice(0, 60) || "Untitled theme";
+  let uniqueName = baseName;
+  let suffix = 2;
+  while (saved.some(item => item.id !== editingId && String(item.config?.name || "").trim() === uniqueName)) {
+    uniqueName = `${baseName} (${suffix++})`;
+  }
+  config.name = uniqueName;
   const id = editingId || (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
   const existing = saved.findIndex(item => item.id === id);
   const item = { id, config };
