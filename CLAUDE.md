@@ -42,6 +42,7 @@
 - Use the shared `js/icons.mjs` SVG set for interface icons. Icon-only controls need accessible labels and hover, focus, and tap tooltips; retain card-art glyphs and renderer output.
 - Pair every color picker with a validated hex field. Sheet Editor hex edits must use the existing history/autosave path.
 - Theme Studio themes remain palette-only; do not add gradient angle or spread to the saved theme schema. Its draft history is in-memory only and resets when switching themes or reloading.
+- The Sheet Editor injects its embedded font faces before the first full-sheet render so on-page SVG text matches the individual-card preview; keep exported SVG markup unchanged.
 
 ## Verification checklist
 1. Load all three pages with no console errors.

@@ -89,7 +89,7 @@ The implementation mixes `data-live` input listeners with explicit `change`/`inp
 ## 5. Card renderer
 - `renderCard(c, i, cfg)` accepts card data plus layout, theme, global text, stamp, wear, texture, border, mount, title font, crop/filter, NFC/serial/punch, drag and gradient settings.
 - SVG defs are globally emitted per card and use card-indexed IDs: `bgg${i}`, `ink${i}`, `bd${i}`, `np${i}`, `ht${i}`, `gr${i}`, `sc${i}`, `ew${i}`, `cc${i}`, `ck${i}`. They are usually collision-safe within one page because the card index is unique. However preview clone and modal fallbacks can also contain cloned markup; reused/indexed IDs should be audited if cards are sorted or preview fragments are reused.
-- Fonts are self-contained through `FONTCSS` embedded in `fonts.js`; `fonts.js` is 207,923 bytes and embeds WOFF2 data URLs for SVG/Canvas use.
+- Fonts are self-contained through `FONTCSS` embedded in `fonts.js`; `fonts.js` is 207,923 bytes and embeds WOFF2 data URLs for SVG/Canvas use. The Sheet Editor injects these faces before its first full-sheet render; individual-card and exported SVGs retain their embedded font styles.
 - Title layout uses font selection and `fit(cleanTitle, tf.s, 136, tf.k)`, uppercases the title, and is centered or left by `centerTitle`. It does not wrap; long titles shrink with the font fit helper, but fit uses fixed length and has a minimum of 3.4.
 - The card is scaled using layout `K`; all internal mm geometry is effectively expressed in a 170px-wide SVG coordinate system.
 
@@ -245,3 +245,8 @@ Browser checks used the existing browser harness; no Playwright dependency was a
 - Browser verification covered v1/v2 saves, Update, draft undo/redo, v3 Duplicate, confirmed Delete, import collision naming, custom preview and Sheet Editor SVG palette rendering, editor dropdown integration, dirty-state warnings, 390px panel geometry, and keyboard tile open/close. All three pages loaded without observed console errors.
 - `node tests/theme-studio-utils.test.mjs`, `node tests/history.test.mjs`, `node tests/color-controls.test.mjs`, module syntax checks, and four browser title-layout checks passed. The browser harness did not expose a JSON download event, though the Export JSON handler ran and reported success.
 - No pre-change `.baseline/` exports are available. Exact SVG/PNG/PDF comparisons and physical-printer parity remain unverified.
+
+## Standalone Sheet Editor font preview fix
+- Reproduced at full A4 size: the full-sheet preview showed a fallback serif title while the individual-card preview showed the selected Pirata One font.
+- The full-sheet SVG was inline without document-level embedded font faces; opening the card preview loaded its embedded `FONTCSS`, making the font available afterward.
+- The Sheet Editor now calls `injectFonts()` before its first render. This changes font availability for the on-page preview only; saved data, SVG markup, and export serialization are unchanged.

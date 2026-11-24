@@ -221,3 +221,8 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - Phase 5 changes approved by the owner before implementation.
 - No local history persistence is proposed.
 - The Phase 3 editable sheet title and Phase 5 title scale use optional settings fields; existing sheet and theme payload formats remain backward compatible.
+
+## Standalone font preview fix
+- Reproduced on the full-size A4 sheet: the title used a fallback serif until opening the individual-card preview, which loads the embedded font CSS.
+- `injectFonts()` now runs before the Sheet Editor's first render, so the selected title font is available to the inline full-sheet SVG immediately.
+- No renderer markup, saved data, or export serialization changed. Verified the distinct Pirata One title at full sheet and individual-card sizes; local asset references were bumped uniformly to `?v=phase5.2`.

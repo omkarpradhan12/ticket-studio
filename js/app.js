@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase5.1";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase5.1";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase5.1";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase5.1";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase5.1";
-import { FONTCSS } from "./fonts.js?v=phase5.1";
-import { History } from "./history.mjs?v=phase5.1";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase5.1";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase5.1";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase5.2";
+import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase5.2";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase5.2";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase5.2";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase5.2";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase5.2";
+import { History } from "./history.mjs?v=phase5.2";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase5.2";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase5.2";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
@@ -1312,6 +1312,7 @@ function duplicateActivePage(perPage) {
 }
 
 async function init() {
+  injectFonts();
   hydrateIcons();
   bindTapTooltips();
   attachColorHexFields();
