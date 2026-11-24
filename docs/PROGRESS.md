@@ -50,7 +50,7 @@
 | P1-30 | Verify UI issue U14 Ink/Text terminology | S | low | todo | - | |
 | P1-31 | Consolidate U15 CSS/inline/cache issues | L | medium | todo | - | Preserve behavior |
 | P1-32 | Verify UI issue U16 hex fields for pickers | M | medium | todo | - | |
-| P2-01 | Design and approve state/history architecture | M | high | in progress | - | Awaiting approval; no app changes in this step |
+| P2-01 | Design and approve state/history architecture | M | high | in progress | 96b23af | Design committed; awaiting approval; no app changes in this step |
 | P2-02 | Refactor Sheet Editor to canonical state | L | high | todo | - | Own behavior-preserving commit(s), before history implementation |
 | P2-03 | Implement in-memory history module and tests | L | high | todo | - | 100 entries; shared card objects; add standalone no-framework tests |
 | P2-04 | Wire undoable Sheet Editor actions and restore | L | high | todo | - | Settings, cards, pages, imports, reset/randomise/sample operations |
@@ -105,6 +105,7 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - 06da4a3 Fix duplicate theme names
 - 9d4ffba Validate imported theme JSON
 - 014d7d0 Refresh Phase 1 cache and print output
+- 96b23af Design Phase 2 undo history
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
