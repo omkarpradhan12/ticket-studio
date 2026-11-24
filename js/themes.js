@@ -130,8 +130,10 @@ export function saveCustomThemesList(list) {
     localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(list));
   } catch (e) {
     console.warn("Could not persist custom themes:", e);
+    return false;
   }
   refreshSavedThemes();
+  return true;
 }
 
 export function refreshSavedThemes() {

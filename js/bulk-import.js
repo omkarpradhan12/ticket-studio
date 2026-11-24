@@ -1,11 +1,14 @@
-import { DEFAULT_CARDS, blankCard, loadSession, persistSession } from "./storage.js";
-import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js";
-import { abbr } from "./svg-engine.js";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase5.2";
+import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase5.2";
+import { abbr } from "./svg-engine.js?v=phase5.2";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase5.2";
+import { attachColorHexFields } from "./color-controls.mjs?v=phase5.2";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
 let staged = [];
 let draggedIndex = -1;
+let lastTransfer = null;
 
 function message(text) {
   $("bi-msg").textContent = text;
@@ -25,7 +28,7 @@ function renderStaged() {
   $("staged-count").textContent = staged.length;
   $("staging-grid").innerHTML = staged.map((card, index) => `
     <article class="stage-card" draggable="true" data-index="${index}">
-      <div class="stage-meta"><strong>Card ${index + 1}</strong><button class="g sm" type="button" data-remove="${index}" aria-label="Remove staged card">Remove</button></div>
+      <div class="stage-meta"><strong>Card ${index + 1}</strong><button class="g sm" type="button" data-remove="${index}" aria-label="Remove staged card">${iconMarkup("delete")} Remove</button></div>
       <div class="stage-thumb" data-thumb="${index}">${card.img || card.imgUrl ? "" : "Photo unavailable"}</div>
       ${card.corsLimited ? '<span class="cors-tag">CORS-limited raster export</span>' : ""}
       <input type="text" data-field="title" data-index="${index}" aria-label="Artist name" placeholder="Artist / band name" value="${escapeHtml(card.title)}">
@@ -33,12 +36,13 @@ function renderStaged() {
       <input type="text" data-field="loc" data-index="${index}" aria-label="Place" placeholder="Place" value="${escapeHtml(card.loc)}">
       <input type="text" data-field="year" data-index="${index}" aria-label="Year" placeholder="Year" value="${escapeHtml(card.year)}">
       <input type="text" data-field="code" data-index="${index}" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code || abbr(card.title))}">
-      <label class="c-row"><input type="color" data-accent="${index}" aria-label="Accent color" value="${hslToHex(card)}"> Image accent</label>
+      <label class="colour-control"><span>Image accent</span><input type="color" data-accent="${index}" aria-label="Image accent colour" value="${hslToHex(card)}"></label>
       <div class="ctrl-flex">
-        <button class="g sm" type="button" data-move="-1" data-index="${index}" ${index === 0 ? "disabled" : ""}>←</button>
-        <button class="g sm" type="button" data-move="1" data-index="${index}" ${index === staged.length - 1 ? "disabled" : ""}>→</button>
+        <button class="g sm" type="button" data-move="-1" data-index="${index}" aria-label="Move card ${index + 1} up" data-tooltip="Move up" ${index === 0 ? "disabled" : ""}>${iconMarkup("moveUp")}</button>
+        <button class="g sm" type="button" data-move="1" data-index="${index}" aria-label="Move card ${index + 1} down" data-tooltip="Move down" ${index === staged.length - 1 ? "disabled" : ""}>${iconMarkup("moveDown")}</button>
       </div>
     </article>`).join("");
+  attachColorHexFields($("staging-grid"));
   $("staging-grid").querySelectorAll("[data-field]").forEach(input => input.addEventListener("input", () => {
     staged[+input.dataset.index][input.dataset.field] = input.value;
   }));
@@ -268,8 +272,26 @@ async function pushToSheet(replace) {
     message("Could not save the sheet. Your staged cards are still here; try again or use fewer/lower-resolution images.");
     return;
   }
-  message(`${replace ? "Replaced" : "Appended to"} the sheet. Opening the editor…`);
-  window.location.href = "index.html";
+  lastTransfer = { existing };
+  $("bulk-transfer-message").textContent = `${replace ? "Replaced" : "Appended to"} the saved sheet. Undo is available until you leave or reload.`;
+  $("bulk-transfer-toast").hidden = false;
+  message("Transfer saved. Undo it here or open the editor.");
+}
+
+async function undoTransfer() {
+  if (!lastTransfer) return;
+  const result = lastTransfer.existing
+    ? await persistSession(lastTransfer.existing)
+    : (await clearSession() ? "Saved locally" : "Not saved");
+  if (result === "Not saved") {
+    message("Could not fully undo the transfer. Reload and verify the saved sheet before continuing.");
+    return;
+  }
+  lastTransfer = null;
+  $("bulk-transfer-toast").hidden = true;
+  message(result === "Saved (embedded photos exceeded localStorage)"
+    ? "Transfer undone, but local storage could not retain embedded photos. Verify the sheet before continuing."
+    : "Bulk transfer undone.");
 }
 
 function bind() {
@@ -305,7 +327,14 @@ function bind() {
   $("clear-staged-btn").addEventListener("click", () => { staged = []; renderStaged(); message("Staging cleared."); });
   $("push-append-btn").addEventListener("click", () => pushToSheet(false).catch(error => message("Could not append staged cards: " + error.message)));
   $("push-replace-btn").addEventListener("click", () => pushToSheet(true).catch(error => message("Could not replace the sheet: " + error.message)));
+  $("undo-transfer").addEventListener("click", () => undoTransfer().catch(error => message("Could not undo the transfer: " + error.message)));
+  $("open-sheet-editor").addEventListener("click", () => {
+    if (lastTransfer) window.location.href = "index.html";
+  });
 }
 
+hydrateIcons();
+bindTapTooltips();
+attachColorHexFields();
 bind();
 renderStaged();

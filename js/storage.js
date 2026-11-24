@@ -17,6 +17,7 @@ export const SEED_DATA = [
 ];
 
 export const SET0 = {
+  sheetTitle: "Concert Ticket Card Sheet",
   style: "cream",
   doors: "Doors 7PM",
   side: "Dope-Amine",
@@ -32,6 +33,7 @@ export const SET0 = {
   gradientAngle: 180,
   gradientSpread: 32,
   titleFont: "theme",
+  titleScale: 85,
   paper: "a4",
   cardSize: "ticket",
   cutterCorners: "0",
@@ -141,10 +143,15 @@ export async function persistSession(payload) {
 }
 
 export async function clearSession() {
+  let idbCleared = false;
+  let localStorageCleared = false;
   try {
     await idbOp("readwrite", st => st.delete(SESSION_KEY));
+    idbCleared = true;
   } catch {}
   try {
     localStorage.removeItem(SESSION_KEY);
+    localStorageCleared = true;
   } catch {}
+  return idbCleared && localStorageCleared;
 }

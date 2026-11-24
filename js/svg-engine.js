@@ -1,6 +1,6 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js";
-import { hsl } from "./image-utils.js";
+import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase5.2";
+import { hsl } from "./image-utils.js?v=phase5.2";
 
 export const CW = 170;
 export const SIZES = {
@@ -20,6 +20,54 @@ export const displayText = (t, n) => {
   t = String(t || "");
   return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 };
+
+export function titleLayout(title, font, maxWidth = 136, scale = 1) {
+  const clean = String(title || "Add name");
+  const requestedScale = Number(scale);
+  const boundedScale = Number.isFinite(requestedScale) ? Math.max(0.7, Math.min(1, requestedScale)) : 1;
+  const scaledFont = { ...font, s: font.s * boundedScale };
+  const singleSize = Number(fit(clean, scaledFont.s, maxWidth, scaledFont.k));
+  if (singleSize >= scaledFont.s - 0.05) return { lines: [clean], size: singleSize, wrapped: false };
+
+  const maxChars = Math.max(4, Math.floor(maxWidth / (scaledFont.s * scaledFont.k)));
+  const words = clean.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = "";
+
+  const pushWord = word => {
+    if (!current) {
+      current = word;
+    } else if ((current + " " + word).length <= maxChars) {
+      current += " " + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  };
+
+  words.forEach(word => {
+    if (word.length <= maxChars) {
+      pushWord(word);
+      return;
+    }
+    if (current) {
+      lines.push(current);
+      current = "";
+    }
+    for (let index = 0; index < word.length; index += maxChars) {
+      const chunk = word.slice(index, index + maxChars);
+      if (index + maxChars < word.length) lines.push(chunk);
+      else current = chunk;
+    }
+  });
+  if (current) lines.push(current);
+
+  const twoLines = lines.length > 1 ? lines.slice(0, 2) : lines;
+  const size = Math.max(3.4, Math.min(scaledFont.s,
+    ...twoLines.map(line => Number(fit(line, scaledFont.s, maxWidth, scaledFont.k)))
+  ));
+  return { lines: twoLines, size, wrapped: lines.length > 1 };
+}
 
 const FT = 'font-family="Montserrat,Arial,sans-serif"';
 
@@ -192,7 +240,7 @@ export function renderCard(c0, i, cfg) {
 
   const b = c.img && fitBox(c, CH);
   const ph = c.img
-    ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="none"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${design.photoFilter ? ` filter="url(#np${i})"` : ""}/></g>`
+    ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="xMidYMid slice"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${design.photoFilter ? ` filter="url(#np${i})"` : ""}/></g>`
     : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
 
   const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
@@ -277,9 +325,20 @@ export function renderCard(c0, i, cfg) {
   const drag = cfg.drag && !cfg.one ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
 
   const cleanTitle = String(c.title || "Add name");
+  const titleLayoutResult = titleLayout(cleanTitle, tf, 136, cfg.titleScale ?? 0.85);
+  const titleLines = titleLayoutResult.lines;
+  const titleSize = titleLayoutResult.size;
+  const titleMarkup = titleLayoutResult.wrapped
+    ? titleLines.map((line, lineIndex) =>
+        `<text x="${tx}" y="${(191 + lineIndex * 11 + D).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(line)}</text>`
+      ).join("")
+    : `<text x="${tx}" y="${199 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
 
   if (cfg.minimalLayout === true) {
-    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs><clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g><rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>${ph}<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${fit(cleanTitle, tf.s, 136, tf.k)}">${esc(cleanTitle)}</text><text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
+    const minimalTitleMarkup = titleLayoutResult.wrapped
+      ? titleLines.map((line, lineIndex) => `<text x="17" y="${(188 + lineIndex * 11 + D).toFixed(1)}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
+      : `<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs><clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g><rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
   }
 
   const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(cfg.gradientAngle ?? 180, cfg.gradientSpread ?? 32, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
@@ -300,7 +359,7 @@ export function renderCard(c0, i, cfg) {
    <g transform="translate(0 ${D})">${perf}
    ${badge}
    <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
-   <text x="${tx}" y="199"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${fit(cleanTitle, tf.s, 136, tf.k)}" letter-spacing=".6">${U(cleanTitle)}</text>
+   ${titleMarkup}
    <text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>
    </g>${nfc}${serial}${tex}${stamp}${stamp2}${drag}${mk}</g>`;
 }

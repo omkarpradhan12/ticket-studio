@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Card title layout tests</title>
+<pre id="result">Running…</pre>
+<script type="module">
+  import { titleLayout } from "../js/svg-engine.js?v=phase5.2";
+  import { TF } from "../js/themes.js?v=phase5.2";
+
+  const sampleTitle = "THREE DAYS GRACE";
+  const checks = [
+    ["100% keeps the existing two-line layout", titleLayout(sampleTitle, TF.pirata, 136, 1).wrapped],
+    ["85% fits the sample title on one line", titleLayout(sampleTitle, TF.pirata, 136, 0.85).lines.join(" ") === sampleTitle],
+    ["long titles still wrap", titleLayout("A TITLE THAT IS MUCH TOO LONG TO FIT", TF.pirata, 136, 0.85).wrapped],
+    ["out-of-range values are clamped", titleLayout(sampleTitle, TF.pirata, 136, 2).size === TF.pirata.s]
+  ];
+
+  const failed = checks.filter(([, passed]) => !passed);
+  document.querySelector("#result").textContent = failed.length
+    ? `Failed: ${failed.map(([name]) => name).join(", ")}`
+    : `Passed ${checks.length} card title layout checks.`;
+  if (failed.length) throw new Error(document.querySelector("#result").textContent);
+</script>
