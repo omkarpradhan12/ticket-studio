@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 6 - Customisable borders complete
-- Next approval: owner approval before Phase 7 (per-card stamp positioning), plus decision on fixing the pre-existing Tarot title double-`D` offset regression.
+- Current phase: Phase 7 (draggable stamps) & extra photo mounts — Step 1 design written, awaiting owner approval
+- Next approval: owner approval of the Phase 7 + photo mount design below before Step 2 implementation.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -67,7 +67,7 @@
 | P5-04 | Optional card title scale | S | medium | done | b454575 | Owner approved optional `settings.titleScale`, 70-100% with an 85% default |
 | P6-01 | Customisable borders | L | high | done | 97892bb, 2c83c13, 14b8add | 16 styles (0..4 legacy + 5..15 new), visual picker, Customise fold, presets, per-card overrides, `#rnd` border randomisation |
 | P6-02 | Preserve old border render values | L | high | done | 97892bb | Exact legacy SVG fast-path verified for 0..4; legacy v1 sheet round-trip verified |
-| P7-01 | Per-card stamp position | L | high | todo | - | |
+| P7-01 | Per-card stamp position | L | high | todo | - | Step 1 design written; awaiting owner approval |
 | P7-02 | Stamp drag hit-test/touch/export/undo | L | high | todo | - | |
 | P8-01 | Per-card Surprise me style overrides | L | high | todo | - | |
 | P8-02 | Surprise every card / one undo step | M | high | todo | - | |
@@ -380,3 +380,87 @@ Every control below is practical in pure SVG with zero external dependencies, pr
   - Exports on mixed new/filtered borders (`Holographic`, `Neon glow`, `Ink-bleed`, `Film-strip`, `Scalloped stub`): 300 dpi PNG (`ticket-cards-p1.png`) and 300 dpi PDF (`ticket-cards.pdf`) succeeded; `#svg` reported downloading 2 pages (`.svg` file write blocked by browser sandbox download policy).
   - Mobile 390px: 0 horizontal overflow in both Edit and Preview views; minor cosmetic truncation noted on longer swatch names ("Dashed st...", "Scalloped...", "Holograp...") and tight "Formats" label padding.
   - **Pre-existing Tarot finding**: during Tarot inspection, the browser check observed that `titleMarkup` in `js/svg-engine.js` (introduced in `84bcc50`) adds `+ D` inside `<g transform="translate(0 ${D})">`, pushing the card title below the bottom border on Tarot (`D = 52.4`). Left unchanged during Phase 6 per safety rails; flagged for owner approval before fixing.
+
+## Phase 7 design: draggable stamps & extra photo mounts (awaiting approval)
+
+### Audit baseline (`docs/AUDIT.md` Section 9 & `js/svg-engine.js`)
+- Today each card renders up to **2 stamps**:
+  - Primary stamp (`stamp`, unless `skw === "none"`): deterministic-random placement `(sx, sy)` inside `PX..PX+PS` near `PB`, rotation `sr` (`±25°`), scale `ss = (cfg.stampSize || 100) / 100`.
+  - Optional second stamp (`stamp2`, when `cfg.stamp2` is non-empty): `STAMPS.rect` at `px = PX + 30 + rn(8) * (PS - 60)`, `py = PB + 32 + rn(9) * 26`, `r = (rn(10) - 0.5) * 30`, `sz = ss * 0.85`.
+  - Both render via `mkS(...)`: `<g${wear > 0 ? ` filter="url(#ink${i})"` : ""} transform="translate(${px} ${py}) rotate(${r}) scale(${sz})" ...>`, so ink wear automatically transforms with the stamp.
+- Photo dragging (`#drag`) already exists in `js/app.js` (lines 1459–1495): renders transparent `.pp` hit-rects on cards, converts screen deltas using `target.ownerSVGElement.getScreenCTM().a`, patches the SVG element directly during `pointermove` (60 fps without full sheet rebuild), records coalesced history (`recordContinuous` / `finishContinuous`), and calls `render()` on `pointerup` / `pointercancel`.
+
+### 1. Data model (optional per-card fields, backward compatible)
+- Add two optional plain objects on each card in `studioState.cards`:
+  - `card.stampPos`: override for stamp `0` (primary stamp).
+  - `card.stamp2Pos`: override for stamp `1` (optional second stamp).
+- Shape of each override object:
+  - `x`: number, card-relative horizontal centre as a fraction of `CW` (clamped `[-0.04, 1.04]`, i.e., up to ~6.8 SVG units past the card edge so edge-overlapping stamps look authentic without ever leaving the card).
+  - `y`: number, card-relative vertical centre as a fraction of `CH` (clamped `[-0.04, 1.04]`).
+  - `r`: optional number, rotation in degrees (`-180..180`). When omitted, falls back to the card's auto rotation `sr` (or second-stamp auto angle).
+  - `scale`: optional number, multiplier relative to the sheet/card stamp size (`0.4..2.5`, e.g., `1` = 100%, `1.25` = 125%). Effective SVG scale = `baseScale * (override.scale ?? 1)`.
+- **Backward compatibility**:
+  - Cards without `stampPos` / `stamp2Pos` render using the exact existing `sx, sy, sr, ss` formulas and formatting (`.toFixed(1)`), producing byte-for-byte identical output for all existing sheets.
+  - Because `x` and `y` are fractions of `CW` and `CH` (not screen pixels or raw mm), placement survives preview zoom, switching card sizes (`Ticket` ↔ `Tarot` ↔ `Mini` ↔ visiting card), bleed/crop marks, and every export format (SVG, 300 dpi PNG, 300 dpi PDF, and print).
+  - `exportProjectJson` / `importJson` include optional `stampPos` / `stamp2Pos` only when present on a card; old JSON files import unchanged.
+
+### 2. Interaction model & reuse of existing photo-drag mechanism
+- **Toolbar toggle (`#move-stamps`)**:
+  - Enable the existing `#move-stamps` button in the preview toolbar as an `aria-pressed` toggle (`Move stamps`). Add a compact snap toggle (`Snap` checkbox, default on; bypassed anytime by holding `Alt` or `Shift`) shown only when `Move stamps` is active.
+  - When `Move stamps` is **off**, the preview renders identically to today with no handles or overlays.
+  - When `Move stamps` is **on**, `renderCard()` (only when `!cfg.one`, skipped in exports via `.st-ui` / `serializeSheetSvg` stripping just like `.pp`) emits interactive stamp overlays for each visible stamp (`data-ci="${i}"`, `data-si="0|1"`):
+    - Visible dashed selection/hover outline around the stamp plus a crisp handle badge (`>= 44px` effective touch target on coarse pointers / ≥ 22 SVG units hit-rect, `tabindex="0"`, `role="slider"` / `aria-label="Card N primary stamp"` with `:focus-visible` ring).
+    - **Dragging**: Reuses the `#drag` pointer-event architecture in `js/app.js`:
+      - On `pointerdown` on `.st-hit`: `setPointerCapture(event.pointerId)`, record start pointer coords, `scale = ownerSVGElement.getScreenCTM().a`, and initial `(x, y)` (resolved from `card.stampPos` or the stamp's current auto `(sx, sy)` converted to `/ CW`, `/ CH` so dragging starts smoothly from where the stamp already sits!).
+      - On `pointermove`: convert `(dx, dy) / scale` to card-relative `(dx / CW, dy / CH)`, clamp to `[-0.04, 1.04]`, apply optional light snapping (within `3.5` SVG units of card centre `x=0.5` / `y=0.5`, photo centre `(PM/CW, PMY/CH)`, or corner alignment guides; bypassed if `Alt`/`Shift` held or Snap toggle off), update `card.stampPos` / `card.stamp2Pos` via copy-on-write `updateCard()`, and patch the live stamp `<g id="st${si}-${i}">` `transform` + outline position directly at 60 fps!
+      - On `pointerup` / `pointercancel`: commit **one** undo step (`finishContinuous` / `recordDiscrete("move stamp")`) and call `render()` + sync the selected card's numeric fields.
+    - **Rotation & scale**:
+      - Selected card's `Photo & theme options` adds Angle (° `-180..180`) and Scale (`% 40..250`) inputs for Stamp 1 (and Stamp 2 when `cfg.stamp2` is set), wired with `bindContinuousHistory` (600ms coalescing).
+      - Optional small circular rotate knob on the active stamp outline when `Move stamps` is on (pending Decision 2 below).
+    - **Keyboard nudging**:
+      - Focused stamp handle (`ArrowLeft/Right/Up/Down`) nudges `(x, y)` by `2` SVG units (`10` SVG units with `Shift`), clamped to `[-0.04, 1.04]`, with coalesced undo (`recordContinuous("nudge stamp", ...)`).
+    - **Buttons**:
+      - Per-card **"Reset stamp position"** (selected card's `Photo & theme options`, clears `stampPos`/`stamp2Pos` in one undo step).
+      - Toolbar / menu **"Reset all stamps"** (clears overrides on all cards, confirms via **Undo toast** in one undo step).
+      - **"Copy placement to all cards"** and **"Copy to cards on this page"** (copies selected card's active stamp placement to all cards or current page cards in **one** undo step each).
+
+### 3. Conflicts with photo-drag & touch scrolling
+- **Photo-drag (`#drag`) conflict**:
+  - When both `Move stamps` and `Drag photos on sheet` are checked/pressed, they compete for pointer events inside the photo area (`PB` overlaps the bottom of the photo).
+  - See Decision 1 below (recommended: mutually exclusive toggles—enabling `Move stamps` turns off `#drag` and vice versa, with a clear status note).
+- **Touch scrolling vs stamp drag**:
+  - `.st-hit` / `.st-rot` SVG handles receive CSS `touch-action: none` (only on the handles when `Move stamps` is active) and call `event.preventDefault()` + `setPointerCapture()` on `pointerdown`.
+  - Everywhere else on `#stage` / `.sheet` retains normal `touch-action: auto` / `pan-x pan-y`, so scrolling the sheet on a 390px phone still works smoothly whenever the user isn't touching a stamp handle.
+  - Ensure stamp hit targets are at least `28 × 28` SVG units (which scales to `>= 44 CSS px` at fit/mobile zoom or expanded transparently in `.st-hit`) so fingers can grab stamps reliably without missing onto the stage background.
+
+### 4. Additional photo mount options (`photoMounts` `4..8`)
+- Existing `photoMounts` values `0..3` (`0` Tape, `1` Pins, `2` Corners, `3` None) remain untouched for full saved-sheet compatibility.
+- Append 5 new mount options (`4..8`) in `js/svg-engine.js` (`mountSingle`) and `index.html` (retaining the existing up-to-2 mount pairing rule):
+  - `4` **Washi tape**: semi-translucent striped masking tape strips (`T.tape` + accent `A` stripes) across opposing corners.
+  - `5` **Metal brads**: 4 miniature split-pin metallic rivets at the photo corners using `T.mt` / `T.hi` / `T.dk` shading.
+  - `6` **Paperclip**: bent wire paperclip (`T.hi` / `T.mt`) sliding over the top photo edge (alternating left/right via `odd`).
+  - `7` **Staples**: twin angled wire staples across the top corners of the photo frame.
+  - `8` **Wax seal**: small embossed circular wax seal with drop shadow & inner ring in accent `A` at the bottom corner of the photo.
+
+### 5. Effort & risk
+- **Effort**: **M–L** (renderer coordinate resolution + `.st-ui` overlay stripping in `export.js` + `js/app.js` pointer/keyboard/copy/reset wiring + 5 photo mount primitives + mobile touch/export parity checks).
+- **Risks**:
+  - *Export parity*: overlay handles (`.st-ui`) MUST be stripped in `serializeSheetSvg` and `sheetCardPreviewSvg` (just like `.pp`) so SVG/PNG/PDF exports and print show only the stamp, never drag outlines.
+  - *Zoom/CTM accuracy on touch*: `getScreenCTM().a` must be read on `pointerdown` directly from the SVG element so scaled desktop zoom and 390px mobile preview drag 1:1 under the finger.
+  - *Tarot verification*: fixing the pre-existing `titleMarkup` double-`D` offset bug (if approved below) ensures Tarot cards display cleanly during Phase 7 testing.
+
+---
+
+### Owner decisions needed before Step 2 implementation
+
+1. **How should "Move stamps" interact with "Drag photos on sheet"?**
+   - **Option A (Recommended)**: Mutually exclusive — enabling `Move stamps` automatically turns off `Drag photos on sheet` (and vice versa), with a status message explaining why.
+   - **Option B**: Allow both active simultaneously, layering stamp hit handles above the photo drag rect (tapping a stamp drags the stamp; dragging elsewhere on the photo pans the photo).
+
+2. **How should rotation & scale be controlled?**
+   - **Option A (Recommended)**: Numeric Angle (°) & Scale (%) controls in the selected card's `Photo & theme options` **plus** an on-card rotation handle when `Move stamps` is active (dragging rotates live; `Shift` snaps to 15°).
+   - **Option B**: Numeric Angle (°) & Scale (%) inputs in the selected card's `Photo & theme options` only (no on-card rotation handle).
+
+3. **Should we fix the pre-existing Tarot title double-`D` offset bug spotted in Phase 6?**
+   - **Option A (Recommended)**: Fix `titleMarkup` in `js/svg-engine.js` (remove the redundant `+ D` inside `<g transform="translate(0 ${D})">`) alongside Step 2 so Tarot cards render titles inside the card cleanly. (Ticket size `D=0` is unaffected.)
+   - **Option B**: Leave `titleMarkup` untouched for a separate fix.
