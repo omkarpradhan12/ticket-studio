@@ -172,7 +172,7 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - The preview modal is labelled, and `#msg`/`#sv` status uses partial live status.
 - Theme Studio status message is not `aria-live`.
 - Bulk/dropzone and card staging have some labels but staging drag reorder is mouse/desktop drag with no keyboard equivalent.
-- Every rendered color picker has a separate validated hex text field with two-way synchronization. Sheet Editor hex changes use the existing undo path. Theme Studio draft-scoped app undo remains planned for Phase 5.
+- Every rendered color picker has a separate validated hex text field with two-way synchronization. Sheet Editor hex changes use the existing undo path. Theme Studio draft-scoped undo was added in Phase 5.
 - JSON format help is an anchored `<details>` popover operable by click/tap and keyboard, not a hover-only tooltip.
 - The effective muted token `#9a928c` measures at least 5.25:1 on the sampled dark UI surfaces; see Phase 4 disposition below. No contrast token change was needed.
 - Gradient dial remains visible but is disabled for non-gradient themes, removed from keyboard tab order, guarded against pointer/keyboard input, and accompanied by a helper message.
@@ -233,3 +233,15 @@ Browser checks used the existing browser harness; no Playwright dependency was a
 - Browser verification covered tap and keyboard disclosure behavior, visible keyboard focus, gradient option visibility, hex synchronization/validation/undo, local asset links, and mobile workspace menus. `node tests/color-controls.test.mjs`, module syntax checks, and `git diff --check` passed.
 - Pre-change `.baseline/` exports are still absent; byte-for-byte export and physical-printer parity are not claimed. No saved-data migration or renderer change was made.
 - The default rendered card inner markup matched the pre-change baseline hash; changing preview zoom left serialized SVG output unchanged. Print emulation hid editor chrome and retained the 210 × 297 mm sheet dimensions, but does not certify physical printer output.
+
+## Phase 5 Theme Studio disposition
+- B8-B11: saved custom themes now retain their palette config in the gallery and Sheet Editor selector. New saves always use the lowest unused ` - Custom vN` suffix; Update is explicit, Duplicate creates a separate version, and Delete remains confirmed. Imports validate palette values and make colliding names unique.
+- B12: dirty Theme Studio drafts warn before switching themes, starting a new draft, and leaving the page; clean drafts do not warn. Sheet Editor navigation warnings were not part of the approved Theme Studio scope.
+- B13: `#st-msg` is an `aria-live="polite"` status region.
+- The gallery uses one blob-backed real-renderer image per theme, lazy rendering, cached markup, and shared `PREVIEW_OPTIONS`. Samples cycle across `SAMPLE_CARDS` by default; a chosen sample is shared across visible tiles.
+- Draft undo/redo uses the existing history module, is limited to 100 entries, coalesces control changes, preserves native text-input undo, and is memory-only. Theme saved-data remains palette-only; gradient angle/spread are not added.
+- The owner approved optional `settings.titleScale` for the Sheet Editor (70-100%, default 85%). This intentionally changes title sizing in preview and exports, preserves a wrap fallback, and does not change year/`EST.` logic.
+- Local CSS, script, module, and favicon references use the consistent `?v=phase5.1` cache query.
+- Browser verification covered v1/v2 saves, Update, draft undo/redo, v3 Duplicate, confirmed Delete, import collision naming, custom preview and Sheet Editor SVG palette rendering, editor dropdown integration, dirty-state warnings, 390px panel geometry, and keyboard tile open/close. All three pages loaded without observed console errors.
+- `node tests/theme-studio-utils.test.mjs`, `node tests/history.test.mjs`, `node tests/color-controls.test.mjs`, module syntax checks, and four browser title-layout checks passed. The browser harness did not expose a JSON download event, though the Export JSON handler ran and reported success.
+- No pre-change `.baseline/` exports are available. Exact SVG/PNG/PDF comparisons and physical-printer parity remain unverified.

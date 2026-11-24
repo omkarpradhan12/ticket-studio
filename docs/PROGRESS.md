@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 4 - visual system and icon work complete
-- Next approval: owner approval before Phase 5 Theme Studio work.
+- Current phase: Phase 5 - Theme Studio gallery and editor complete
+- Next approval: owner approval before Phase 6 custom borders.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -20,7 +20,7 @@
 | P0-04 | Write progress checklist | M | low | done | - | |
 | P1-01 | Baseline app and screenshot setup | M | medium | done | - | Browser screenshots captured for Sheet Editor, Theme Studio, Bulk Import, desktop and 390px |
 | P1-02 | Store baseline exports in `.baseline/` | M | high | blocked | - | Screenshots are present; automated SVG/PNG/PDF download capture was blocked by browser download behavior, so exact baseline exports need manual browser verification |
-| P1-03 | Reproduce and fix B1 long titles | M | medium | done | - | Reproduced in browser at 1440px; added deterministic two-line title layout with shrinking and exported-SVG-compatible string output |
+| P1-03 | Reproduce and fix B1 long titles | M | medium | done | b454575 | Reproduced in browser at 1440px; added deterministic two-line title layout with shrinking and an owner-approved optional 70-100% title scale (85% default) |
 | P1-04 | Fix B2 dynamic cards/page subtitle | S | low | done | - | Subtitle now derives card count, sheet page count and cards-per-page from the active layout |
 | P1-05 | Fix B3 Section 1 label layout | S | low | done | - | Section labels and hints now have minimum widths and safe wrapping/alignment |
 | P1-06 | Fix B4 card row crowding and reset/delete actions | M | medium | done | 2d743d3 | Resolved in Phase 3: compact rows, selected-row actions, overflow menu, and undoable delete |
@@ -31,8 +31,8 @@
 | P1-11 | Fix B9 saved-theme delete refresh/confirmation | S | medium | done | - | Delete now requires confirmation and refreshes both saved list and clone dropdown |
 | P1-12 | Fix B10 theme save/duplicate names | M | medium | done | - | Saving names now appends (2), (3), etc. while editing an existing theme may retain its name |
 | P1-13 | Fix B11 theme import validation | M | medium | done | - | Imports now validate required 6-digit hex fields, clamp gl, coerce booleans, trim/cap names, and refresh theme controls/lists |
-| P1-14 | Fix B12 unsaved-changes warning | M | medium | todo | - | |
-| P1-15 | Fix B13 Theme Studio live status | S | low | todo | - | |
+| P1-14 | Fix B12 unsaved-changes warning | M | medium | done | b454575 | Theme Studio warns before switching themes, starting a new draft, or leaving with dirty changes; Sheet Editor warning is outside Phase 5 scope |
+| P1-15 | Fix B13 Theme Studio live status | S | low | done | b454575 | Status uses `aria-live="polite"` |
 | P1-16 | Fix B14 gradient dial disabled state | S | low | done | 2d743d3 | Disabled state, keyboard/pointer guard, and helper text verified |
 | P1-17 | Verify UI issue U1 duplicate headings | S | low | done | 2d743d3 | Replaced duplicate heading with editable sheet-title field |
 | P1-18 | Verify UI issue U2 section grouping | M | medium | done | 2d743d3 | Grouped Page, Look, Content, and Effects controls |
@@ -61,8 +61,10 @@
 | P3-03 | Compact card rows and selected expansion | L | medium | done | 2d743d3 | Selected row expands; row actions, long values, and disabled future slots included |
 | P3-04 | Preview toolbar and scroll container | M | medium | done | 2d743d3 | Page tools, zoom/Fit, mobile Edit/Preview, and single preview scroll container |
 | P4-01 | Visual system and icon pass | L | medium | done | 6271eeb | See Phase 4 verification below |
-| P5-01 | Theme Studio gallery | L | high | todo | - | |
-| P5-02 | Theme side/bottom panel and custom actions | L | medium | todo | - | |
+| P5-01 | Theme Studio gallery | L | high | done | b454575 | Built-ins first, saved themes second; lazy blob-backed one-card previews with auto-cycling or a chosen sample |
+| P5-02 | Theme side/bottom panel and custom actions | L | medium | done | b454575 | Responsive draft editor; explicit Update, versioned Save as new, Duplicate, and confirmed Delete |
+| P5-03 | Draft history, warnings, and theme JSON | L | high | done | b454575 | Draft-scoped undo/redo, coalescing, unique import names, and unsaved-change guards |
+| P5-04 | Optional card title scale | S | medium | done | b454575 | Owner approved optional `settings.titleScale`, 70-100% with an 85% default |
 | P6-01 | Customisable borders | L | high | todo | - | |
 | P6-02 | Preserve old border render values | L | high | todo | - | |
 | P7-01 | Per-card stamp position | L | high | todo | - | |
@@ -74,7 +76,8 @@
 
 ## Known issue disposition
 - Phase 3 verified and addressed B4, B5, B14, and U1-U8 at desktop and 390px. U6's Surprise me/search controls are intentionally disabled placeholders for Phases 8-9.
-- Phase 4 addressed U9, U10, U12-U16. U11 is not an issue: the current muted token already passes 4.5:1 on sampled surfaces. Theme Studio draft-scoped undo remains a Phase 5 item.
+- Phase 4 addressed U9, U10, U12-U16. U11 is not an issue: the current muted token already passes 4.5:1 on sampled surfaces.
+- Phase 5 addressed B8-B13 in Theme Studio: saved-theme config and actions, unique names, validated imports, draft warnings, and live status. Sheet Editor navigation warnings are outside the approved Phase 5 scope.
 - Other audited issues remain at their table status; do not treat source-only observations as reproduced defects.
 
 ## Phase dependencies and decisions
@@ -85,7 +88,6 @@
 - Phase 10 is layout-sensitive and needs explicit dimensions/count approval before implementation if current sheet packing assumptions cannot support it.
 
 ## Open decisions for later phases
-- For B12, should switching themes/pages/navigation warn only for Theme Studio drafts or also unsaved Sheet Editor changes?
 - For F7, visiting-card dimensions/count should be confirmed if not defined by an approved mockup. No implementation assumptions are made here.
 
 ## Commit log
@@ -104,6 +106,7 @@
 - 329f59c Add in-memory Sheet Editor undo history
 - ef82ee2 Make bulk sheet transfers undoable
 - 2d743d3 Restructure Sheet Editor layout for Phase 3
+- b454575 Complete Phase 5 theme studio
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -188,19 +191,33 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - Added `js/icons.mjs`, a shared inline SVG set using `currentColor` and one stroke width. Replaced interface icon glyphs, added accessible labels/tooltips for icon-only controls, and preserved renderer/card-art output. Added workspace menus to Theme Studio and Bulk Upload at mobile widths.
 - Labels use sentence case; uppercase is limited to section headers and navigation. Accordions use rotating SVG chevrons, all interactive controls use visible `:focus-visible` outlines, and Plotter/cutter/punch-hole helpers are visible. JSON help is an anchored click/tap/keyboard disclosure.
 - Palette terminology is “Text” on both editor pages while the saved theme key remains `ink`.
-- Every rendered color picker has a paired `#RRGGBB` text field with live synchronization and inline validation. Sheet Editor hex edits flow through the existing color input events and undo history. Theme Studio draft-scoped app undo remains planned for Phase 5; Bulk Upload staging remains local until transfer.
+- Every rendered color picker has a paired `#RRGGBB` text field with live synchronization and inline validation. Sheet Editor hex edits flow through the existing color input events and undo history. Theme Studio draft-scoped undo was added in Phase 5; Bulk Upload staging remains local until transfer.
 - Muted text `#9a928c` contrast against sampled dark surfaces: `#141211` 6.11:1, `#1f1c1a` 5.54:1, `#181614` 5.90:1, `#0c0b0a` 6.43:1, `#121210` 6.13:1, `#1d1b18` 5.62:1, `#23211d` 5.25:1, `#151412` 6.02:1, and `#0d0c0b` 6.39:1. Minimum is 5.25:1, so U11 required no color adjustment.
 - Browser verification at 1440px and 390px: all three pages loaded without observed console errors or horizontal overflow; every rendered color picker had a hex partner; all icons hydrated; no legacy stylesheet links or `title` tooltips remained. Verified invalid hex handling, editor hex undo/restore, Theme Studio preview synchronization and gradient visibility, Bulk Upload staged hex changes, tap and keyboard disclosure behavior, and visible keyboard focus.
 - The default rendered-card inner-markup SHA-256 still matches the pre-change value `02fa9ed895dbd65ee64f56bb0f1432cc2d7e3095309012832cebb382f8f53c1b` (89,403 JavaScript characters). No pre-change `.baseline/` SVG/PNG/PDF exports exist, so exact file and printer parity remain unverified.
 - Validation: `node tests/color-controls.test.mjs`, module syntax checks, and `git diff --check` passed.
 
+## Phase 5 Theme Studio implementation and verification
+- Replaced the clone/template controls with a responsive gallery: 25 built-in tiles first, then saved custom themes with badges. Each tile has one real-renderer preview in a blob-backed `<img>`, lazy rendering, and markup reuse when its visual inputs are unchanged. `PREVIEW_OPTIONS` is shared with the draft preview.
+- Auto sample selection cycles through `SAMPLE_CARDS`; choosing a sample applies it to visible tiles, and Auto restores cycling. Browser checks confirmed varied auto samples and the selected sample on visible tiles.
+- The editor is a side panel on desktop and a scrollable bottom sheet on mobile. Palette colors have hex fields; the accent-lightness slider updates its readout. Draft undo/redo is in memory, capped at 100, coalesces control edits, keeps native text-field undo, and resets on theme switch/reload.
+- Save as new always creates the next unused `<base> - Custom vN`; built-ins remain protected. Update is explicit; Duplicate creates a new version; Delete remains confirmed. Import validates palette fields and resolves name collisions with the next version. Saved themes continue to use the existing palette-only shape and appear in the Sheet Editor selector.
+- B12 warnings now cover dirty Theme Studio drafts before switching themes, starting a new draft, and leaving the page. Clean drafts do not warn. B13 status is a polite live region.
+- Added the owner-approved optional Sheet Editor `settings.titleScale` control (70-100%, default 85%). It reduces long titles where they fit, retains the existing wrap fallback for longer names, and intentionally changes title output in preview and exports; year/`EST.` logic is unchanged.
+- Bumped local CSS, script, module, and favicon references together to `?v=phase5.1` so the final Phase 5 code is not hidden by cached Phase 5 assets.
+- Browser verification: each of 25 built-in tiles had one image; auto cycling varied samples; a chosen Linkin Park sample appeared on all six visible tiles. Save v1/v2, update, draft undo/redo, duplicate v3, confirmed delete, and import collision `Dark` -> `Dark - Custom v2` passed. The custom preview and Sheet Editor SVG both used the saved palette, and its name appeared in the selector. Dirty-switch/new-draft cancellation and leave-page warning were observed.
+- At 390px the editor panel was viewport-width, bottom anchored, and the document had no horizontal overflow; keyboard Enter opens a tile and Escape closes the panel. Sheet Editor, Theme Studio, and Bulk Upload loaded without observed console errors.
+- `node tests/theme-studio-utils.test.mjs`, `node tests/history.test.mjs`, `node tests/color-controls.test.mjs`, module syntax checks, `tests/title-layout.test.html` (4 checks), and `git diff --check` passed.
+- The browser harness did not expose a JSON download event, though the Export JSON action ran and reported success. No pre-change `.baseline/` exports exist; byte-for-byte SVG/PNG/PDF and physical-printer parity remain unverified.
+
 ## Manual approval and remaining checks
 - Owner approved Phase 3 before implementation; it is complete.
 - The Bulk Upload transfer behavior was selected by the owner: stay on Bulk Upload and show Undo/Open Editor actions.
 - Manual export/printer parity remains unverified because no pre-change `.baseline/` exports are available.
-- Phase 4 is complete; wait for owner approval before Phase 5. Theme Studio draft-scoped undo is intentionally deferred to that phase.
+- Phase 5 is complete and owner-approved; wait for approval before Phase 6.
+- The title-scale output change was explicitly approved. No theme schema migration or history persistence was added.
 
 ### Approval gate
-- Design approved by the owner before implementation.
+- Phase 5 changes approved by the owner before implementation.
 - No local history persistence is proposed.
-- The Phase 3 editable title is persisted in the optional settings field; no existing sheet/theme payload was otherwise changed.
+- The Phase 3 editable sheet title and Phase 5 title scale use optional settings fields; existing sheet and theme payload formats remain backward compatible.
