@@ -1,6 +1,6 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js";
-import { hsl } from "./image-utils.js";
+import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase4";
+import { hsl } from "./image-utils.js?v=phase4";
 
 export const CW = 170;
 export const SIZES = {

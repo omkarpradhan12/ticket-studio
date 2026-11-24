@@ -1,6 +1,8 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js";
-import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js";
-import { abbr } from "./svg-engine.js";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase4";
+import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase4";
+import { abbr } from "./svg-engine.js?v=phase4";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase4";
+import { attachColorHexFields } from "./color-controls.mjs?v=phase4";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
@@ -26,7 +28,7 @@ function renderStaged() {
   $("staged-count").textContent = staged.length;
   $("staging-grid").innerHTML = staged.map((card, index) => `
     <article class="stage-card" draggable="true" data-index="${index}">
-      <div class="stage-meta"><strong>Card ${index + 1}</strong><button class="g sm" type="button" data-remove="${index}" aria-label="Remove staged card">Remove</button></div>
+      <div class="stage-meta"><strong>Card ${index + 1}</strong><button class="g sm" type="button" data-remove="${index}" aria-label="Remove staged card">${iconMarkup("delete")} Remove</button></div>
       <div class="stage-thumb" data-thumb="${index}">${card.img || card.imgUrl ? "" : "Photo unavailable"}</div>
       ${card.corsLimited ? '<span class="cors-tag">CORS-limited raster export</span>' : ""}
       <input type="text" data-field="title" data-index="${index}" aria-label="Artist name" placeholder="Artist / band name" value="${escapeHtml(card.title)}">
@@ -34,12 +36,13 @@ function renderStaged() {
       <input type="text" data-field="loc" data-index="${index}" aria-label="Place" placeholder="Place" value="${escapeHtml(card.loc)}">
       <input type="text" data-field="year" data-index="${index}" aria-label="Year" placeholder="Year" value="${escapeHtml(card.year)}">
       <input type="text" data-field="code" data-index="${index}" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code || abbr(card.title))}">
-      <label class="c-row"><input type="color" data-accent="${index}" aria-label="Accent color" value="${hslToHex(card)}"> Image accent</label>
+      <label class="colour-control"><span>Image accent</span><input type="color" data-accent="${index}" aria-label="Image accent colour" value="${hslToHex(card)}"></label>
       <div class="ctrl-flex">
-        <button class="g sm" type="button" data-move="-1" data-index="${index}" ${index === 0 ? "disabled" : ""}>←</button>
-        <button class="g sm" type="button" data-move="1" data-index="${index}" ${index === staged.length - 1 ? "disabled" : ""}>→</button>
+        <button class="g sm" type="button" data-move="-1" data-index="${index}" aria-label="Move card ${index + 1} up" data-tooltip="Move up" ${index === 0 ? "disabled" : ""}>${iconMarkup("moveUp")}</button>
+        <button class="g sm" type="button" data-move="1" data-index="${index}" aria-label="Move card ${index + 1} down" data-tooltip="Move down" ${index === staged.length - 1 ? "disabled" : ""}>${iconMarkup("moveDown")}</button>
       </div>
     </article>`).join("");
+  attachColorHexFields($("staging-grid"));
   $("staging-grid").querySelectorAll("[data-field]").forEach(input => input.addEventListener("input", () => {
     staged[+input.dataset.index][input.dataset.field] = input.value;
   }));
@@ -330,5 +333,8 @@ function bind() {
   });
 }
 
+hydrateIcons();
+bindTapTooltips();
+attachColorHexFields();
 bind();
 renderStaged();

@@ -1,8 +1,10 @@
-import { BUILTIN_THEMES, DEFAULT_CUSTOM, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js";
-import { SAMPLE_CARDS } from "./storage.js";
-import { computeLayout, renderCard } from "./svg-engine.js?v=phase1-b1";
-import { triggerDownload } from "./export.js";
-import { FONTCSS } from "./fonts.js";
+import { BUILTIN_THEMES, DEFAULT_CUSTOM, compileCustomTheme, getSavedCustomThemes, saveCustomThemesList } from "./themes.js?v=phase4";
+import { SAMPLE_CARDS } from "./storage.js?v=phase4";
+import { computeLayout, renderCard } from "./svg-engine.js?v=phase4";
+import { triggerDownload } from "./export.js?v=phase4";
+import { FONTCSS } from "./fonts.js?v=phase4";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase4";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase4";
 
 const $ = id => document.getElementById(id);
 const FIELD_MAP = {
@@ -39,7 +41,8 @@ function writeForm(config) {
     if (element.type === "checkbox") element.checked = Boolean(value);
     else element.value = value ?? DEFAULT_CUSTOM[key] ?? "";
   }
-  $("grad-opts").style.display = draft.grad ? "grid" : "none";
+  syncColorHexFields();
+  $("grad-opts").hidden = !draft.grad;
   renderPreview();
 }
 
@@ -69,7 +72,7 @@ function configForTheme(key, theme) {
 
 function renderPreview() {
   const config = readForm();
-  $("grad-opts").style.display = config.grad ? "grid" : "none";
+  $("grad-opts").hidden = !config.grad;
   const theme = compileCustomTheme(config);
   const layout = computeLayout("a4", "ticket");
   const markup = renderCard(previewCard, 0, {
@@ -123,8 +126,8 @@ function renderSavedList() {
         <span class="swatch-dot" style="background:${escapeHtml(config.acc || "#e8833a")}"></span>
       </div></div>
       <div class="ctrl-flex">
-        <button class="g sm" type="button" data-edit="${escapeHtml(item.id)}">Edit</button>
-        <button class="g sm" type="button" data-delete="${escapeHtml(item.id)}">Delete</button>
+        <button class="g sm" type="button" data-edit="${escapeHtml(item.id)}">${iconMarkup("palette")} Edit</button>
+        <button class="g sm" type="button" data-delete="${escapeHtml(item.id)}">${iconMarkup("delete")} Delete</button>
       </div>
     </div>`;
   }).join("") : '<p class="hint">No saved themes yet. Save your first design above.</p>';
@@ -153,7 +156,7 @@ function populateCloneOptions() {
   const saved = getSavedCustomThemes();
   const builtinOptions = Object.entries(BUILTIN_THEMES).map(([key, theme]) => `<option value="builtin:${key}">${escapeHtml(theme.n)}</option>`).join("");
   const savedOptions = saved.map(theme => `<option value="saved:${escapeHtml(theme.id)}">${escapeHtml(theme.config?.name || "Untitled theme")}</option>`).join("");
-  select.innerHTML = `<optgroup label="Built-in Themes">${builtinOptions}</optgroup>${saved.length ? `<optgroup label="Saved Custom Themes">${savedOptions}</optgroup>` : ""}`;
+  select.innerHTML = `<optgroup label="Built-in themes">${builtinOptions}</optgroup>${saved.length ? `<optgroup label="Saved custom themes">${savedOptions}</optgroup>` : ""}`;
 }
 
 function saveDraft() {
@@ -245,6 +248,9 @@ function bind() {
 }
 
 function init() {
+  hydrateIcons();
+  bindTapTooltips();
+  attachColorHexFields();
   populateCloneOptions();
   const sampleSelect = $("ts_sample");
   sampleSelect.innerHTML = SAMPLE_CARDS.map((card, index) => `<option value="${index}">${escapeHtml(card.title)}</option>`).join("");

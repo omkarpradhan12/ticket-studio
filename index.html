@@ -4,55 +4,54 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase4">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/main.css?v=2">
-<link rel="stylesheet" href="css/redesign.css?v=phase3-layout">
+<link rel="stylesheet" href="css/tokens.css?v=phase4">
+<link rel="stylesheet" href="css/app.css?v=phase4">
 </head>
 <body>
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="index.html">
-      <span class="brand-badge">NFC</span>
+      <span class="brand-badge"><span data-icon="logo"></span></span>
       <span class="brand-title">Ticket Card Studio</span>
     </a>
     <nav class="nav-tabs" aria-label="Workspace pages">
       <a class="nav-tab active" href="index.html">Sheet Editor</a>
-      <a class="nav-tab" href="theme-studio.html">Theme Studio</a>
-      <a class="nav-tab" href="bulk-import.html">Bulk Upload</a>
+      <a class="nav-tab" href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
+      <a class="nav-tab" href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
     </nav>
     <div class="history-actions" aria-label="History controls. Undo history is in memory only and clears on reload.">
-      <button class="g history-action" id="undo" type="button" aria-label="Undo" title="Undo" disabled>↶</button>
-      <button class="g history-action" id="redo" type="button" aria-label="Redo" title="Redo" disabled>↷</button>
+      <button class="g history-action" id="undo" type="button" aria-label="Undo" data-tooltip="Undo" disabled><span data-icon="undo"></span></button>
+      <button class="g history-action" id="redo" type="button" aria-label="Redo" data-tooltip="Redo" disabled><span data-icon="redo"></span></button>
     </div>
     <div class="topbar-actions">
-      <button class="g" id="print" type="button">Print</button>
-      <button class="accent" id="svg" type="button">Export SVG</button>
+      <button class="g" id="print" type="button"><span data-icon="print"></span> Print</button>
+      <button class="accent" id="svg" type="button"><span data-icon="download"></span> Export SVG</button>
       <details class="action-menu export-menu">
-        <summary aria-label="More export formats" title="More export formats">Formats</summary>
+        <summary aria-label="More export formats">Formats</summary>
         <div class="menu-panel">
-          <button class="g" id="png" type="button">PNG (300 dpi)</button>
-          <button class="g" id="pdf" type="button">PDF (300 dpi)</button>
-          <button class="g" id="cut" type="button">Cutter SVG</button>
+          <button class="g" id="png" type="button"><span data-icon="download"></span> PNG (300 dpi)</button>
+          <button class="g" id="pdf" type="button"><span data-icon="download"></span> PDF (300 dpi)</button>
+          <button class="g" id="cut" type="button"><span data-icon="download"></span> Cutter SVG</button>
         </div>
       </details>
       <details class="action-menu overflow-menu">
-        <summary aria-label="More sheet actions" title="More sheet actions">⋯</summary>
+        <summary aria-label="More sheet actions" data-tooltip="More sheet actions"><span data-icon="more"></span></summary>
         <div class="menu-panel">
-          <button class="g" id="rnd" type="button">Randomise all</button>
-          <button class="g" id="smp" type="button">Load Samples</button>
-          <button class="danger" id="rst" type="button">Reset all</button>
-          <button class="g" id="data-open" type="button">Data import / export</button>
+          <button class="g" id="rnd" type="button"><span data-icon="randomise"></span> Randomise all</button>
+          <button class="g" id="smp" type="button"><span data-icon="bulkUpload"></span> Load samples</button>
+          <button class="danger" id="rst" type="button"><span data-icon="reset"></span> Reset all</button>
+          <button class="g" id="data-open" type="button"><span data-icon="upload"></span> Data import / export</button>
         </div>
       </details>
     </div>
     <details class="mobile-nav">
-      <summary aria-label="Open workspace menu">☰</summary>
+      <summary aria-label="Open workspace menu" data-tooltip="Open workspace menu"><span data-icon="menu"></span></summary>
       <div class="menu-panel">
         <a href="index.html" aria-current="page">Sheet Editor</a>
-        <a href="theme-studio.html">Theme Studio</a>
-        <a href="bulk-import.html">Bulk Upload</a>
+        <a href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
+        <a href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
       </div>
     </details>
   </div>
@@ -73,7 +72,7 @@
     <p class="subtitle" id="sub-info">Add a band photo or image URL and the accent colour is picked automatically. 9 tickets fit one A4 page.</p>
 
     <details class="sec">
-      <summary>Page</summary>
+      <summary><span>Page</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
         <label class="fld">
           <span class="lbl-row"><span>Total cards</span><span id="pg" class="hint"></span></span>
@@ -104,18 +103,20 @@
             <option value="3">3 mm</option>
             <option value="5">5 mm</option>
           </select>
+          <span class="hint">Sets the corner radius in cutter output; square uses no rounding.</span>
         </label>
         <div class="page-options full">
           <label class="chk"><input type="checkbox" id="marks" checked> Crop marks</label>
           <label class="chk"><input type="checkbox" id="bleed" checked> 3 mm bleed</label>
           <label class="chk"><input type="checkbox" id="regmarks"> Registration marks</label>
           <label class="chk"><input type="checkbox" id="tpl" checked> Cut template page</label>
+          <span class="hint full">Plotter registration marks add alignment targets for cutting.</span>
         </div>
       </div>
     </details>
 
     <details class="sec">
-      <summary>Look</summary>
+      <summary><span>Look</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
         <label class="fld full">
           <span class="lbl-row">
@@ -123,9 +124,9 @@
             <a class="manage-themes" href="theme-studio.html">Manage themes</a>
           </span>
           <div class="theme-nav">
-            <button class="g" type="button" id="prev-style" aria-label="Previous theme">‹</button>
+            <button class="g" type="button" id="prev-style" aria-label="Previous theme" data-tooltip="Previous theme"><span data-icon="previous"></span></button>
             <select id="style"></select>
-            <button class="g" type="button" id="next-style" aria-label="Next theme">›</button>
+            <button class="g" type="button" id="next-style" aria-label="Next theme" data-tooltip="Next theme"><span data-icon="next"></span></button>
           </div>
         </label>
         <label class="fld">
@@ -195,6 +196,7 @@
             <label class="chk"><input type="checkbox" id="serial" data-live> Serial number</label>
             <label class="chk"><input type="checkbox" id="punch" data-live> Punch hole</label>
           </div>
+          <span class="hint">Punch hole is a printed guide; use a 4 mm punch.</span>
         </fieldset>
         <div class="gctl full" id="gctl">
           <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
@@ -213,7 +215,7 @@
     </details>
 
     <details class="sec">
-      <summary>Content</summary>
+      <summary><span>Content</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
         <label class="fld">
           <span>Doors text</span>
@@ -239,7 +241,7 @@
     </details>
 
     <details class="sec">
-      <summary>Effects</summary>
+      <summary><span>Effects</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
         <label class="fld">
           <span>Stamp shape</span>
@@ -271,7 +273,7 @@
         <label class="swatch-control effect-ink"><span>Stamp ink</span><input type="color" id="scol" value="#d9322f" data-live></label>
         <label class="chk effect-accent"><input type="checkbox" id="sauto" checked data-live> Use accent colour</label>
         <details class="advanced full">
-          <summary>Advanced</summary>
+          <summary><span>Advanced</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
           <div class="ctrl-grid">
             <label class="fld">
               <span>Stamp ink wear</span>
@@ -311,12 +313,13 @@
     <div class="cards-header">
       <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
       <div class="cards-header-actions">
-        <button class="g" id="surprise-all" type="button" disabled title="Available in Phase 8">Surprise me</button>
+        <button class="g" id="surprise-all" type="button" disabled aria-label="Surprise me (available in Phase 8)"><span data-icon="surprise"></span> Surprise me</button>
         <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
       </div>
     </div>
     <label class="card-search-slot">
       <span class="sr-only">Search cards</span>
+      <span class="search-slot-icon" data-icon="search"></span>
       <input id="card-search" type="search" placeholder="Search cards (coming in Phase 9)" disabled>
     </label>
     <div id="rows"></div>
@@ -332,12 +335,12 @@
         <span>Page theme</span>
         <select id="page-theme"><option value="">Use global</option></select>
       </label>
-      <button class="g" type="button" id="duplicate-page">Duplicate</button>
-      <button class="g move-stamps-placeholder" type="button" id="move-stamps" disabled title="Stamp positioning arrives in Phase 7">Move stamps</button>
+      <button class="g" type="button" id="duplicate-page"><span data-icon="duplicate"></span> Duplicate</button>
+      <button class="g" type="button" id="move-stamps" disabled aria-label="Move stamps (available in Phase 7)"><span data-icon="move"></span> Move stamps</button>
       <div class="zoom-controls" aria-label="Preview zoom">
-        <button class="g" type="button" id="zoom-out" aria-label="Zoom out">−</button>
+        <button class="g" type="button" id="zoom-out" aria-label="Zoom out" data-tooltip="Zoom out"><span data-icon="minus"></span></button>
         <output id="zoom-value" aria-live="polite">100%</output>
-        <button class="g" type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        <button class="g" type="button" id="zoom-in" aria-label="Zoom in" data-tooltip="Zoom in"><span data-icon="plus"></span></button>
         <button class="g" type="button" id="zoom-fit">Fit</button>
       </div>
     </div>
@@ -348,12 +351,12 @@
 <dialog id="data-dialog" aria-labelledby="data-dialog-title">
   <form method="dialog" class="dialog-header">
     <h2 id="data-dialog-title">Sheet data</h2>
-    <button class="g" type="submit" aria-label="Close data dialog">Close</button>
+    <button class="g" type="submit" aria-label="Close data dialog"><span data-icon="close"></span> Close</button>
   </form>
   <p>Import or export sheet data as JSON. You can also paste a card list below.</p>
   <div class="data-actions">
-    <button class="g" id="imp" type="button">Import JSON file</button>
-    <button class="g" id="exp" type="button">Export JSON</button>
+    <button class="g" id="imp" type="button"><span data-icon="upload"></span> Import JSON file</button>
+    <button class="g" id="exp" type="button"><span data-icon="download"></span> Export JSON</button>
     <input type="file" id="jf" accept=".json,application/json" hidden>
   </div>
   <label class="fld" for="jt">
@@ -362,7 +365,8 @@
   </label>
   <button class="accent" id="jl" type="button">Import pasted JSON</button>
   <details class="json-help">
-    <summary>JSON format help</summary>
+    <summary><span>JSON format help</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
+    <div class="json-popover">
     <pre>[
   {
     "name": "Three Days Grace",
@@ -374,12 +378,13 @@
   }
 ]</pre>
     Only <b>name</b> is required. <b>photo</b> accepts <code>data:image/...</code> and <code>https://...</code> URLs. Optional fields include <b>accent</b>, <b>photoZoom</b>, <b>photoX</b>/<b>photoY</b>, <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or a full <b>settings</b> + <b>cards</b> payload. Maximum 72 cards.
+    </div>
   </details>
 </dialog>
 
 <div class="mobile-actionbar" aria-label="Sheet actions">
-  <button class="g" id="mobile-print" type="button">Print</button>
-  <button class="accent" id="mobile-export" type="button">Export SVG</button>
+  <button class="g" id="mobile-print" type="button"><span data-icon="print"></span> Print</button>
+  <button class="accent" id="mobile-export" type="button"><span data-icon="download"></span> Export SVG</button>
 </div>
 
 <div id="undo-toast" class="history-toast" role="status" aria-live="polite" hidden>
@@ -391,19 +396,19 @@
 <div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview">
   <div class="pvbox">
     <div class="pvbar">
-      <button class="g" id="pvp" aria-label="Previous card">‹</button>
-      <span id="pvt" style="font-weight:700; font-size:13px"></span>
-      <button class="g" id="pvn" aria-label="Next card">›</button>
-      <span style="flex:1"></span>
+      <button class="g" id="pvp" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
+      <span id="pvt" class="preview-title"></span>
+      <button class="g" id="pvn" aria-label="Next card" data-tooltip="Next card"><span data-icon="next"></span></button>
+      <span class="preview-spacer" aria-hidden="true"></span>
       <button class="g" id="pve">Edit</button>
       <button class="g" id="pvpng">PNG</button>
       <button class="g" id="pvsvg">SVG</button>
-      <button id="pvx" aria-label="Close">✕</button>
+      <button id="pvx" aria-label="Close preview" data-tooltip="Close preview"><span data-icon="close"></span></button>
     </div>
     <div id="pvi" aria-label="Card preview"></div>
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase3-layout"></script>
+<script type="module" src="js/app.js?v=phase4"></script>
 </body>
 </html>

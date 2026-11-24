@@ -1,10 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase1-b1";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js";
-import { FONTCSS } from "./fonts.js";
-import { History } from "./history.mjs";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase4";
+import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase4";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase4";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase4";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase4";
+import { FONTCSS } from "./fonts.js?v=phase4";
+import { History } from "./history.mjs?v=phase4";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase4";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase4";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
@@ -135,6 +137,7 @@ function applySettings(settings = {}) {
     if (found) $("style").value = found;
   }
   studioState.settings = readSettings();
+  syncColorHexFields();
 }
 
 function renderConfig(one = false) {
@@ -269,9 +272,9 @@ function updateHistoryControls(current = history) {
   undo.disabled = !current.canUndo;
   redo.disabled = !current.canRedo;
   undo.setAttribute("aria-label", current.undoLabel);
-  undo.title = current.undoLabel;
+  undo.dataset.tooltip = current.undoLabel;
   redo.setAttribute("aria-label", current.redoLabel);
-  redo.title = current.redoLabel;
+  redo.dataset.tooltip = current.redoLabel;
 }
 
 function showUndoToast(text) {
@@ -527,21 +530,21 @@ function buildRows() {
     const stampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, key[0].toUpperCase() + key.slice(1)]), ["mixed", "Mixed"]]
       .map(([value, name]) => `<option value="${value}"${(card.sk || "") === value ? " selected" : ""}>${name}</option>`).join("");
     row.innerHTML = `
-      <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : "Photo"}</div>
+      <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
       <div class="row-content">
         <div class="row-heading">
           <button class="card-name" type="button" data-action="select-card" aria-label="Select card ${index + 1}">Card ${index + 1} · ${escapeHtml(card.title || "Untitled card")}</button>
           <div class="row-actions">
-            <button class="g sm" type="button" data-action="view">View</button>
-            <button class="danger sm" type="button" data-action="delete"${studioState.count <= 1 ? " disabled" : ""}>Delete</button>
+            <button class="g sm" type="button" data-action="view">${iconMarkup("view")} View</button>
+            <button class="danger sm" type="button" data-action="delete"${studioState.count <= 1 ? " disabled" : ""}>${iconMarkup("delete")} Delete</button>
             <details class="card-menu">
-              <summary aria-label="More actions for card ${index + 1}" title="More card actions">…</summary>
+              <summary aria-label="More actions for card ${index + 1}" data-tooltip="More card actions"><span data-icon="more"></span></summary>
               <div class="menu-panel">
-                <button class="g" type="button" data-action="up"${index === 0 ? " disabled" : ""}>Move up</button>
-                <button class="g" type="button" data-action="down"${index === studioState.count - 1 ? " disabled" : ""}>Move down</button>
-                <button class="g" type="button" data-action="duplicate"${studioState.count >= MAX_CARDS ? " disabled" : ""}>Duplicate card</button>
-                <button class="g" type="button" data-action="clear">Reset card</button>
-                <button class="g" type="button" data-action="surprise" disabled title="Available in Phase 8">Surprise this card</button>
+                <button class="g" type="button" data-action="up"${index === 0 ? " disabled" : ""}>${iconMarkup("moveUp")} Move up</button>
+                <button class="g" type="button" data-action="down"${index === studioState.count - 1 ? " disabled" : ""}>${iconMarkup("moveDown")} Move down</button>
+                <button class="g" type="button" data-action="duplicate"${studioState.count >= MAX_CARDS ? " disabled" : ""}>${iconMarkup("duplicate")} Duplicate card</button>
+                <button class="g" type="button" data-action="clear">${iconMarkup("reset")} Reset card</button>
+                <button class="g" type="button" data-action="surprise" disabled aria-label="Surprise this card (available in Phase 8)">${iconMarkup("surprise")} Surprise this card</button>
               </div>
             </details>
           </div>
@@ -552,10 +555,10 @@ function buildRows() {
           <label class="fld w"><span>Place</span><input type="text" data-field="loc" aria-label="Place" placeholder="Place" value="${escapeHtml(card.loc)}"></label>
           <label class="fld w"><span>Year</span><input type="text" data-field="year" aria-label="Year" placeholder="Year" value="${escapeHtml(card.year)}"></label>
           <label class="fld w"><span>Abbreviation</span><input type="text" data-field="code" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code)}"></label>
-          <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
-          ${card.corsLimited ? '<span class="cors-tag w" title="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
+          <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">${iconMarkup("upload")} Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
+          ${card.corsLimited ? '<span class="cors-tag w" tabindex="0" role="note" aria-label="This host blocks canvas access; SVG export works, raster export may not." data-tooltip="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
           <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> Accent sampled from image when available</div>
-          <details class="w adj"><summary>Photo &amp; theme options</summary>
+          <details class="w adj"><summary><span>Photo &amp; theme options</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
             <label><span>Zoom</span><input type="range" min="100" max="300" value="${Math.round((card.zm || 1) * 100)}" data-adjust="zm"></label>
             <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
             <label><span>Vertical</span><input type="range" min="-100" max="100" value="${card.py || 0}" data-adjust="py"></label>
@@ -566,6 +569,8 @@ function buildRows() {
           </details>
         </div>
       </div>`;
+    hydrateIcons(row);
+    attachColorHexFields(row);
     const file = document.createElement("input");
     file.type = "file";
     file.accept = "image/*";
@@ -861,6 +866,7 @@ function syncCustomControls() {
     if (el.type === "checkbox") el.checked = Boolean(studioState.settings.customTheme[key]);
     else el.value = studioState.settings.customTheme[key];
   }
+  syncColorHexFields();
   updateMountStatus();
 }
 
@@ -1302,6 +1308,9 @@ function duplicateActivePage(perPage) {
 }
 
 async function init() {
+  hydrateIcons();
+  bindTapTooltips();
+  attachColorHexFields();
   populateThemeSelect($("style"));
   syncCustomControls();
   updatePreviewZoom(1);
