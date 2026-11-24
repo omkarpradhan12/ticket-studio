@@ -1,6 +1,7 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase5.2";
-import { hsl } from "./image-utils.js?v=phase5.2";
+import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase6";
+import { hsl } from "./image-utils.js?v=phase6";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase6";
 
 export const CW = 170;
 export const SIZES = {
@@ -153,21 +154,6 @@ export const STAMPS = {
   cross: { o: '<path d="M-7 -18H7V-7H18V7H7V18H-7V7H-18V-7H-7Z" stroke-width="1" stroke-linejoin="round"/><path d="M-4.5 -14.5H4.5V-4.5H14.5V4.5H4.5V14.5H-4.5V4.5H-14.5V-4.5H-4.5Z" stroke-width=".5"/>', yr: -4.5, nm: 3.5, w: 19, r: "M-5.5 7h11" }
 };
 export const SKINDS = Object.keys(STAMPS);
-
-function frame(i, A, bs, CH, bwear) {
-  const f = n => `<g${bwear > 0 ? ` filter="url(#bd${i})"` : ""} fill="none" stroke="${A}">${n}</g>`;
-  if (bs === 1) return f(`<rect x="3" y="3" width="${CW - 6}" height="${CH - 6}" stroke-width="2.6"/>`);
-  if (bs === 2) {
-    let o = "";
-    [[3, 3, 1, 1], [CW - 3, 3, -1, 1], [3, CH - 3, 1, -1], [CW - 3, CH - 3, -1, -1]].forEach(([bx, by, dx, dy]) => {
-      o += `<path d="M${bx} ${by + dy * 22}V${by}H${bx + dx * 22}" stroke-width="2.2"/>`;
-    });
-    return f(o);
-  }
-  if (bs === 3) return f(`<rect x="4" y="4" width="${CW - 8}" height="${CH - 8}" stroke-width="1.1" stroke-dasharray="4 2.5"/>`);
-  if (bs === 4) return f(`<rect x="2.5" y="2.5" width="${CW - 5}" height="${CH - 5}" rx="9" stroke-width="1.5"/><rect x="5.8" y="5.8" width="${CW - 11.6}" height="${CH - 11.6}" rx="6" stroke-width=".7" opacity=".8"/>`);
-  return f(`<rect x="2.5" y="2.5" width="${CW - 5}" height="${CH - 5}" stroke-width="1.5"/><rect x="5.8" y="5.8" width="${CW - 11.6}" height="${CH - 11.6}" stroke-width=".7" opacity=".8"/>`);
-}
 
 function mount(tt, PX, PY, PS, PB, odd, i, A, T) {
   if (Array.isArray(T.mounts)) {
@@ -334,23 +320,41 @@ export function renderCard(c0, i, cfg) {
       ).join("")
     : `<text x="${tx}" y="${199 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
 
+  const resolvedBorder = resolveBorderConfig(cfg, c0);
+  const borderRendered = renderBorder({
+    index: i,
+    CW,
+    CH,
+    accent: A,
+    theme: T,
+    border: resolvedBorder,
+    scope: cfg.borderScope || "",
+    seed: i + 21
+  });
+
   if (cfg.minimalLayout === true) {
+    const useCustomMinimalBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
+    const minimalBorderDefs = useCustomMinimalBorder ? borderRendered.defs : "";
+    const minimalBorderMarkup = useCustomMinimalBorder
+      ? borderRendered.markup
+      : `<rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>`;
     const minimalTitleMarkup = titleLayoutResult.wrapped
       ? titleLines.map((line, lineIndex) => `<text x="17" y="${(188 + lineIndex * 11 + D).toFixed(1)}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
       : `<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
-    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs><clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g><rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${minimalBorderDefs}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
   }
 
   const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(cfg.gradientAngle ?? 180, cfg.gradientSpread ?? 32, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
+  const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, cfg.borderWear || 0) : borderRendered.defs;
 
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
-   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${inkFilter("bd" + i, i + 21, cfg.borderWear || 0)}${grayDef}${halftoneDef}
+   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${borderDefs}${grayDef}${halftoneDef}
    <clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath>
    <clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs>
    <g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
-   ${frame(i, A, design.borderStyle, CH, cfg.borderWear || 0)}${sc}
+   ${borderRendered.markup}${sc}
    <text x="17" y="11.5" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>★ ADMIT ONE</text>
    <text x="${CW - 17}" y="11.5" text-anchor="end" fill="${ink}" font-size="5.2" font-weight="800" letter-spacing=".4" ${FT}>${U(cfg.doors || "Doors 7PM")}</text>
    <text transform="translate(13 ${PMY}) rotate(-90)" text-anchor="middle" fill="${mute}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(no)}</text>
