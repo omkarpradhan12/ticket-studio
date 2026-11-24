@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: 2 - Undo/redo design
-- Next approval: owner to approve the state-layer refactor and history design below.
+- Current phase: 2 - Undo/redo implementation
+- Approval: Phase 2 design approved.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -50,9 +50,9 @@
 | P1-30 | Verify UI issue U14 Ink/Text terminology | S | low | todo | - | |
 | P1-31 | Consolidate U15 CSS/inline/cache issues | L | medium | todo | - | Preserve behavior |
 | P1-32 | Verify UI issue U16 hex fields for pickers | M | medium | todo | - | |
-| P2-01 | Design and approve state/history architecture | M | high | in progress | 96b23af | Design committed; awaiting approval; no app changes in this step |
-| P2-02 | Refactor Sheet Editor to canonical state | L | high | todo | - | Own behavior-preserving commit(s), before history implementation |
-| P2-03 | Implement in-memory history module and tests | L | high | todo | - | 100 entries; shared card objects; add standalone no-framework tests |
+| P2-01 | Design and approve state/history architecture | M | high | done | 96b23af | Design approved before implementation |
+| P2-02 | Refactor Sheet Editor to canonical state | L | high | done | a7635bc | Immutable card/array updates; settings, pages, count and selection flow through `studioState`; saved payload unchanged |
+| P2-03 | Implement in-memory history module and tests | L | high | in progress | - | 100 entries; shared card objects; add standalone no-framework tests |
 | P2-04 | Wire undoable Sheet Editor actions and restore | L | high | todo | - | Settings, cards, pages, imports, reset/randomise/sample operations |
 | P2-05 | Add Undo/Redo controls, shortcuts, and undo toasts | M | medium | todo | - | Keep controls reachable on phone; native text-field undo takes precedence |
 | P2-06 | Verify coalescing, memory, restore, and persistence | L | high | todo | - | Include large-photo measurement and reload behavior |
@@ -106,6 +106,7 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - 9d4ffba Validate imported theme JSON
 - 014d7d0 Refresh Phase 1 cache and print output
 - 96b23af Design Phase 2 undo history
+- a7635bc Refactor editor into canonical state
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -115,7 +116,7 @@ All BUGS and UI/UX items remain `todo` because this Phase 0 audit did not reprod
 - Print emulation: topbar/panel hidden; A4-sized `.sheet` is 210mm x 297mm and one template/additional page is present.
 - Remaining manual checks: real printer/PDF scaling, blank trailing page, PNG/PDF export downloads, and external/CORS image raster exports.
 
-## Phase 2 design (awaiting approval; implementation has not started)
+## Phase 2 design (approved)
 
 ### State-layer refactor plan
 The audit found state split between the Sheet Editor DOM, module variables, and mutable card objects. Before introducing history, create one canonical `studioState` containing all Sheet Editor settings (including the custom palette), card records, count, selected card, active page, and page theme overrides. DOM controls become a view of that state. Move each existing mutation path (control edits, card edits/operations, image loads, drag-photo updates, imports, randomise/samples/reset, page theme and duplication) to state update helpers, and make card records immutable on update so a past snapshot cannot be changed through an object alias. Keep rendering, export helpers, saved `{v, count, settings, cards}` payloads, and visible behavior unchanged. Land this refactor separately and verify it before adding history.
@@ -144,6 +145,13 @@ The audit found state split between the Sheet Editor DOM, module variables, and 
 - `Ctrl/Cmd+Z` undo; `Ctrl/Cmd+Shift+Z` and `Ctrl+Y` redo. When focus is in an editable text control, do not intercept native text undo. Ignore shortcuts in a way that preserves typing and existing browser shortcuts.
 - After delete, Reset All, Load Samples, bulk import, or Randomise, show a non-blocking toast with an Undo action. These actions remain reversible; saved-theme deletion stays confirmed and outside Sheet Editor history.
 
+### State refactor verification
+- Refactor is isolated in commit `a7635bc`, before history implementation.
+- Browser verification on the isolated `127.0.0.1` origin: initial load, card field edit, paper-size update, card duplicate/delete, page duplication, return to 9 cards, save/reload.
+- No browser page or console errors were observed; title and paper settings were intact after reload.
+- Immutable card updates and image hydration resolve cards by stable identity, avoiding stale object references during asynchronous work.
+- No saved-data migration or payload shape change was introduced.
+
 ### Approval gate
-- Approve or request changes to the state-layer refactor and snapshot/history design before any implementation.
+- Design approved by the owner before implementation.
 - No local history persistence is proposed.

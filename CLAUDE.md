@@ -34,6 +34,7 @@
 - Before the first Phase 1 code change, run the app locally, export a sample sheet in every available format, and store copies in git-ignored `.baseline/`.
 - State migration must be backward compatible; stop and ask before any migration that is not clearly reversible.
 - Sheet Editor undo/redo history is in memory only and clears on reload; saved sheet data continues to autosave independently.
+- Sheet Editor state is centralized in `studioState`; card records and arrays use copy-on-write updates so history snapshots can share unchanged photos safely.
 
 ## Verification checklist
 1. Load all three pages with no console errors.

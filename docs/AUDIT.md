@@ -149,14 +149,14 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 - Card list is rebuilt for every mutation and has one row per card. Every row includes photo thumbnail, title/header/actions and details.
 
 ## 12. State and history readiness
-- There is no central immutable state object. State exists in module variables (`cards`, `count`, `selectedCard`, `activePage`, `pageThemes`, `gradientAngle`, `previewIndex`, `dragState`) and in every DOM control.
-- Card state is mutated directly throughout `app.js`, `buildRows()`, import, randomise and drag handlers.
-- `CUSTOM` and the `THEMES` registry are module variables synchronized partly from DOM controls and localStorage.
-- Save is debounced 450ms by `saveSoon()` after `render()`. `persistSession()` writes the entire card array/settings snapshot to IndexedDB; localStorage fallback strips embedded `data:` photos.
-- Photo data URLs can make a snapshot very large. IndexedDB avoids the localStorage quota, but fallback intentionally drops only embedded photo payloads, not external URLs.
-- Existing undo/history and unsaved-warning state: none found for app mutations or Theme Studio draft switching.
-- A clean undo snapshot should include: `cards`, `count`, `selectedCard`, `activePage`, `pageThemes`, `gradientAngle`, every settings/control value, `CUSTOM`, and any Theme registry modifications or theme draft state only if brought into scope.
-- Applying a snapshot must rebuild theme selects, custom controls, card rows, page tools, preview, and then schedule/save. Exports and cards should be unchanged.
+- Phase 2 refactored Sheet Editor state into `studioState`: cards, count, selected card, active page, page themes, gradient angle and settings/custom palette. `previewIndex` and `dragState` remain transient view/gesture state.
+- Card updates are copy-on-write, and card arrays/page-theme arrays are replaced rather than mutated, allowing history entries to share unchanged records safely.
+- DOM controls are synchronized into settings at render boundaries; renderer configuration reads the resulting settings snapshot. `CUSTOM` and `THEMES` remain shared renderer/theme registries, with custom palette values captured in state.
+- Save remains debounced 450ms by `saveSoon()` after `render()`. `persistSession()` retains the existing `{v, count, settings, cards}` payload and IndexedDB/localStorage behavior.
+- Photo data URLs can make a snapshot very large. IndexedDB avoids the localStorage quota, but fallback intentionally drops only embedded `data:` photos, not external URLs.
+- Existing undo/history and unsaved-warning state were absent before Phase 2. History implementation remains in progress.
+- A history snapshot must include cards, count, selected card, active page, page themes, gradient angle and complete settings/custom palette. It excludes view-only state and Theme Studio drafts until Phase 5.
+- Snapshot restore must synchronize controls, custom controls, card rows, page tools and preview, then request the existing autosave once. Saved sheet data and renderer output must remain unchanged.
 
 ## 13. Responsive behavior
 - Desktop: redesign app grid is 390px sidebar + preview; main CSS 340-440px fallback.
@@ -199,11 +199,11 @@ Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`.
 No screenshots or Playwright run are included in this audit. The environment exposes no currently loaded browser automation tool, and installing a dev screenshot dependency was not approved. Baseline or visual reproduction should happen after explicit approval for Playwright, or by a manual browser check.
 
 ## Verification conclusions
-- `app.js` is not a single-state architecture: undo/redo is likely to require a state-layer refactor or a disciplined snapshot of DOM + module + card state. Phase 2 should precede by introducing a single state transition/snapshot layer or a strong snapshot/restore helper.
+- Sheet Editor now has a canonical state layer suitable for history. Browser checks of initial load, card field edit, paper-size update, card duplicate/delete, page duplication, and save/reload passed without observed console errors.
 - Phase 7 (draggable stamps) and Phase 8 (Surprise me) require per-card style override support for stamp position and randomised styling. Add optional per-card fields only and preserve old defaults.
 
 ## Phase 2 design follow-up
-- The Phase 2 plan chooses a canonical in-memory Sheet Editor state rather than treating DOM controls as history storage. Controls become a view synchronized from state.
-- Snapshot history must use immutable card records and copy-on-write updates; otherwise current in-place mutations can alter card records that older history snapshots reference.
+- The approved Phase 2 plan chooses canonical in-memory Sheet Editor state rather than treating DOM controls as history storage.
+- Snapshot history relies on immutable card records and copy-on-write updates; current card updates replace both the record and card array.
 - Snapshots shallow-copy settings/arrays and share unchanged card records, including their image/data-URL strings. New optional card fields are retained because snapshots store full records rather than selecting known keys.
-- No migration or saved-data format change is planned. The user must approve this refactor and the history behavior before implementation starts.
+- No migration or saved-data format change is planned. History remains in-memory only.
