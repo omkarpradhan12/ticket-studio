@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase6">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase7">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase6">
-<link rel="stylesheet" href="css/app.css?v=phase6">
+<link rel="stylesheet" href="css/tokens.css?v=phase7">
+<link rel="stylesheet" href="css/app.css?v=phase7">
 </head>
 <body>
 <header class="topbar">
@@ -318,6 +318,11 @@
           <label class="chk"><input type="checkbox" data-quick-mount value="0" checked> Tape</label>
           <label class="chk"><input type="checkbox" data-quick-mount value="1"> Pins</label>
           <label class="chk"><input type="checkbox" data-quick-mount value="2"> Corners</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="4"> Washi tape</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="5"> Brads</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="6"> Paperclip</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="7"> Staples</label>
+          <label class="chk"><input type="checkbox" data-quick-mount value="8"> Wax seal</label>
           <label class="chk"><input type="checkbox" data-quick-mount value="3"> None</label>
           <span class="hint full" id="quick-mount-status">Active mounts: Tape</span>
         </fieldset>
@@ -483,7 +488,9 @@
         <select id="page-theme"><option value="">Use global</option></select>
       </label>
       <button class="g" type="button" id="duplicate-page"><span data-icon="duplicate"></span> Duplicate</button>
-      <button class="g" type="button" id="move-stamps" disabled aria-label="Move stamps (available in Phase 7)"><span data-icon="move"></span> Move stamps</button>
+      <button class="g" type="button" id="move-stamps" aria-pressed="false"><span data-icon="move"></span> Move stamps</button>
+      <label class="chk snap-toggle" id="stamp-snap-wrap" hidden><input type="checkbox" id="stamp-snap" checked> Snap</label>
+      <button class="g sm" type="button" id="reset-all-stamps" hidden>Reset all stamps</button>
       <div class="zoom-controls" aria-label="Preview zoom">
         <button class="g" type="button" id="zoom-out" aria-label="Zoom out" data-tooltip="Zoom out"><span data-icon="minus"></span></button>
         <output id="zoom-value" aria-live="polite">100%</output>
@@ -556,6 +563,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase6"></script>
+<script type="module" src="js/app.js?v=phase7"></script>
 </body>
 </html>

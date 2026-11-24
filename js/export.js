@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase6";
-import { hslToHex } from "./image-utils.js?v=phase6";
-import { abbr } from "./svg-engine.js?v=phase6";
+import { FONTCSS } from "./fonts.js?v=phase7";
+import { hslToHex } from "./image-utils.js?v=phase7";
+import { abbr } from "./svg-engine.js?v=phase7";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -14,7 +14,7 @@ export function triggerDownload(blob, filename) {
 
 export function serializeSheetSvg(el, W, H) {
   const t = el.cloneNode(true);
-  t.querySelectorAll(".pp").forEach(n => n.remove());
+  t.querySelectorAll(".pp, .st-ui, .st-snap-guide").forEach(n => n.remove());
   t.setAttribute("width", (W / 2.83465).toFixed(2) + "mm");
   t.setAttribute("height", (H / 2.83465).toFixed(2) + "mm");
   const st = document.createElementNS("http://www.w3.org/2000/svg", "style");
@@ -122,6 +122,8 @@ export function exportProjectJson(settings, cards, count) {
       if (c.sk) r.stampShape = c.sk;
       if (c.stx) r.stampText = c.stx;
       if (c.border && typeof c.border === "object") r.border = c.border;
+      if (c.stampPos && typeof c.stampPos === "object") r.stampPos = c.stampPos;
+      if (c.stamp2Pos && typeof c.stamp2Pos === "object") r.stamp2Pos = c.stamp2Pos;
       return r;
     })
   };

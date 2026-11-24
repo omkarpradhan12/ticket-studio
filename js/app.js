@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase6";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase6";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase6";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase6";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase6";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase6";
-import { History } from "./history.mjs?v=phase6";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase6";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase6";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase7";
+import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase7";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase7";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase7";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase7";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase7";
+import { History } from "./history.mjs?v=phase7";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase7";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase7";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,27 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase6";
+} from "./borders.mjs?v=phase7";
+import {
+  clampStampNorm,
+  clampStampScale,
+  normalizeAngle,
+  resolveStampTransform,
+  sanitizeStampOverride,
+  snapStampNorm
+} from "./stamps.mjs?v=phase7";
+
+const MOUNT_NAMES = {
+  "0": "Tape",
+  "1": "Pins",
+  "2": "Corners",
+  "3": "None",
+  "4": "Washi tape",
+  "5": "Brads",
+  "6": "Paperclip",
+  "7": "Staples",
+  "8": "Wax seal"
+};
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 72;
@@ -58,6 +78,9 @@ let currentLayout;
 let renderFrame = 0;
 let saveTimer;
 let dragState = null;
+let stampDragState = null;
+let moveStampsMode = false;
+let selectedStampIndex = 0;
 let previewIndex = -1;
 let previousFocus = null;
 let historyReady = false;
@@ -208,7 +231,10 @@ function renderConfig(one = false) {
     pageThemes: settings.pageThemes,
     doors: settings.doors,
     side: settings.side,
-    drag: $("drag").checked
+    drag: $("drag").checked,
+    moveStamps: moveStampsMode && !one,
+    selectedCard: studioState.selectedCard,
+    selectedStamp: selectedStampIndex
   };
 }
 
@@ -459,7 +485,7 @@ function bindHistoryControlEvents() {
     if (element) bindContinuousHistory(element, label, `setting:${id}`);
   });
   document.querySelectorAll("[data-quick-mount]").forEach(input => {
-    const name = ["Tape", "Pins", "Corners", "None"][Number(input.value)] || "mount";
+    const name = MOUNT_NAMES[input.value] || "mount";
     bindContinuousHistory(input, `toggle ${name.toLowerCase()} mount`, `mount:${input.value}`);
   });
 }
@@ -681,11 +707,139 @@ function isTextEditingTarget(target) {
 }
 
 function updateMountStatus() {
-  const names = { "0": "Tape", "1": "Pins", "2": "Corners", "3": "None" };
   const checked = [...document.querySelectorAll("[data-quick-mount]:checked")];
   $("quick-mount-status").textContent = checked.length
-    ? `Active mounts: ${checked.map(element => names[element.value]).join(" + ")}`
+    ? `Active mounts: ${checked.map(element => MOUNT_NAMES[element.value] || "Mount").join(" + ")}`
     : "Active mounts: None";
+}
+
+function stampKeyFor(stampIndex) {
+  return stampIndex === 1 ? "stamp2Pos" : "stampPos";
+}
+
+function resolveCardStamp(index, stampIndex = 0) {
+  const card = studioState.cards[index];
+  if (!card) return null;
+  const CH = currentLayout?.CH || 239;
+  const stampSize = Number($("ssize")?.value) || 100;
+  return resolveStampTransform({
+    index,
+    stampIndex,
+    CW,
+    CH,
+    stampSize,
+    override: card[stampKeyFor(stampIndex)]
+  });
+}
+
+function syncCardStampRow(index) {
+  const row = $("rows").children[index];
+  if (!row) return;
+  const box = row.querySelector(".card-stamp-pos");
+  if (!box) return;
+  const hasSecond = Boolean($("gs2")?.value.trim());
+  const targetSelect = box.querySelector("[data-stamp-target]");
+  const targetWrap = box.querySelector("[data-stamp-target-wrap]");
+  if (!hasSecond && selectedStampIndex === 1) selectedStampIndex = 0;
+  if (targetWrap) targetWrap.hidden = !hasSecond;
+  if (targetSelect) targetSelect.value = String(selectedStampIndex);
+
+  const st = resolveCardStamp(index, selectedStampIndex);
+  if (!st) return;
+  const card = studioState.cards[index];
+  const hasOverride = Boolean(card?.[stampKeyFor(selectedStampIndex)]);
+  const angleDeg = Math.round(st.r);
+  const scalePct = Math.round(st.mult * 100);
+
+  const dial = box.querySelector("[data-stamp-dial]");
+  const needle = box.querySelector("[data-stamp-needle]");
+  const rotInput = box.querySelector("[data-stamp-rot]");
+  const scaleRange = box.querySelector("[data-stamp-scale-range]");
+  const scaleInput = box.querySelector("[data-stamp-scale]");
+  const posLabel = box.querySelector("[data-stamp-pos-label]");
+  const resetBtn = box.querySelector("[data-action='reset-stamp']");
+
+  if (needle) needle.style.transform = `rotate(${angleDeg}deg)`;
+  if (dial) dial.setAttribute("aria-valuenow", String(angleDeg));
+  if (rotInput && document.activeElement !== rotInput) rotInput.value = String(angleDeg);
+  if (scaleRange) scaleRange.value = String(scalePct);
+  if (scaleInput && document.activeElement !== scaleInput) scaleInput.value = String(scalePct);
+  if (posLabel) {
+    posLabel.textContent = hasOverride
+      ? `Custom · ${Math.round(st.nx * 100)}% × ${Math.round(st.ny * 100)}%`
+      : `Auto · ${Math.round(st.nx * 100)}% × ${Math.round(st.ny * 100)}%`;
+  }
+  if (resetBtn) resetBtn.disabled = !(card?.stampPos || card?.stamp2Pos);
+}
+
+function updateSnapGuides(cardGroup, snapInfo) {
+  if (!cardGroup) return;
+  cardGroup.querySelectorAll(".st-snap-guide").forEach(node => node.remove());
+  if (!snapInfo || (!snapInfo.snappedX && !snapInfo.snappedY)) return;
+  const CH = currentLayout?.CH || 239;
+  const ns = "http://www.w3.org/2000/svg";
+  if (snapInfo.snappedX && snapInfo.snapPxX !== null) {
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("class", "st-snap-guide");
+    line.setAttribute("x1", snapInfo.snapPxX.toFixed(1));
+    line.setAttribute("y1", "0");
+    line.setAttribute("x2", snapInfo.snapPxX.toFixed(1));
+    line.setAttribute("y2", String(CH));
+    cardGroup.append(line);
+  }
+  if (snapInfo.snappedY && snapInfo.snapPxY !== null) {
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("class", "st-snap-guide");
+    line.setAttribute("x1", "0");
+    line.setAttribute("y1", snapInfo.snapPxY.toFixed(1));
+    line.setAttribute("x2", String(CW));
+    line.setAttribute("y2", snapInfo.snapPxY.toFixed(1));
+    cardGroup.append(line);
+  }
+}
+
+function patchLiveStampDom(index, si, snapInfo = null) {
+  const st = resolveCardStamp(index, si);
+  if (!st) return;
+  const stampEl = $(`st${si}-${index}`);
+  if (stampEl) {
+    stampEl.setAttribute("transform", `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)}) scale(${Number(st.scale.toFixed(3))})`);
+  }
+  const uiEl = $("sheets")?.querySelector(`.st-ui[data-ci="${index}"][data-si="${si}"]`);
+  if (uiEl) {
+    uiEl.setAttribute("transform", `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})`);
+    const hit = uiEl.querySelector(".st-hit");
+    if (hit) hit.setAttribute("aria-valuetext", `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`);
+  }
+  const cardGroup = $("sheets")?.querySelector(`.sheet [data-ci="${index}"]`);
+  updateSnapGuides(cardGroup, snapInfo);
+  syncCardStampRow(index);
+}
+
+function copyStampPlacement(sourceIndex, targetIndices, label) {
+  const src = studioState.cards[sourceIndex];
+  if (!src) return;
+  const st0 = resolveCardStamp(sourceIndex, 0);
+  const stampPos = src.stampPos
+    ? sanitizeStampOverride(src.stampPos)
+    : sanitizeStampOverride({ x: st0.nx, y: st0.ny, r: st0.r, scale: 1 });
+  const hasSecond = Boolean($("gs2")?.value.trim());
+  const st1 = hasSecond ? resolveCardStamp(sourceIndex, 1) : null;
+  const stamp2Pos = src.stamp2Pos
+    ? sanitizeStampOverride(src.stamp2Pos)
+    : (st1 ? sanitizeStampOverride({ x: st1.nx, y: st1.ny, r: st1.r, scale: 1 }) : undefined);
+
+  const targetSet = new Set(targetIndices);
+  studioState.cards = studioState.cards.map((card, i) => {
+    if (!targetSet.has(i) || i === sourceIndex) return card;
+    const next = { ...card, stampPos: { ...stampPos } };
+    if (stamp2Pos) next.stamp2Pos = { ...stamp2Pos };
+    cardIds.set(next, cardIdentity(card));
+    return next;
+  });
+  recordDiscrete(label);
+  buildRows();
+  render();
 }
 
 function scheduleRender() {
@@ -742,6 +896,15 @@ function render() {
     : "Choose a gradient theme to enable the angle control.";
   syncPageTools(pages);
   refreshBorderSwatches();
+  const moveBtn = $("move-stamps");
+  if (moveBtn) moveBtn.setAttribute("aria-pressed", String(moveStampsMode));
+  const snapWrap = $("stamp-snap-wrap");
+  if (snapWrap) snapWrap.hidden = !moveStampsMode;
+  const resetAllStampsBtn = $("reset-all-stamps");
+  if (resetAllStampsBtn) {
+    const anyStampOverride = activeCards.some(c => Boolean(c.stampPos || c.stamp2Pos));
+    resetAllStampsBtn.hidden = !(moveStampsMode || anyStampOverride);
+  }
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
   document.querySelectorAll(".row").forEach((row, i) => {
@@ -749,6 +912,7 @@ function render() {
     row.setAttribute("aria-expanded", String(i === studioState.selectedCard));
     if (i === studioState.selectedCard) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
+    syncCardStampRow(i);
   });
   if (!$("pv").hidden) refreshPreview();
   if (historyReady) history.refresh(captureSnapshot());
@@ -767,6 +931,13 @@ function selectCard(index, scroll = false) {
     if (i === index) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
   });
+  if (moveStampsMode) {
+    $("sheets")?.querySelectorAll(".st-ui").forEach(el => {
+      const sel = Number(el.dataset.ci) === index && Number(el.dataset.si) === selectedStampIndex;
+      el.classList.toggle("is-selected", sel);
+    });
+  }
+  syncCardStampRow(index);
   if (scroll) $("rows").children[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -823,6 +994,35 @@ function buildRows() {
             <div class="card-border-row">
               <span>${card.border ? `Border: Custom (${escapeHtml(getBorderStyleMeta(card.border.style ?? studioState.borderStyle).name)})` : "Border: Same as sheet"}</span>
               ${card.border ? `<button class="g sm" type="button" data-action="reset-border">Use sheet border</button>` : ""}
+            </div>
+            <div class="card-stamp-pos">
+              <div class="card-stamp-header">
+                <span>Stamp placement</span>
+                <span class="hint" data-stamp-pos-label>Auto</span>
+              </div>
+              <label data-stamp-target-wrap hidden><span>Edit stamp</span><select data-stamp-target><option value="0">Primary stamp</option><option value="1">Second stamp</option></select></label>
+              <div class="card-stamp-dials">
+                <div class="card-stamp-dial-wrap">
+                  <div class="dial stamp-dial" data-stamp-dial role="slider" tabindex="0" aria-label="Card ${index + 1} stamp angle" aria-valuemin="-180" aria-valuemax="180" aria-valuenow="0">
+                    <i data-stamp-needle></i><b></b>
+                  </div>
+                  <div class="card-stamp-num-col">
+                    <label><span>Angle (°)</span><input type="number" min="-180" max="180" step="1" value="0" data-stamp-rot aria-label="Card ${index + 1} stamp angle degrees"></label>
+                  </div>
+                </div>
+                <div class="card-stamp-scale-wrap">
+                  <label><span>Scale (%)</span></label>
+                  <div class="card-stamp-scale-row">
+                    <input type="range" min="40" max="250" step="5" value="100" data-stamp-scale-range aria-label="Card ${index + 1} stamp scale slider">
+                    <input type="number" min="40" max="250" step="5" value="100" data-stamp-scale aria-label="Card ${index + 1} stamp scale percent">
+                  </div>
+                </div>
+              </div>
+              <div class="card-stamp-actions">
+                <button class="g sm" type="button" data-action="reset-stamp">Reset stamp position</button>
+                <button class="g sm" type="button" data-action="copy-stamp-page">Copy to page</button>
+                <button class="g sm" type="button" data-action="copy-stamp-all">Copy to all cards</button>
+              </div>
             </div>
           </details>
         </div>
@@ -891,6 +1091,94 @@ function buildRows() {
       scheduleRender();
     });
     bindContinuousHistory(row.querySelector("[data-accent]"), "change card accent colour", `card:${index}:accent`);
+
+    const applyStampEdit = (si, patch) => {
+      const st = resolveCardStamp(index, si);
+      const current = studioState.cards[index]?.[stampKeyFor(si)];
+      const next = sanitizeStampOverride({
+        x: current?.x ?? st.nx,
+        y: current?.y ?? st.ny,
+        r: current?.r ?? st.r,
+        scale: current?.scale ?? st.mult,
+        ...patch
+      });
+      updateCard(index, { [stampKeyFor(si)]: next });
+      patchLiveStampDom(index, si);
+      scheduleRender();
+    };
+
+    row.querySelector("[data-stamp-target]")?.addEventListener("change", event => {
+      selectedStampIndex = Number(event.target.value) === 1 ? 1 : 0;
+      selectCard(index);
+    });
+
+    const stampDial = row.querySelector("[data-stamp-dial]");
+    if (stampDial) {
+      const stampAngleFromEvent = event => {
+        const rect = stampDial.getBoundingClientRect();
+        return Math.atan2(event.clientX - (rect.left + rect.width / 2), -(event.clientY - (rect.top + rect.height / 2))) * 180 / Math.PI;
+      };
+      stampDial.addEventListener("pointerdown", event => {
+        stampDial.setPointerCapture(event.pointerId);
+        stampDial.dataset.dragging = "true";
+        const rawAngle = stampAngleFromEvent(event);
+        const angle = normalizeAngle(event.shiftKey ? rawAngle : Math.round(rawAngle / 5) * 5);
+        applyStampEdit(selectedStampIndex, { r: angle });
+        recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+      });
+      stampDial.addEventListener("pointermove", event => {
+        if (!stampDial.dataset.dragging) return;
+        const rawAngle = stampAngleFromEvent(event);
+        const angle = normalizeAngle(event.shiftKey ? rawAngle : Math.round(rawAngle / 5) * 5);
+        applyStampEdit(selectedStampIndex, { r: angle });
+        recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+      });
+      ["pointerup", "pointercancel"].forEach(name => stampDial.addEventListener(name, () => {
+        if (!stampDial.dataset.dragging) return;
+        delete stampDial.dataset.dragging;
+        finishContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+      }));
+      stampDial.addEventListener("keydown", event => {
+        const step = event.shiftKey ? 15 : 5;
+        const delta = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step }[event.key];
+        if (delta !== undefined) {
+          event.preventDefault();
+          const st = resolveCardStamp(index, selectedStampIndex);
+          applyStampEdit(selectedStampIndex, { r: normalizeAngle(st.r + delta) });
+          recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          applyStampEdit(selectedStampIndex, { r: 0 });
+          recordContinuous("rotate stamp", `card:${index}:stamp-rot:${selectedStampIndex}`);
+        }
+      });
+    }
+
+    const rotNum = row.querySelector("[data-stamp-rot]");
+    if (rotNum) {
+      rotNum.addEventListener("input", () => {
+        if (rotNum.value === "" || rotNum.value === "-") return;
+        applyStampEdit(selectedStampIndex, { r: normalizeAngle(Number(rotNum.value)) });
+      });
+      bindContinuousHistory(rotNum, "rotate stamp", `card:${index}:stamp-rot`);
+    }
+
+    const scaleRange = row.querySelector("[data-stamp-scale-range]");
+    const scaleNum = row.querySelector("[data-stamp-scale]");
+    if (scaleRange) {
+      scaleRange.addEventListener("input", () => {
+        applyStampEdit(selectedStampIndex, { scale: clampStampScale(Number(scaleRange.value) / 100) });
+      });
+      bindContinuousHistory(scaleRange, "scale stamp", `card:${index}:stamp-scale`);
+    }
+    if (scaleNum) {
+      scaleNum.addEventListener("input", () => {
+        const val = Number(scaleNum.value);
+        if (!Number.isFinite(val) || val < 20) return;
+        applyStampEdit(selectedStampIndex, { scale: clampStampScale(val / 100) });
+      });
+      bindContinuousHistory(scaleNum, "scale stamp", `card:${index}:stamp-scale`);
+    }
     row.querySelector("[data-action='load-url']").addEventListener("click", async () => {
       const url = row.querySelector("[data-url]").value.trim();
       await setImage(index, () => processImageUrl(url));
@@ -949,10 +1237,34 @@ function buildRows() {
           buildRows();
           render();
         }
+      } else if (action === "reset-stamp") {
+        const current = studioState.cards[index];
+        if (current && (current.stampPos || current.stamp2Pos)) {
+          const { stampPos: _p1, stamp2Pos: _p2, ...rest } = current;
+          const next = { ...rest };
+          cardIds.set(next, cardIdentity(current));
+          studioState.cards = studioState.cards.map((item, cardIndex) => cardIndex === index ? next : item);
+          recordDiscrete("reset stamp position");
+          buildRows();
+          render();
+          message(`Reset stamp position for card #${index + 1}.`);
+        }
+      } else if (action === "copy-stamp-page") {
+        const per = currentLayout?.PER || 9;
+        const pageStart = Math.floor(index / per) * per;
+        const pageEnd = Math.min(studioState.count, pageStart + per);
+        const indices = Array.from({ length: pageEnd - pageStart }, (_, k) => pageStart + k);
+        copyStampPlacement(index, indices, "copy stamp placement to page");
+        message(`Copied stamp placement to page ${Math.floor(index / per) + 1}.`);
+      } else if (action === "copy-stamp-all") {
+        const indices = Array.from({ length: studioState.count }, (_, k) => k);
+        copyStampPlacement(index, indices, "copy stamp placement to all cards");
+        message("Copied stamp placement to all cards.");
       }
       button.closest(".card-menu")?.removeAttribute("open");
     }));
     $("rows").append(row);
+    syncCardStampRow(index);
   });
 }
 
@@ -1043,6 +1355,8 @@ async function importJson(text) {
       sk: String(item.stampShape || ""),
       stx: String(item.stampText || ""),
       ...(item.border && typeof item.border === "object" ? { border: sanitizeBorderPatch(item.border) } : {}),
+      ...(item.stampPos && typeof item.stampPos === "object" ? { stampPos: sanitizeStampOverride(item.stampPos) } : {}),
+      ...(item.stamp2Pos && typeof item.stamp2Pos === "object" ? { stamp2Pos: sanitizeStampOverride(item.stamp2Pos) } : {}),
       autoAccent: !accent,
       ...(accent || {})
     };
@@ -1223,7 +1537,7 @@ function sheetCardPreviewSvg(index) {
   if (!source) return previewSvg(index);
   const clone = source.cloneNode(true);
   clone.removeAttribute("class");
-  clone.querySelectorAll(".pp").forEach(node => node.remove());
+  clone.querySelectorAll(".pp, .st-ui, .st-snap-guide").forEach(node => node.remove());
   clone.setAttribute("transform", "translate(8 8) scale(1)");
   const height = currentLayout.CH;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${clone.outerHTML}</svg>`;
@@ -1313,7 +1627,43 @@ function bindEvents() {
     if (row) selectCard(+row.dataset.index);
   });
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "drag", "style", "sshape", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "style", "sshape", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  $("drag").addEventListener("change", () => {
+    if ($("drag").checked && moveStampsMode) {
+      moveStampsMode = false;
+      message("Drag photos on (turned off Move stamps).");
+    }
+    render();
+  });
+  $("move-stamps")?.addEventListener("click", () => {
+    moveStampsMode = !moveStampsMode;
+    if (moveStampsMode && $("drag").checked) {
+      $("drag").checked = false;
+      message("Move stamps on (turned off photo drag).");
+    } else {
+      message(moveStampsMode ? "Move stamps on: drag or use arrow keys on a stamp." : "Move stamps off.");
+    }
+    render();
+  });
+  $("reset-all-stamps")?.addEventListener("click", () => {
+    let changed = false;
+    studioState.cards = studioState.cards.map(card => {
+      if (!card.stampPos && !card.stamp2Pos) return card;
+      changed = true;
+      const { stampPos: _p1, stamp2Pos: _p2, ...rest } = card;
+      const next = { ...rest };
+      cardIds.set(next, cardIdentity(card));
+      return next;
+    });
+    if (!changed) {
+      message("All stamps are already using auto placement.");
+      return;
+    }
+    recordDiscrete("reset all stamps");
+    buildRows();
+    render();
+    showUndoToast("All stamp positions reset.");
+  });
   ["wear", "ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
   $("bwear").addEventListener("input", () => {
     syncBorderControls();
@@ -1546,7 +1896,7 @@ function bindEvents() {
     } catch (error) { message("Card PNG export failed: " + error.message); }
   });
   $("sheets").addEventListener("click", event => {
-    if (event.target.closest(".pp")) return;
+    if (event.target.closest(".pp, .st-ui")) return;
     const cardElement = event.target.closest("[data-ci]");
     if (cardElement) openPreview(+cardElement.dataset.ci);
   });
@@ -1613,6 +1963,54 @@ function bindEvents() {
   });
 
   $("sheets").addEventListener("pointerdown", event => {
+    const rotTarget = event.target.closest(".st-rot-hit");
+    if (rotTarget && moveStampsMode) {
+      event.preventDefault();
+      const index = Number(rotTarget.dataset.ci);
+      const si = Number(rotTarget.dataset.si) === 1 ? 1 : 0;
+      selectedStampIndex = si;
+      selectCard(index);
+      const cardGroup = rotTarget.closest("[data-ci]");
+      const ctm = cardGroup.getScreenCTM();
+      const st = resolveCardStamp(index, si);
+      const pt = new DOMPoint(st.x, st.y).matrixTransform(ctm);
+      rotTarget.setPointerCapture?.(event.pointerId);
+      stampDragState = { mode: "rotate", index, stampIndex: si, cx: pt.x, cy: pt.y, moved: false };
+      return;
+    }
+
+    const stTarget = event.target.closest(".st-hit");
+    if (stTarget && moveStampsMode) {
+      event.preventDefault();
+      const index = Number(stTarget.dataset.ci);
+      const cardGroup = stTarget.closest("[data-ci]");
+      const ctm = cardGroup.getScreenCTM();
+      let si = Number(stTarget.dataset.si) === 1 ? 1 : 0;
+      if ($("gs2")?.value.trim()) {
+        const s0 = resolveCardStamp(index, 0);
+        const s1 = resolveCardStamp(index, 1);
+        const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
+        const p1 = new DOMPoint(s1.x, s1.y).matrixTransform(ctm);
+        si = Math.hypot(event.clientX - p1.x, event.clientY - p1.y) < Math.hypot(event.clientX - p0.x, event.clientY - p0.y) ? 1 : 0;
+      }
+      selectedStampIndex = si;
+      selectCard(index);
+      const st = resolveCardStamp(index, si);
+      stTarget.setPointerCapture?.(event.pointerId);
+      stampDragState = {
+        mode: "move",
+        index,
+        stampIndex: si,
+        startX: event.clientX,
+        startY: event.clientY,
+        startNx: st.nx,
+        startNy: st.ny,
+        cardScale: ctm.a,
+        moved: false
+      };
+      return;
+    }
+
     const target = event.target.closest(".pp");
     if (!target) return;
     const index = +target.dataset.ci, card = studioState.cards[index];
@@ -1621,6 +2019,47 @@ function bindEvents() {
     dragState = { index, x: event.clientX, y: event.clientY, px: card.px || 0, py: card.py || 0, scale: target.ownerSVGElement.getScreenCTM().a };
   });
   window.addEventListener("pointermove", event => {
+    if (stampDragState) {
+      const { mode, index, stampIndex: si } = stampDragState;
+      const st = resolveCardStamp(index, si);
+      const current = studioState.cards[index]?.[stampKeyFor(si)];
+      if (mode === "rotate") {
+        const raw = Math.atan2(event.clientX - stampDragState.cx, -(event.clientY - stampDragState.cy)) * 180 / Math.PI;
+        const angle = normalizeAngle(event.shiftKey ? Math.round(raw / 15) * 15 : raw);
+        const next = sanitizeStampOverride({
+          x: current?.x ?? st.nx,
+          y: current?.y ?? st.ny,
+          r: angle,
+          scale: current?.scale ?? st.mult
+        });
+        updateCard(index, { [stampKeyFor(si)]: next });
+        patchLiveStampDom(index, si);
+        stampDragState.moved = true;
+      } else {
+        if (!stampDragState.moved && Math.hypot(event.clientX - stampDragState.startX, event.clientY - stampDragState.startY) < 2) return;
+        const dx = (event.clientX - stampDragState.startX) / stampDragState.cardScale;
+        const dy = (event.clientY - stampDragState.startY) / stampDragState.cardScale;
+        const CH = currentLayout?.CH || 239;
+        const raw = clampStampNorm(stampDragState.startNx + dx / CW, stampDragState.startNy + dy / CH);
+        const snapped = snapStampNorm(raw.nx, raw.ny, {
+          CW,
+          CH,
+          snapEnabled: $("stamp-snap")?.checked ?? true,
+          bypass: event.altKey || event.shiftKey
+        });
+        const next = sanitizeStampOverride({
+          x: snapped.nx,
+          y: snapped.ny,
+          r: current?.r ?? st.r,
+          scale: current?.scale ?? st.mult
+        });
+        updateCard(index, { [stampKeyFor(si)]: next });
+        patchLiveStampDom(index, si, snapped);
+        stampDragState.moved = true;
+      }
+      return;
+    }
+
     if (!dragState) return;
     const card = studioState.cards[dragState.index], box = fitBox(card, currentLayout.CH);
     if (!box) return;
@@ -1643,11 +2082,54 @@ function bindEvents() {
     }
   });
   ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, () => {
+    if (stampDragState) {
+      const { mode, moved } = stampDragState;
+      stampDragState = null;
+      $("sheets")?.querySelectorAll(".st-snap-guide").forEach(node => node.remove());
+      if (moved) {
+        recordDiscrete(mode === "rotate" ? "rotate stamp" : "move stamp");
+        render();
+      }
+    }
     if (!dragState) return;
     finishContinuous("reposition card photo", `card:${dragState.index}:photo-position`);
     dragState = null;
     render();
   }));
+  $("sheets").addEventListener("keydown", event => {
+    const target = event.target.closest(".st-hit");
+    if (!target || !moveStampsMode) return;
+    const step = event.shiftKey ? 10 : 2;
+    const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    const index = Number(target.dataset.ci);
+    const si = Number(target.dataset.si) === 1 ? 1 : 0;
+    selectedStampIndex = si;
+    const CH = currentLayout?.CH || 239;
+    const st = resolveCardStamp(index, si);
+    const current = studioState.cards[index]?.[stampKeyFor(si)];
+    const clamped = clampStampNorm(st.nx + delta[0] / CW, st.ny + delta[1] / CH);
+    const next = sanitizeStampOverride({
+      x: clamped.nx,
+      y: clamped.ny,
+      r: current?.r ?? st.r,
+      scale: current?.scale ?? st.mult
+    });
+    updateCard(index, { [stampKeyFor(si)]: next });
+    patchLiveStampDom(index, si);
+    const resetAllStampsBtn = $("reset-all-stamps");
+    if (resetAllStampsBtn) resetAllStampsBtn.hidden = false;
+    recordContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
+    saveSoon();
+  });
+  $("sheets").addEventListener("focusout", event => {
+    const target = event.target.closest(".st-hit");
+    if (!target) return;
+    const index = Number(target.dataset.ci);
+    const si = Number(target.dataset.si) === 1 ? 1 : 0;
+    finishContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
+  });
 }
 
 function cycleTheme(direction) {
