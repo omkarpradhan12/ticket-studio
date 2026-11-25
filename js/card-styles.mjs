@@ -1,6 +1,6 @@
 // Per-card optional style override schema, sanitization & WCAG contrast helpers
-import { sanitizeBorderPatch } from "./borders.mjs?v=phase7.1";
-import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase7.1";
+import { sanitizeBorderPatch } from "./borders.mjs?v=phase8";
+import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase8";
 
 export const MAX_CARDS_LIMIT = 300;
 
@@ -97,6 +97,18 @@ export function blendHex(hexA, hexB, t) {
     a[1] + (b[1] - a[1]) * k,
     a[2] + (b[2] - a[2]) * k
   );
+}
+
+export function hslObjectToHex({ h = 35, s = 0.75, l = 0.5 } = {}) {
+  const hue = ((Number(h) % 360) + 360) % 360;
+  const sat = Math.max(0, Math.min(1, Number(s) || 0));
+  const lig = Math.max(0, Math.min(1, Number(l) || 0));
+  const f = n => {
+    const k = (n + hue / 30) % 12;
+    const a = sat * Math.min(lig, 1 - lig);
+    return Math.round(255 * (lig - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)));
+  };
+  return rgbToHex(f(0), f(8), f(4));
 }
 
 // WCAG 2.1 sRGB relative luminance
@@ -240,6 +252,7 @@ export function sanitizeCardStyleOverrides(raw, validThemes = null, validStamps 
 export function hasCustomCardStyling(card) {
   if (!card || typeof card !== "object") return false;
   return CARD_STYLE_OVERRIDE_KEYS.some(key => {
+    if (key === "locked") return false;
     const val = card[key];
     if (val === undefined || val === null || val === "") return false;
     if (Array.isArray(val)) return val.length > 0;
@@ -248,10 +261,11 @@ export function hasCustomCardStyling(card) {
   });
 }
 
-export function clearCardStylingRecord(card) {
+export function clearCardStylingRecord(card, { clearLock = false } = {}) {
   if (!card || typeof card !== "object") return card;
   const next = { ...card };
   for (const key of CARD_STYLE_OVERRIDE_KEYS) {
+    if (key === "locked" && !clearLock) continue;
     delete next[key];
   }
   return next;

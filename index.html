@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase7.1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase7.1">
-<link rel="stylesheet" href="css/app.css?v=phase7.1">
+<link rel="stylesheet" href="css/tokens.css?v=phase8">
+<link rel="stylesheet" href="css/app.css?v=phase8">
 </head>
 <body>
 <header class="topbar">
@@ -76,7 +76,7 @@
       <div class="ctrl-grid">
         <label class="fld">
           <span class="lbl-row"><span>Total cards</span><span id="pg" class="hint"></span></span>
-          <input type="number" id="count" min="1" max="72" value="9">
+          <input type="number" id="count" min="1" max="300" value="9">
         </label>
         <label class="fld">
           <span>Paper size</span>
@@ -514,7 +514,10 @@
     <div class="cards-header">
       <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
       <div class="cards-header-actions">
-        <button class="g" id="surprise-all" type="button" disabled aria-label="Surprise me (available in Phase 8)"><span data-icon="surprise"></span> Surprise me</button>
+        <div class="surprise-group">
+          <button class="g" id="surprise-all" type="button"><span data-icon="surprise"></span> Surprise me</button>
+          <button class="g icon-only" id="surprise-tune" type="button" aria-label="Surprise me options" aria-expanded="false" aria-controls="surprise-dialog" data-tooltip="Surprise me options"><span data-icon="sliders"></span></button>
+        </div>
         <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
       </div>
     </div>
@@ -580,9 +583,44 @@
     "photo": "https://example.com/band.jpg"
   }
 ]</pre>
-    Only <b>name</b> is required. <b>photo</b> accepts <code>data:image/...</code> and <code>https://...</code> URLs. Optional fields include <b>accent</b>, <b>photoZoom</b>, <b>photoX</b>/<b>photoY</b>, <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or a full <b>settings</b> + <b>cards</b> payload. Maximum 72 cards.
+    Only <b>name</b> is required. <b>photo</b> accepts <code>data:image/...</code> and <code>https://...</code> URLs. Optional fields include <b>accent</b>, <b>photoZoom</b>, <b>photoX</b>/<b>photoY</b>, <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or a full <b>settings</b> + <b>cards</b> payload. Maximum 300 cards.
     </div>
   </details>
+</dialog>
+
+<dialog id="surprise-dialog" class="surprise-dialog" aria-labelledby="surprise-dialog-title">
+  <form method="dialog" class="dialog-header">
+    <h2 id="surprise-dialog-title">Surprise me</h2>
+    <button class="g" type="submit" aria-label="Close Surprise me options"><span data-icon="close"></span> Close</button>
+  </form>
+  <p class="surprise-intro">Give every unlocked card its own style while keeping text contrast readable and stamps safely inside the card.</p>
+  <fieldset class="surprise-scope">
+    <legend>What to randomise</legend>
+    <div class="surprise-scope-list">
+      <label class="chk"><input type="checkbox" id="sp-colors" checked> Colours &amp; theme</label>
+      <label class="chk surprise-sub"><input type="checkbox" id="sp-keep-theme"> Keep my theme, only vary the details</label>
+      <label class="chk"><input type="checkbox" id="sp-border" checked> Border style &amp; frame</label>
+      <label class="chk"><input type="checkbox" id="sp-stamps"> Stamps (shape, ink &amp; safe position)</label>
+      <label class="chk surprise-sub"><input type="checkbox" id="sp-keep-moved"> Keep manually moved stamp positions</label>
+      <label class="chk"><input type="checkbox" id="sp-wear" checked> Wear, texture &amp; photo mounts</label>
+      <label class="chk"><input type="checkbox" id="sp-font"> Title font &amp; alignment</label>
+    </div>
+  </fieldset>
+  <div class="surprise-strength">
+    <div class="lbl-row">
+      <label for="sp-strength">Strength</label>
+      <output id="sp-strength-val" for="sp-strength">Normal</output>
+    </div>
+    <input type="range" id="sp-strength" min="0" max="2" step="1" value="1" list="sp-strength-stops">
+    <datalist id="sp-strength-stops"><option value="0" label="Subtle"></option><option value="1" label="Normal"></option><option value="2" label="Wild"></option></datalist>
+    <div class="surprise-strength-labels" aria-hidden="true"><span>Subtle</span><span>Normal</span><span>Wild</span></div>
+  </div>
+  <div class="surprise-actions">
+    <button class="accent" id="sp-apply-all" type="button"><span data-icon="surprise"></span> Surprise unlocked cards</button>
+    <button class="g" id="sp-reshuffle" type="button"><span data-icon="randomise"></span> Shuffle again</button>
+    <button class="g" id="sp-clear-all" type="button"><span data-icon="reset"></span> Clear all random styling</button>
+  </div>
+  <p class="hint surprise-seed" id="sp-seed-info"></p>
 </dialog>
 
 <div class="mobile-actionbar" aria-label="Sheet actions">
@@ -612,6 +650,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase7.1"></script>
+<script type="module" src="js/app.js?v=phase8"></script>
 </body>
 </html>

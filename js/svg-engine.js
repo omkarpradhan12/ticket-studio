@@ -1,8 +1,8 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase7.1";
-import { hsl } from "./image-utils.js?v=phase7.1";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase7.1";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase7.1";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8";
+import { hsl } from "./image-utils.js?v=phase8";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8";
 
 export { SKINDS, STAMPS };
 
