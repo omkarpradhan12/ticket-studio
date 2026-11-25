@@ -133,6 +133,7 @@
 - d56aade Add triple, radial, and curated gradient themes with contrast checks
 - 9a3b3dd Add Reset 180 button for gradient angle
 - 1c2035e Make Quick colours live across all themes and add multi-stop gradient pickers
+- 1c0f4e2 Organise themes into sub-groups and add visual thumbnail dropdown
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -680,4 +681,5 @@ Every new style override lives as an **optional** property on each card object i
   - Added `19` new built-in **Gradient Themes** (`21` total in `grp: "Gradient"`): `gradd3` / `gradl3` (triple dark/light reactive gradients), `raddark` / `radlight` / `radhalo` / `radpearl` (radial spotlights/halos), and curated 3-/4-stop presets (`tridusk`, `tridawn`, `aurora`, `cyber`, `ember`, `midnight`, `synth`, `prismatic`, `peach`, `matcha`, `lavender`, `sunsetl`, `hologram`), plus multi-stop WCAG contrast checks in `js/randomiser.mjs`.
   - Added `#grad-angle-reset` (**Reset 180°**) next to the gradient angle readout in Look (1-step undoable, disabled at `180°` or on non-gradient themes).
   - Made **Quick colours** (`Paper`, `Text`, `Accent`, `Tape`, `Use photo accent`) reflect and live-override any active sheet theme via optional `settings.quickColors` with `#ct_reset` (**Reset colours**), and added `#grad-stops-block` (**Gradient colours**: 2–4 stop pickers + hex inputs + `+ Colour` / `− Remove`) whenever a Gradient theme is selected (`1c2035e`).
-  - Re-ran all 6 Node unit test suites (`randomiser.test.mjs` — `31.3 ms` for 200 cards, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `208` unique HTML ID check, and `git diff --check` after `1c2035e`; `?v=phase8.1` is live on `http://127.0.0.1:8090/` for interactive user verification.
+  - Organised all `44` built-in themes + Saved Custom/Custom into `8` clear built-in categories (`Light · Classic & Paper`, `Light · Pastel & Pop`, `Dark · Moody & Ink`, `Dark · Neon & Retro`, `Gradient · Dual & Triple`, `Gradient · Radial`, `Gradient · Dark Presets`, `Gradient · Light Presets`) via `getGroupedThemes()` and replaced the plain `#style` `<select>` UI with a custom visual dropdown (`#theme-trigger` + `#theme-menu`, live miniature card SVG thumbnails via `renderThemeThumbSvg()`, type badges, and quick filter input `#theme-filter`) synced 2-way with `#style` (`1c0f4e2`).
+  - Re-ran all 6 Node unit test suites (`randomiser.test.mjs` — `32.4 ms` for 200 cards, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `216` unique HTML ID check, and `git diff --check` after `1c0f4e2`; `?v=phase8.1` is live on `http://127.0.0.1:8090/` for interactive user verification.
