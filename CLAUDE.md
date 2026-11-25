@@ -16,10 +16,9 @@
 ## Target layout
 ### Sheet Editor, desktop
 - Top bar: logo and `Ticket Card Studio`, Sheet Editor / Theme Studio / Bulk Upload tabs, Undo, Redo, secondary Print, primary Export, and overflow menu.
-- Left sidebar about 380px: editable sheet title, grouped accordions for Page, Look, Content, and Effects with rare controls under Advanced.
-- Look includes theme and Manage themes, border controls, title font, quick colours, and a tidy NFC/serial/punch row.
-- Cards header and search, then compact rows; only the selected card expands.
-- Preview has a slim page/theme/duplicate/Move stamps/zoom toolbar and one scroll container.
+- Left sidebar about 380px: editable sheet title, grouped accordions for Page, Paper & wear, Theme & colours, Borders, Card & photo, and Stamps.
+- Cards header and search, then compact rows with per-page end dividers; only the selected card expands.
+- Preview has a slim page/theme/duplicate/delete/Move stamps/zoom toolbar and one scroll container.
 
 ### Theme Studio
 - Live theme tile gallery, built-ins first and saved themes after, with custom badge and New Theme.
