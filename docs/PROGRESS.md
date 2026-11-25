@@ -128,6 +128,10 @@
 - 07af698 Add export, bulk-import, and 300-card support for style overrides
 - f15637c Wire Surprise me UI, lock toggles, 200-card row optimization, and phase8 cache
 - 7ce1da6 Enlarge mobile stamp hit targets to 44px+ and wrap selected card row actions
+- 20ecc13 Document Phase 8 Surprise me implementation and verification
+- 809d7e8 Preserve grey and white card accent colors and bump phase8.1 cache
+- d56aade Add triple, radial, and curated gradient themes with contrast checks
+- 9a3b3dd Add Reset 180 button for gradient angle
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -670,3 +674,8 @@ Every new style override lives as an **optional** property on each card object i
     - 200-card scaling verified `200 cards across 23 A4 pages` (`24` SVGs w/ template) rendered cleanly (`#count = 200` in `2171` ms, `#surprise-all` in `1948` ms, `#undo` in `1587` ms) and lazy select population (`1` -> `27` options on open).
     - `390×844` mobile verified `0` horizontal overflow, `.st-hit` `59.06 × 59.06` CSS px, `.st-rot-hit` `57.03 × 57.03` CSS px, and `0px` `#stage` scroll delta during stamp drag.
     - Note: automated `.svg` download is blocked by the browser sandbox policy (`DOWNLOAD_BLOCKED`), `page.emulateMedia()` was unavailable in sandbox (`@media print` rules verified in CSS/DOM instead), and `"Formats"` label padding on `390px` header remains a minor pre-existing tight fit.
+- **Post-Phase 8 follow-ups (`809d7e8`, `d56aade`, `9a3b3dd`)**:
+  - Preserved exact grey/white/low-saturation hex accents (`hexToHS` / `hslToHex` + explicit `card.accent` override in `renderCard()` with readable `bt` contrast and neutral gradient stops), while keeping unmodified legacy cards byte-for-byte identical.
+  - Added `19` new built-in **Gradient Themes** (`21` total in `grp: "Gradient"`): `gradd3` / `gradl3` (triple dark/light reactive gradients), `raddark` / `radlight` / `radhalo` / `radpearl` (radial spotlights/halos), and curated 3-/4-stop presets (`tridusk`, `tridawn`, `aurora`, `cyber`, `ember`, `midnight`, `synth`, `prismatic`, `peach`, `matcha`, `lavender`, `sunsetl`, `hologram`), plus multi-stop WCAG contrast checks in `js/randomiser.mjs`.
+  - Added `#grad-angle-reset` (**Reset 180°**) next to the gradient angle readout in Look (1-step undoable, disabled at `180°` or on non-gradient themes).
+  - Re-ran all 6 Node unit test suites (`randomiser.test.mjs`, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `202` unique HTML ID check, and `git diff --check` after `9a3b3dd`; `?v=phase8.1` is live on `http://127.0.0.1:8090/` for interactive user verification.
