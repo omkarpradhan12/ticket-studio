@@ -67,5 +67,6 @@
 - Phase 4 visual-system, accessibility, icon, and color-control work is complete on `ui-overhaul`.
 - Phase 5 Theme Studio gallery, palette editor, draft history, and unsaved-change safeguards are complete on `ui-overhaul`.
 - Phase 6 customisable borders (16 styles, Customise fold, presets, per-card overrides, scoped SVG defs, `?v=phase6`) are complete on `ui-overhaul`.
-- Phase 7 draggable stamps (per-card `stampPos`/`stamp2Pos`, rotary dial, `Move stamps` mode, touch drag, copy/reset actions), 5 extra photo mounts (`4..8`), and the Tarot title double-`D` fix (`?v=phase7`) are implemented on `ui-overhaul`.
-- Visual Stamp Shape picker & customisation proposal written in `docs/PROGRESS.md`; awaiting owner approval.
+- Phase 7 draggable stamps (per-card `stampPos`/`stamp2Pos`, rotary dial, `Move stamps` mode, strict card-boundary clamping, `44px+` touch targets, copy/reset actions), 5 extra photo mounts (`4..8`), visual stamp picker (33 swatches + `Customise` fold + presets), and the Tarot title double-`D` fix are complete on `ui-overhaul`.
+- Phase 8 ("Surprise me" per-card seeded randomisation with WCAG contrast & stamp/print guard rails, scope/strength dialog, per-card lock & custom indicators, 300-card cap, lazy 200-card row optimization, 1-step undo/redo, and `?v=phase8`) is complete on `ui-overhaul`.
+- Next up: Phase 9 (Band search and match count).

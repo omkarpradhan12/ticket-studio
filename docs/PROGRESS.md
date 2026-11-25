@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 7 & Visual Stamp Picker implemented (`155b2a0`); Phase 8 ("Surprise me") Step 1 design written — awaiting owner approval
-- Next approval: owner decisions on the 3 Phase 8 options at the end of `docs/PROGRESS.md` (and Phase 8 design approval) before Step 2 implementation.
+- Current phase: Phase 8 ("Surprise me" per-card randomisation) complete (`7ce1da6`); ready for Phase 9 (Band search) upon owner go-ahead
+- Next approval: owner confirmation before starting Phase 9.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -69,8 +69,8 @@
 | P6-02 | Preserve old border render values | L | high | done | 97892bb | Exact legacy SVG fast-path verified for 0..4; legacy v1 sheet round-trip verified |
 | P7-01 | Per-card stamp position | L | high | done | 696cf73, 7b341db | Optional `stampPos`/`stamp2Pos` fractions, rotary angle dial, scale, copy/reset actions, 5 extra photo mounts, Tarot title fix |
 | P7-02 | Stamp drag hit-test/touch/export/undo | L | high | done | 7b341db, ced4597, 276f6bd, d0d93b6 | `Move stamps` mode, 1-step undo, `.st-ui` export stripping, strict card-boundary clamping (`276f6bd`), visual 23+ stamp picker & `Customise` fold (`a6b67ca`, `d0d93b6`); stamps customized in `0c7e278`, `155b2a0` |
-| P8-01 | Per-card Surprise me style overrides | L | high | in_progress | - | Step 1 design written in `docs/PROGRESS.md`; awaiting owner approval |
-| P8-02 | Surprise every card / one undo step | M | high | todo | - | |
+| P8-01 | Per-card Surprise me style overrides | L | high | done | 1b07075, 07af698 | Optional per-card style schema (`js/card-styles.mjs`), unified `resolveCardRenderOptions` in `svg-engine.js` (Card > Page > Sheet priority), JSON/Bulk Import support, `MAX_CARDS = 300` |
+| P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
 | P9-01 | Band search and match count | M | medium | todo | - | |
 | P10-01 | Visiting card layout | L | high | todo | - | |
 
@@ -122,6 +122,12 @@
 - 276f6bd Keep dragged stamps strictly inside card boundaries
 - 0c7e278 more stamps
 - 155b2a0 minor changes to stamps
+- 23140e5 Design Phase 8 Surprise me per-card randomisation
+- 1b07075 Add per-card style override resolution and renderer support
+- cb79133 Add seeded per-card Surprise randomiser with guard rails and tests
+- 07af698 Add export, bulk-import, and 300-card support for style overrides
+- f15637c Wire Surprise me UI, lock toggles, 200-card row optimization, and phase8 cache
+- 7ce1da6 Enlarge mobile stamp hit targets to 44px+ and wrap selected card row actions
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -647,3 +653,20 @@ Every new style override lives as an **optional** property on each card object i
 3. **Clicking `"Surprise me"` directly**:
    - **Option A (Recommended)**: Clicking `"Surprise me"` runs immediately with your last saved choices (sensible defaults on first click: Colours, Border, Wear on; Stamps & Font off; Normal strength), while the compact gear button right beside it opens the Scope picker + Strength + Shuffle again + Clear all popover.
    - **Option B**: Clicking `"Surprise me"` always opens the Scope picker popover first before rolling.
+
+## Phase 8 implementation and verification
+- **Owner choices applied**: Option A (raise `MAX_CARDS` to `300` across `#count`, `js/app.js`, JSON import, and `js/bulk-import.js`); Option A (when `Stamps` is ticked, replace unlocked cards' stamps unless optional `"Keep manually moved stamp positions"` is checked, and report the replaced count in the Undo toast with one-tap Undo); Option A (clicking `"Surprise me"` runs immediately with remembered preferences, while `#surprise-tune` opens the Scope / Strength / Shuffle again / Clear all dialog).
+- **Implemented (`js/card-styles.mjs`, `js/randomiser.mjs`, `js/svg-engine.js`, `js/app.js`, `js/export.js`, `js/bulk-import.js`, `js/icons.mjs`, `index.html`, `bulk-import.html`, `css/app.css`)**:
+  - Added optional per-card style fields (`palette`, `tape`, `stampColor`, `stampAuto`, `stampSize`, `stampWear`, `photoMounts`, `titleFont`, `titleScale`, `centerTitle`, `yearBadge`, `tearStyle`, `grain`, `edgeWear`, `creases`, `scuffs`, `photoFilter`, `halftone`, `gradientAngle`, `gradientSpread`, `locked`) alongside existing `theme`, `sk`, `stx`, `stampStyle`, `border`, `stampPos`, `stamp2Pos`.
+  - Unified `resolveCardRenderOptions(c0, cfg)` in `js/svg-engine.js` so **card override > page theme > sheet theme**, legacy `0..4` borders read `resolvedBorder.wear` cleanly, shared `THEMES` objects are cloned instead of mutated, and un-overridden cards keep identical output.
+  - Built seeded Mulberry32 `js/randomiser.mjs` with persisted scope/strength (`ticketgen.surprisePrefs.v1`), WCAG `>= 4.5:1` luminance/contrast checking across both solid fills and linear-gradient stops, print-safe accent & border minimums (`width >= 0.75`, `opacity >= 55%`), and anti-title/photo-focal stamp anchor placement inside `stampNormBounds`.
+  - Wired `#surprise-all`, `#surprise-tune`, `#surprise-dialog` (`Subtle`/`Normal`/`Wild`, scope checkboxes, `Shuffle again`, `Clear all random styling`), per-card `Keep this one` lock icon button + `.card-custom-badge`, row `...` `Surprise this card` / `Reset this card's styling`, `DocumentFragment` + lazy `<details class="adj">` dropdown population, `44px+` enlarged stamp touch targets (`.st-hit` min `116×116`, `.st-rot-hit` `r=56`), and uniform `?v=phase8` cache query.
+- **Verification**:
+  - **Node unit tests**: `node tests/randomiser.test.mjs` (36.3 ms for 200-card generation), `stamps.test.mjs` (updated `SKINDS` 31 / `STAMP_OPTIONS` 33 for owner-added stamps), `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, and `color-controls.test.mjs` all passed; `index.html` has `201` unique IDs (`0` duplicates).
+  - **Browser QA (`http://127.0.0.1:8090/`)**:
+    - `index.html`, `theme-studio.html`, `bulk-import.html`, and `tests/title-layout.test.html` (`4` passed, `0` failed) all loaded with `0` console/page errors.
+    - Legacy v1 `Brackets` JSON import/export round-trip (`1389` bytes) and unmodified baseline check passed.
+    - 18-card Surprise me verified Card #1 lock preservation, 17 individually styled cards (`14` distinct fills), `Card > Page > Sheet` theme precedence, non-style text/photo preservation, 1-step Undo/Redo, scope dependency toggles, `Surprise this card`, `Reset this card's styling`, `Clear all random styling`, manually moved stamp protection when `Stamps` unchecked + toast notification when replaced, `0` duplicate SVG IDs (`130` checked across `#pv` + `#sheets`), `#png` (2 pages) & `#pdf` (`5,352,271` bytes) downloads, and `@media print` A4 rules.
+    - 200-card scaling verified `200 cards across 23 A4 pages` (`24` SVGs w/ template) rendered cleanly (`#count = 200` in `2171` ms, `#surprise-all` in `1948` ms, `#undo` in `1587` ms) and lazy select population (`1` -> `27` options on open).
+    - `390×844` mobile verified `0` horizontal overflow, `.st-hit` `59.06 × 59.06` CSS px, `.st-rot-hit` `57.03 × 57.03` CSS px, and `0px` `#stage` scroll delta during stamp drag.
+    - Note: automated `.svg` download is blocked by the browser sandbox policy (`DOWNLOAD_BLOCKED`), `page.emulateMedia()` was unavailable in sandbox (`@media print` rules verified in CSS/DOM instead), and `"Formats"` label padding on `390px` header remains a minor pre-existing tight fit.
