@@ -1,5 +1,5 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum } from "./themes.js?v=phase7.1";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase7.1";
 import { hsl } from "./image-utils.js?v=phase7.1";
 import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase7.1";
 import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase7.1";
@@ -175,6 +175,77 @@ function mountSingle(tt, PX, PY, PS, PB, odd, i, A, T) {
     : tape(PX + 2, PY + 2, -35, i * 2, T) + tape(PX + PS - 2, PB - 2, -35, i * 2 + 1, T);
 }
 
+const HEX6_RE = /^#[\da-f]{6}$/i;
+
+export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
+  // Card override wins over page theme (cfg.themeForce), which wins over sheet theme (cfg.style)
+  const baseTheme = cfg.themeObj
+    || (c0.theme && THEMES[c0.theme])
+    || (cfg.themeForce && THEMES[cfg.themeForce])
+    || THEMES[cfg.style]
+    || THEMES.cream;
+  const pal = c0.palette && typeof c0.palette === "object" ? c0.palette : null;
+  const tapeHex = typeof c0.tape === "string" && HEX6_RE.test(c0.tape.trim()) ? c0.tape.trim().toLowerCase() : "";
+  let theme = baseTheme;
+  if (pal || tapeHex) {
+    const accHex = HEX6_RE.test(String(pal?.acc || "").trim())
+      ? String(pal.acc).trim().toLowerCase()
+      : (HEX6_RE.test(String(pal?.fixed || "").trim()) ? String(pal.fixed).trim().toLowerCase() : baseTheme.fixed);
+    theme = {
+      ...baseTheme,
+      ...(HEX6_RE.test(String(pal?.bg || "").trim()) ? { bg: String(pal.bg).trim().toLowerCase() } : {}),
+      ...(HEX6_RE.test(String(pal?.ink || "").trim()) ? { ink: String(pal.ink).trim().toLowerCase() } : {}),
+      ...(HEX6_RE.test(String(pal?.mute || "").trim()) ? { mute: String(pal.mute).trim().toLowerCase() } : {}),
+      ...(HEX6_RE.test(String(pal?.ph || "").trim()) ? { ph: String(pal.ph).trim().toLowerCase() } : {}),
+      ...(HEX6_RE.test(String(pal?.frame || "").trim()) ? { frame: String(pal.frame).trim().toLowerCase() } : {}),
+      ...(HEX6_RE.test(String(pal?.bt || "").trim()) ? { bt: String(pal.bt).trim().toLowerCase() } : {}),
+      ...(pal?.grad !== undefined ? { grad: pal.grad ? 1 : 0 } : {}),
+      ...(HEX6_RE.test(String(pal?.gs || "").trim()) ? { gs: String(pal.gs).trim().toLowerCase() } : {}),
+      ...(pal?.gl !== undefined && Number.isFinite(Number(pal.gl)) ? { gl: Number(pal.gl) } : {}),
+      ...(accHex ? { fixed: accHex } : {}),
+      ...(tapeHex ? { tape: tapeHex, te: mix(tapeHex, "#000000", 0.25) } : {})
+    };
+    if (pal?.bg && !pal?.ph) theme.ph = mix(theme.bg, theme.ink, 0.12);
+    if ((pal?.acc || pal?.fixed) && !pal?.bt && theme.fixed) theme.bt = lum(theme.fixed) > 0.52 ? "#111" : "#fff";
+  }
+
+  const resolvedBorder = resolveBorderConfig(cfg, c0);
+  const resolvedStampStyle = resolveStampStyle(cfg, c0);
+  const design = {
+    borderStyle: resolvedBorder.style,
+    photoMounts: Array.isArray(c0.photoMounts) && c0.photoMounts.length
+      ? c0.photoMounts.slice(0, 2)
+      : (Array.isArray(cfg.photoMounts) ? cfg.photoMounts.slice(0, 2) : [0]),
+    yearBadge: c0.yearBadge ?? cfg.yearBadge ?? 0,
+    tearStyle: c0.tearStyle ?? cfg.tearStyle ?? 0,
+    centerTitle: c0.centerTitle !== undefined ? Boolean(c0.centerTitle) : Boolean(cfg.centerTitle),
+    photoFilter: c0.photoFilter ?? cfg.photoFilter ?? 0,
+    halftone: c0.halftone !== undefined ? Boolean(c0.halftone) : Boolean(cfg.halftone)
+  };
+
+  const titleFontKey = c0.titleFont || cfg.titleFont;
+  return {
+    theme,
+    resolvedBorder,
+    resolvedStampStyle,
+    design,
+    stampSize: c0.stampSize ?? cfg.stampSize ?? 100,
+    stampAuto: c0.stampAuto !== undefined ? Boolean(c0.stampAuto) : Boolean(cfg.stampAuto),
+    stampColor: HEX6_RE.test(String(c0.stampColor || "").trim()) ? String(c0.stampColor).trim().toLowerCase() : (cfg.stampColor || "#d9322f"),
+    stampWear: c0.stampWear ?? c0.stampStyle?.wear ?? cfg.stampWear ?? 0,
+    borderWear: c0.border?.wear !== undefined ? resolvedBorder.wear : (cfg.borderWear || 0),
+    titleFont: TF[titleFontKey] || TF.pirata,
+    titleScale: c0.titleScale ?? cfg.titleScale ?? 0.85,
+    gradientAngle: c0.gradientAngle ?? cfg.gradientAngle ?? 180,
+    gradientSpread: c0.gradientSpread ?? cfg.gradientSpread ?? 32,
+    gradEnd: HEX6_RE.test(String(pal?.gradEnd || "").trim()) ? String(pal.gradEnd).trim().toLowerCase() : "",
+    grain: c0.grain ?? cfg.grain ?? 0,
+    edgeWear: c0.edgeWear ?? cfg.edgeWear ?? 0,
+    creases: c0.creases ?? cfg.creases ?? 0,
+    scuffs: c0.scuffs ?? cfg.scuffs ?? 0
+  };
+}
+
 /**
  * Renders a single SVG <g> card element
  * @param {Object} c0 - Card data
@@ -197,16 +268,9 @@ export function renderCard(c0, i, cfg) {
   const bl = cfg.one ? 0 : (cfg.bleed ? 3 / K : 0);
   const D = CH - 239;
 
-  const T = cfg.themeObj || THEMES[cfg.themeForce || c0.theme || cfg.style] || THEMES.cream;
-  const design = {
-    borderStyle: cfg.borderStyle ?? 0,
-    photoMounts: Array.isArray(cfg.photoMounts) ? cfg.photoMounts.slice(0, 2) : [0],
-    yearBadge: cfg.yearBadge ?? 0,
-    tearStyle: cfg.tearStyle ?? 0,
-    centerTitle: Boolean(cfg.centerTitle),
-    photoFilter: cfg.photoFilter ?? 0,
-    halftone: Boolean(cfg.halftone)
-  };
+  const resolved = resolveCardRenderOptions(c0, cfg);
+  const T = resolved.theme;
+  const design = resolved.design;
   const effS = Math.min(1, Math.max(T.sm || 0, c.s ?? 0.75));
   const effL = T.l || 0.52;
   const A = T.fixed || hsl(c.h ?? 35, effS, effL);
@@ -224,16 +288,16 @@ export function renderCard(c0, i, cfg) {
     : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
 
   const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
-  const ss = (cfg.stampSize || 100) / 100;
+  const ss = (resolved.stampSize || 100) / 100;
   const rn = k => { const v = Math.sin((i + 1) * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
 
   const skw = c0.sk || cfg.stampShape || "round";
   const sk = skw === "mixed" ? SKINDS[Math.floor(rn(4) * SKINDS.length)] : skw;
-  const sco = cfg.stampAuto ? A : (cfg.stampColor || "#d9322f");
-  const resolvedStampStyle = resolveStampStyle(cfg, c0);
+  const sco = resolved.stampAuto ? A : resolved.stampColor;
+  const resolvedStampStyle = resolved.resolvedStampStyle;
 
-  const st0 = resolveStampTransform({ index: i, stampIndex: 0, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stampPos });
-  const st1 = resolveStampTransform({ index: i, stampIndex: 1, CW, CH, stampSize: cfg.stampSize || 100, override: c0.stamp2Pos });
+  const st0 = resolveStampTransform({ index: i, stampIndex: 0, CW, CH, stampSize: resolved.stampSize || 100, override: c0.stampPos });
+  const st1 = resolveStampTransform({ index: i, stampIndex: 1, CW, CH, stampSize: resolved.stampSize || 100, override: c0.stamp2Pos });
   const st0Scale = st0.isOverridden ? Number(st0.scale.toFixed(3)) : ss;
   const st1Scale = st1.isOverridden ? Number(st1.scale.toFixed(3)) : ss * 0.85;
 
@@ -246,7 +310,7 @@ export function renderCard(c0, i, cfg) {
     py: st0.y,
     rotation: st0.r,
     color: sco,
-    wear: cfg.stampWear || 0,
+    wear: resolved.stampWear,
     filterId: `ink${i}`,
     idAttr: cfg.moveStamps && !cfg.one ? `st0-${i}` : "",
     style: resolvedStampStyle,
@@ -261,7 +325,7 @@ export function renderCard(c0, i, cfg) {
     py: st1.y,
     rotation: st1.r,
     color: sco,
-    wear: cfg.stampWear || 0,
+    wear: resolved.stampWear,
     filterId: `ink${i}`,
     idAttr: cfg.moveStamps && !cfg.one ? `st1-${i}` : "",
     style: resolvedStampStyle,
@@ -283,14 +347,14 @@ export function renderCard(c0, i, cfg) {
     ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
     : "";
 
-  const tf = TF[cfg.titleFont] || TF.pirata;
+  const tf = resolved.titleFont;
   const lumB = lum(T.bg), dkp = lumB < 0.45, tcol = dkp ? "#fff" : "#3a2a18";
   const tr = dkp ? 1 : 0.15, tg = dkp ? 1 : 0.1, tb = dkp ? 1 : 0.05;
 
   const serial = cfg.serials ? `<text x="${CW - 17}" y="${158.5 + D}" text-anchor="end" fill="${mute}" opacity=".85" font-size="3.8" font-weight="700" letter-spacing=".5" ${FT}>№ ${String(i + 1).padStart(4, "0")}</text>` : "";
 
   let cre = "";
-  const crVal = cfg.creases || 0;
+  const crVal = resolved.creases;
   if (crVal) {
     const o = (crVal / 100 * 0.5).toFixed(2);
     for (let k = 0; k < (crVal > 60 ? 2 : 1); k++) {
@@ -300,7 +364,7 @@ export function renderCard(c0, i, cfg) {
     }
   }
 
-  const grVal = cfg.grain || 0, ewVal = cfg.edgeWear || 0, scVal = cfg.scuffs || 0;
+  const grVal = resolved.grain, ewVal = resolved.edgeWear, scVal = resolved.scuffs;
   let texDefs = "";
   if (grVal) texDefs += `<filter id="gr${i}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="${i + 5}" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 ${tr} 0 0 0 0 ${tg} 0 0 0 0 ${tb} 1.6 0 0 0 -.45"/><feComposite in2="SourceAlpha" operator="in"/></filter>`;
   if (scVal) texDefs += `<filter id="sc${i}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".012 .7" numOctaves="2" seed="${i + 9}" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 ${tr} 0 0 0 0 ${tg} 0 0 0 0 ${tb} 7 0 0 0 -4.1"/><feComposite in2="SourceAlpha" operator="in"/></filter>`;
@@ -347,7 +411,7 @@ export function renderCard(c0, i, cfg) {
   const drag = cfg.drag && !cfg.one ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
 
   const cleanTitle = String(c.title || "Add name");
-  const titleLayoutResult = titleLayout(cleanTitle, tf, 136, cfg.titleScale ?? 0.85);
+  const titleLayoutResult = titleLayout(cleanTitle, tf, 136, resolved.titleScale);
   const titleLines = titleLayoutResult.lines;
   const titleSize = titleLayoutResult.size;
   const titleMarkup = titleLayoutResult.wrapped
@@ -356,7 +420,7 @@ export function renderCard(c0, i, cfg) {
       ).join("")
     : `<text x="${tx}" y="199"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}" letter-spacing=".6">${U(titleLines[0])}</text>`;
 
-  const resolvedBorder = resolveBorderConfig(cfg, c0);
+  const resolvedBorder = resolved.resolvedBorder;
   const borderRendered = renderBorder({
     index: i,
     CW,
@@ -380,13 +444,13 @@ export function renderCard(c0, i, cfg) {
     return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${minimalBorderDefs}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
   }
 
-  const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(cfg.gradientAngle ?? 180, cfg.gradientSpread ?? 32, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
+  const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(resolved.gradientAngle, resolved.gradientSpread, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${resolved.gradEnd || hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
-  const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, cfg.borderWear || 0) : borderRendered.defs;
+  const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, resolved.borderWear) : borderRendered.defs;
 
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
-   <defs>${gradDef}${inkFilter("ink" + i, i + 3, cfg.stampWear || 0)}${borderDefs}${grayDef}${halftoneDef}
+   <defs>${gradDef}${inkFilter("ink" + i, i + 3, resolved.stampWear)}${borderDefs}${grayDef}${halftoneDef}
    <clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath>
    <clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs>
    <g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
