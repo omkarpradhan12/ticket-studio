@@ -103,6 +103,7 @@ const studioState = {
 };
 let lastSwatchThemeKey = "";
 let lastStampSwatchKey = "";
+let lastBuiltRowsPerPage = 0;
 const cardIds = new WeakMap();
 let nextCardId = 0;
 let currentLayout;
@@ -426,9 +427,13 @@ function focusedRowControl() {
   };
 }
 
+function getCardRowEl(index) {
+  return $("rows")?.querySelector(`.row[data-index="${index}"]`) || null;
+}
+
 function restoreRowFocus(focus) {
   if (!focus) return;
-  const row = $("rows").children[focus.index];
+  const row = getCardRowEl(focus.index);
   const control = [...(row?.querySelectorAll(`[${focus.attribute}]`) || [])]
     .find(element => element.getAttribute(focus.attribute) === focus.value);
   if (!control) return;
@@ -1110,7 +1115,7 @@ function resolveCardStamp(index, stampIndex = 0) {
 }
 
 function syncCardStampRow(index) {
-  const row = $("rows").children[index];
+  const row = getCardRowEl(index);
   if (!row) return;
   const box = row.querySelector(".card-stamp-pos");
   if (!box) return;
@@ -1215,6 +1220,7 @@ function copyStampPlacement(sourceIndex, targetIndices, label) {
     return next;
   });
   recordDiscrete(label);
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
 }
@@ -1231,6 +1237,9 @@ function render() {
   studioState.settings = readSettings();
   const active = THEMES[$("style").value] || THEMES.cream;
   currentLayout = computeLayout($("paper").value, $("csize").value);
+  if (lastBuiltRowsPerPage && currentLayout.PER !== lastBuiltRowsPerPage) {
+    buildRows();
+  }
   const cfg = renderConfig();
   const activeCards = studioState.cards.slice(0, studioState.count);
   studioState.selectedCard = Math.max(0, Math.min(studioState.count - 1, studioState.selectedCard));
@@ -1324,7 +1333,7 @@ function selectCard(index, scroll = false) {
     });
   }
   syncCardStampRow(index);
-  if (scroll) $("rows").children[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (scroll) getCardRowEl(index)?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function ensureSharedPhotoInput() {
@@ -1349,6 +1358,8 @@ function ensureSharedPhotoInput() {
 
 function buildRows() {
   const activeCards = studioState.cards.slice(0, studioState.count);
+  const per = currentLayout?.PER || computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket").PER || 9;
+  lastBuiltRowsPerPage = per;
   const fullThemeOptions = `<option value="">Same as sheet</option>${getGroupedThemes().map(([lbl, entries]) => `<optgroup label="${escapeHtml(lbl)}">${entries.map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}</optgroup>`).join("")}`;
   const fullStampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
     .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
@@ -1721,6 +1732,16 @@ function buildRows() {
       button.closest(".card-menu")?.removeAttribute("open");
     }));
     frag.append(row);
+    if ((index + 1) % per === 0 || index === activeCards.length - 1) {
+      const pageNum = Math.floor(index / per) + 1;
+      const pageStart = (pageNum - 1) * per;
+      const divider = document.createElement("div");
+      divider.className = "rows-page-break";
+      divider.setAttribute("role", "separator");
+      divider.setAttribute("aria-label", `End of page ${pageNum}`);
+      divider.innerHTML = `<span>End of page ${pageNum}</span><span class="rows-page-range">Cards ${pageStart + 1}–${index + 1}</span>`;
+      frag.append(divider);
+    }
   });
   $("rows").replaceChildren(frag);
   syncCardStampRow(studioState.selectedCard);
@@ -1756,6 +1777,7 @@ function moveCard(from, to) {
   studioState.cards = cards;
   studioState.selectedCard = to;
   recordDiscrete("move card");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
 }
@@ -1772,6 +1794,7 @@ function setCount(value) {
   studioState.selectedCard = Math.min(studioState.selectedCard, studioState.count - 1);
   $("count").value = studioState.count;
   recordDiscrete("change card count");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
 }
@@ -2041,6 +2064,7 @@ function surpriseCards({ seed = generateSeed(), onlyIndex = null, actionLabel = 
   });
   studioState.cards = res.cards;
   recordDiscrete(actionLabel);
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
   updateSurpriseDialogMeta();
@@ -2072,6 +2096,7 @@ function toggleCardLock(index) {
     studioState.cards = studioState.cards.map((card, i) => i === index ? next : card);
   }
   recordDiscrete(nextLocked ? "lock card styling" : "unlock card styling");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
   updateSurpriseDialogMeta();
@@ -2088,6 +2113,7 @@ function resetSingleCardStyling(index) {
   cardIds.set(cleared, cardIdentity(current));
   studioState.cards = studioState.cards.map((card, i) => i === index ? cleared : card);
   recordDiscrete("reset card styling");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
   message(`Reset card #${index + 1} styling to sheet defaults.`);
@@ -2108,6 +2134,7 @@ function clearAllRandomStyling() {
     return;
   }
   recordDiscrete("clear random styling");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
   updateSurpriseDialogMeta();
@@ -2248,6 +2275,7 @@ function bindEvents() {
     scheduleRender();
   });
   $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
+  $("delete-page")?.addEventListener("click", () => deleteActivePage(currentLayout.PER));
   $("rows").addEventListener("click", event => {
     const row = event.target.closest(".row");
     if (row) selectCard(+row.dataset.index);
@@ -2802,7 +2830,7 @@ function bindEvents() {
     const index = previewIndex;
     closePreview();
     selectCard(index, true);
-    $("rows").children[index]?.querySelector("[data-field='title']")?.focus({ preventScroll: true });
+    getCardRowEl(index)?.querySelector("[data-field='title']")?.focus({ preventScroll: true });
   });
   $("pvsvg").addEventListener("click", downloadCardSvg);
   $("pvpng").addEventListener("click", async () => {
@@ -3033,7 +3061,7 @@ function bindEvents() {
       image.setAttribute("x", (17 + 68 - box.w / 2 + px / 100 * box.mx).toFixed(2));
       image.setAttribute("y", (16 + photoHeight / 2 - box.h / 2 + py / 100 * box.my).toFixed(2));
     }
-    const row = $("rows").children[dragState.index];
+    const row = getCardRowEl(dragState.index);
     if (row) {
       row.querySelector("[data-adjust='px']").value = px;
       row.querySelector("[data-adjust='py']").value = py;
@@ -3120,6 +3148,48 @@ function syncPageTools(pageCount) {
     ).join("")}`;
   }
   themeSelect.value = studioState.pageThemes[studioState.activePage] || "";
+  const deletePageBtn = $("delete-page");
+  if (deletePageBtn) {
+    deletePageBtn.disabled = pageCount <= 1;
+    deletePageBtn.setAttribute(
+      "aria-label",
+      pageCount <= 1 ? "Need at least 2 pages to delete a page" : `Delete page ${studioState.activePage + 1}`
+    );
+  }
+}
+
+function deleteActivePage(perPage) {
+  const pageCount = Math.ceil(studioState.count / perPage);
+  if (pageCount <= 1) {
+    message("Need at least 2 pages to delete a page.");
+    return;
+  }
+  const targetPage = studioState.activePage;
+  const start = targetPage * perPage;
+  const end = Math.min(studioState.count, start + perPage);
+  const removedCount = end - start;
+  if (removedCount <= 0 || studioState.count - removedCount < 1) return;
+
+  const remainingActive = [
+    ...studioState.cards.slice(0, start),
+    ...studioState.cards.slice(end, studioState.count)
+  ];
+  const trailingBuffer = studioState.cards.slice(studioState.count);
+  studioState.cards = [...remainingActive, ...trailingBuffer];
+  studioState.count = remainingActive.length;
+  studioState.pageThemes = [
+    ...studioState.pageThemes.slice(0, targetPage),
+    ...studioState.pageThemes.slice(targetPage + 1)
+  ];
+  const nextPageCount = Math.ceil(studioState.count / perPage);
+  studioState.activePage = Math.max(0, Math.min(targetPage, nextPageCount - 1));
+  studioState.selectedCard = Math.max(0, Math.min(studioState.selectedCard, studioState.count - 1));
+  $("count").value = studioState.count;
+  buildRows();
+  recordDiscrete("delete page");
+  render();
+  message(`Deleted page ${targetPage + 1} (${removedCount} card${removedCount === 1 ? "" : "s"}).`);
+  showUndoToast(`Deleted page ${targetPage + 1}.`);
 }
 
 function duplicateActivePage(perPage) {
@@ -3182,6 +3252,7 @@ async function init() {
     applySettings(saved.settings || {});
     message("Restored your saved sheet.");
   }
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
   historyReady = true;
