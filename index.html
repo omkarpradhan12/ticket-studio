@@ -331,15 +331,18 @@
           <label class="chk"><input type="checkbox" id="design-halftone"> Halftone photo</label>
         </div>
         <fieldset class="quick-colours full">
-          <legend>Quick colours</legend>
+          <legend id="quick-colours-legend">Quick colours</legend>
           <div class="swatch-row">
             <label class="swatch-control"><span>Paper</span><input type="color" id="ct_bg" aria-label="Paper colour" data-ct></label>
             <label class="swatch-control"><span>Text</span><input type="color" id="ct_ink" aria-label="Text colour" data-ct></label>
             <label class="swatch-control"><span>Accent</span><input type="color" id="ct_acc" aria-label="Accent colour" data-ct></label>
             <label class="swatch-control"><span>Tape</span><input type="color" id="ct_tape" aria-label="Tape colour" data-ct></label>
           </div>
-          <label class="chk photo-accent"><input type="checkbox" id="ct_pa" data-ct> Use photo accent</label>
-          <p class="hint colour-map">Paper = background · Text = lettering · Accent = borders and badges · Tape = mounts</p>
+          <div class="quick-colours-footer">
+            <label class="chk photo-accent"><input type="checkbox" id="ct_pa" data-ct> Use photo accent</label>
+            <button class="g sm" type="button" id="ct_reset" disabled>Reset colours</button>
+          </div>
+          <p class="hint colour-map">Edits the active theme live · Paper = background · Text = lettering · Accent = borders and badges · Tape = mounts</p>
         </fieldset>
         <fieldset class="hardware-fields full">
           <legend>Ticket details</legend>
@@ -361,6 +364,16 @@
               <input type="range" id="gspread" min="10" max="100" value="32">
             </label>
             <div class="hint" id="gradient-hint">Only available with gradient themes.</div>
+          </div>
+          <div class="grad-stops-block" id="grad-stops-block" hidden>
+            <div class="lbl-row">
+              <span>Gradient colours</span>
+              <div class="grad-stops-actions">
+                <button class="g sm" type="button" id="grad-stop-add" title="Add gradient colour">+ Colour</button>
+                <button class="g sm" type="button" id="grad-stop-remove" title="Remove last gradient colour">− Remove</button>
+              </div>
+            </div>
+            <div class="swatch-row grad-stops-row" id="grad-stops-row"></div>
           </div>
         </div>
       </div>

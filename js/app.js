@@ -1,5 +1,5 @@
 import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.1";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase8.1";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase8.1";
 import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.1";
 import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.1";
 import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.1";
@@ -40,8 +40,11 @@ import {
 } from "./stamps.mjs?v=phase8.1";
 import {
   MAX_CARDS_LIMIT,
+  blendHex,
   clearCardStylingRecord,
   hasCustomCardStyling,
+  hslObjectToHex,
+  normalizeHex,
   sanitizeCardStyleOverrides
 } from "./card-styles.mjs?v=phase8.1";
 import {
@@ -95,6 +98,7 @@ const studioState = {
   borderConfig: undefined,
   stampShape: SET0.stampShape,
   stampStyle: undefined,
+  quickColors: undefined,
   settings: { customTheme: { ...CUSTOM } }
 };
 let lastSwatchThemeKey = "";
@@ -158,6 +162,12 @@ function readSettings() {
   settings.stampShape = studioState.stampShape;
   if (studioState.stampStyle) settings.stampStyle = { ...studioState.stampStyle };
   settings.customTheme = { ...studioState.settings.customTheme };
+  if (studioState.quickColors) {
+    settings.quickColors = {
+      ...studioState.quickColors,
+      ...(Array.isArray(studioState.quickColors.gradStops) ? { gradStops: studioState.quickColors.gradStops.slice() } : {})
+    };
+  }
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
   $("title-size-value").textContent = `${settings.titleScale}%`;
@@ -217,6 +227,12 @@ function applySettings(settings = {}) {
     ? compactStampStyle(settings.stampStyle)
     : undefined;
   if (Array.isArray(settings.pageThemes)) studioState.pageThemes = settings.pageThemes.map(theme => String(theme || ""));
+  studioState.quickColors = settings.quickColors && typeof settings.quickColors === "object"
+    ? {
+      ...settings.quickColors,
+      ...(Array.isArray(settings.quickColors.gradStops) ? { gradStops: settings.quickColors.gradStops.slice() } : {})
+    }
+    : undefined;
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
   $("gav").textContent = studioState.gradientAngle + "°";
@@ -226,6 +242,7 @@ function applySettings(settings = {}) {
   }
   syncBorderControls();
   syncStampControls();
+  syncQuickColorsControls();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -263,6 +280,7 @@ function renderConfig(one = false) {
     borderStyle: settings.borderStyle,
     border: settings.border,
     borderScope: one ? "pv" : "",
+    quickColors: settings.quickColors,
     yearBadge: settings.yearBadge,
     tearStyle: settings.tearStyle,
     photoFilter: settings.photoFilter,
@@ -482,6 +500,90 @@ const STAMP_CONTROL_IDS = [
   "st-fill-mode", "st-pattern", "st-weight", "st-opacity",
   "st-wear", "st-inner-ring", "st-show-year"
 ];
+
+function toHex6(color, fallback = "#111111") {
+  return normalizeHex(color, "") || fallback;
+}
+
+function resolveActiveThemeStops(theme, overrides = null) {
+  if (Array.isArray(overrides?.gradStops) && overrides.gradStops.length >= 2) {
+    return overrides.gradStops.map(col => toHex6(col, "#111111")).slice(0, 4);
+  }
+  if (Array.isArray(theme?.gradStops) && theme.gradStops.length >= 2) {
+    return theme.gradStops.map(col => toHex6(col, "#111111")).slice(0, 4);
+  }
+  const refCard = studioState.cards[studioState.selectedCard] || studioState.cards[0] || { h: 35, s: 0.75 };
+  const gsHex = toHex6(overrides?.bg || theme?.gs || theme?.bg, "#0b0b10");
+  const endSat = theme?.fixed ? 0.7 : Math.max(theme?.sm || 0, refCard.s ?? 0.75);
+  const endHex = toHex6(
+    overrides?.acc || theme?.fixed,
+    hslObjectToHex({ h: refCard.h ?? 35, s: endSat, l: Number(theme?.gl) || 0.45 })
+  );
+  if (theme?.gradType === "triple" || theme?.gradType === "radial") {
+    return [gsHex, blendHex(gsHex, endHex, 0.52), endHex];
+  }
+  return [gsHex, endHex];
+}
+
+function syncQuickColorsControls({ rebuildStops = true } = {}) {
+  const themeKey = $("style")?.value || "cream";
+  const theme = THEMES[themeKey] || THEMES.cream;
+  const isCustomTheme = themeKey === "custom";
+  const qc = isCustomTheme ? studioState.settings.customTheme : (studioState.quickColors || {});
+  const refCard = studioState.cards[studioState.selectedCard] || studioState.cards[0] || { h: 35, s: 0.75 };
+
+  const bgVal = toHex6(qc.bg || theme.bg, "#1f2430");
+  const inkVal = toHex6(qc.ink || theme.ink, "#ffffff");
+  const accFallback = toHex6(theme.fixed, refCard.accent || hslToHex(refCard));
+  const accVal = toHex6(qc.acc, accFallback);
+  const tapeVal = toHex6(qc.tape || theme.tape, "#d8b46b");
+  const paVal = qc.pa !== undefined ? Boolean(qc.pa) : !theme.fixed;
+
+  if ($("ct_bg")) $("ct_bg").value = bgVal;
+  if ($("ct_ink")) $("ct_ink").value = inkVal;
+  if ($("ct_acc")) $("ct_acc").value = accVal;
+  if ($("ct_tape")) $("ct_tape").value = tapeVal;
+  if ($("ct_pa")) $("ct_pa").checked = paVal;
+
+  const legend = $("quick-colours-legend");
+  if (legend) {
+    legend.textContent = isCustomTheme
+      ? "Quick colours · My theme"
+      : (studioState.quickColors ? `Quick colours · ${theme.n} (customised)` : `Quick colours · ${theme.n}`);
+  }
+  if ($("ct_reset")) {
+    const customDirty = isCustomTheme && JSON.stringify(studioState.settings.customTheme) !== JSON.stringify(DEFAULT_CUSTOM);
+    $("ct_reset").disabled = !(isCustomTheme ? customDirty : Boolean(studioState.quickColors));
+  }
+
+  const gradBlock = $("grad-stops-block");
+  const gradRow = $("grad-stops-row");
+  if (gradBlock && gradRow) {
+    const showGradStops = Boolean(theme.grad);
+    gradBlock.hidden = !showGradStops;
+    if (showGradStops) {
+      const stops = resolveActiveThemeStops(theme, isCustomTheme ? CUSTOM : studioState.quickColors);
+      const existingInputs = [...gradRow.querySelectorAll("input[data-grad-stop]")];
+      if (rebuildStops || existingInputs.length !== stops.length) {
+        gradRow.innerHTML = stops.map((hex, idx) =>
+          `<label class="swatch-control"><span>Stop ${idx + 1}</span><input type="color" data-grad-stop="${idx}" aria-label="Gradient colour ${idx + 1}" value="${hex}"></label>`
+        ).join("");
+        attachColorHexFields(gradRow);
+      } else {
+        stops.forEach((hex, idx) => {
+          if (existingInputs[idx] && existingInputs[idx].value !== hex) existingInputs[idx].value = hex;
+        });
+      }
+      if ($("grad-stop-add")) $("grad-stop-add").disabled = stops.length >= 4;
+      if ($("grad-stop-remove")) $("grad-stop-remove").disabled = stops.length <= 2;
+    } else if (gradRow.children.length) {
+      gradRow.replaceChildren();
+    }
+  }
+
+  const quickScope = $("ct_bg")?.closest(".sec");
+  if (quickScope) syncColorHexFields(quickScope);
+}
 
 function bindHistoryControlEvents() {
   const labels = {
@@ -1077,7 +1179,7 @@ function render() {
     $("grad-angle-reset").disabled = !gradientEnabled || studioState.gradientAngle === 180;
   }
   $("gradient-hint").textContent = gradientEnabled
-    ? "Drag the dial or use arrow keys to set the angle."
+    ? (active.gradType === "radial" ? "Drag dial to shift spotlight; edit stops below." : "Drag the dial or edit gradient colours below.")
     : "Choose a gradient theme to enable the angle control.";
   syncPageTools(pages);
   refreshBorderSwatches();
@@ -1721,6 +1823,7 @@ function syncCustomControls() {
     if (el.type === "checkbox") el.checked = Boolean(studioState.settings.customTheme[key]);
     else el.value = studioState.settings.customTheme[key];
   }
+  syncQuickColorsControls();
   syncColorHexFields();
   updateMountStatus();
 }
@@ -1729,6 +1832,7 @@ function resetDefaults() {
   studioState.cards = DEFAULT_CARDS.map(card => ({ ...card }));
   studioState.count = studioState.cards.length;
   studioState.selectedCard = 0;
+  studioState.quickColors = undefined;
   $("count").value = studioState.count;
   applySettings(SET0);
   syncCustomControls();
@@ -2055,7 +2159,12 @@ function bindEvents() {
     if (row) selectCard(+row.dataset.index);
   });
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "style", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  $("style").addEventListener("change", () => {
+    studioState.quickColors = undefined;
+    syncQuickColorsControls();
+    scheduleRender();
+  });
   $("drag").addEventListener("change", () => {
     if ($("drag").checked && moveStampsMode) {
       moveStampsMode = false;
@@ -2373,19 +2482,114 @@ function bindEvents() {
   document.querySelectorAll("[data-ct]").forEach(input => {
     const update = () => {
       const key = input.id.slice(3);
-      studioState.settings = {
-        ...studioState.settings,
-        customTheme: {
-          ...studioState.settings.customTheme,
-          [key]: input.type === "checkbox" ? input.checked : input.value
-        }
-      };
-      Object.assign(CUSTOM, studioState.settings.customTheme);
-      buildCustom();
+      const val = input.type === "checkbox" ? input.checked : input.value;
+      if ($("style").value === "custom") {
+        studioState.settings = {
+          ...studioState.settings,
+          customTheme: {
+            ...studioState.settings.customTheme,
+            [key]: val
+          }
+        };
+        Object.assign(CUSTOM, studioState.settings.customTheme);
+        buildCustom();
+      } else {
+        studioState.quickColors = {
+          ...(studioState.quickColors || {}),
+          [key]: val,
+          ...(key === "acc" ? { pa: false } : {})
+        };
+        if (key === "acc" && $("ct_pa")) $("ct_pa").checked = false;
+      }
+      syncQuickColorsControls({ rebuildStops: false });
       scheduleRender();
     };
     input.addEventListener("input", update);
     input.addEventListener("change", update);
+  });
+
+  $("ct_reset")?.addEventListener("click", () => {
+    if ($("style").value === "custom") {
+      studioState.settings = { ...studioState.settings, customTheme: { ...DEFAULT_CUSTOM } };
+      Object.assign(CUSTOM, DEFAULT_CUSTOM);
+      buildCustom();
+    } else {
+      studioState.quickColors = undefined;
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("reset quick colours");
+    render();
+    message("Reset theme colours to preset defaults.");
+  });
+
+  const updateGradStop = (idx, hex) => {
+    const clean = toHex6(hex, "");
+    if (!clean) return;
+    const themeKey = $("style").value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const currentStops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    const nextStops = currentStops.slice();
+    nextStops[idx] = clean;
+    if (themeKey === "custom") {
+      studioState.settings = {
+        ...studioState.settings,
+        customTheme: { ...studioState.settings.customTheme, gradStops: nextStops, gs: nextStops[0] }
+      };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), gradStops: nextStops };
+    }
+    syncQuickColorsControls({ rebuildStops: false });
+    scheduleRender();
+  };
+
+  $("grad-stops-row")?.addEventListener("input", event => {
+    const input = event.target.closest?.("input[data-grad-stop]");
+    if (!input) return;
+    updateGradStop(Number(input.dataset.gradStop), input.value);
+    recordContinuous("change gradient colour", `setting:grad-stop:${input.dataset.gradStop}`);
+  });
+  $("grad-stops-row")?.addEventListener("change", event => {
+    const input = event.target.closest?.("input[data-grad-stop]");
+    if (!input) return;
+    updateGradStop(Number(input.dataset.gradStop), input.value);
+    finishContinuous("change gradient colour", `setting:grad-stop:${input.dataset.gradStop}`);
+  });
+  $("grad-stop-add")?.addEventListener("click", () => {
+    const themeKey = $("style").value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const stops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    if (stops.length >= 4) return;
+    const mid = blendHex(stops.at(-2) || stops[0], stops.at(-1), 0.5);
+    const nextStops = [...stops.slice(0, -1), mid, stops.at(-1)];
+    if (themeKey === "custom") {
+      studioState.settings = { ...studioState.settings, customTheme: { ...studioState.settings.customTheme, gradStops: nextStops } };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), gradStops: nextStops };
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("add gradient colour");
+    render();
+  });
+  $("grad-stop-remove")?.addEventListener("click", () => {
+    const themeKey = $("style").value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const stops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    if (stops.length <= 2) return;
+    const nextStops = [...stops.slice(0, -2), stops.at(-1)];
+    if (themeKey === "custom") {
+      studioState.settings = { ...studioState.settings, customTheme: { ...studioState.settings.customTheme, gradStops: nextStops } };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), gradStops: nextStops };
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("remove gradient colour");
+    render();
   });
 
   $("prev-style").addEventListener("click", () => cycleTheme(-1));
@@ -2764,6 +2968,8 @@ function cycleTheme(direction) {
   const options = [...select.options];
   const current = options.findIndex(option => option.value === select.value);
   select.value = options[(current + direction + options.length) % options.length].value;
+  studioState.quickColors = undefined;
+  syncQuickColorsControls({ rebuildStops: true });
   recordDiscrete("change theme");
   render();
 }

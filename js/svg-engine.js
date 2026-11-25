@@ -224,11 +224,56 @@ const HEX6_RE = /^#[\da-f]{6}$/i;
 
 export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
   // Card override wins over page theme (cfg.themeForce), which wins over sheet theme (cfg.style)
-  const baseTheme = cfg.themeObj
+  const rawTheme = cfg.themeObj
     || (c0.theme && THEMES[c0.theme])
     || (cfg.themeForce && THEMES[cfg.themeForce])
     || THEMES[cfg.style]
     || THEMES.cream;
+  const qc = !c0.theme && !cfg.themeForce && cfg.quickColors && typeof cfg.quickColors === "object"
+    ? cfg.quickColors
+    : null;
+  let baseTheme = rawTheme;
+  if (qc) {
+    const qcStops = Array.isArray(qc.gradStops)
+      ? qc.gradStops.map(s => String(s || "").trim().toLowerCase()).filter(s => HEX6_RE.test(s)).slice(0, 4)
+      : null;
+    baseTheme = { ...rawTheme };
+    if (HEX6_RE.test(String(qc.bg || "").trim())) {
+      baseTheme.bg = String(qc.bg).trim().toLowerCase();
+      baseTheme.ph = mix(baseTheme.bg, baseTheme.ink, 0.12);
+      if (baseTheme.grad && !qcStops) {
+        baseTheme.gs = baseTheme.bg;
+        if (Array.isArray(baseTheme.gradStops)) {
+          baseTheme.gradStops = [baseTheme.bg, ...baseTheme.gradStops.slice(1)];
+        }
+      }
+    }
+    if (HEX6_RE.test(String(qc.ink || "").trim())) {
+      baseTheme.ink = String(qc.ink).trim().toLowerCase();
+      baseTheme.mute = mix(baseTheme.ink, baseTheme.bg, 0.25);
+      baseTheme.hi = mix(baseTheme.ink, "#ffffff", 0.4);
+    }
+    if (HEX6_RE.test(String(qc.tape || "").trim())) {
+      baseTheme.tape = String(qc.tape).trim().toLowerCase();
+      baseTheme.te = mix(baseTheme.tape, "#000000", 0.25);
+    }
+    if (qc.pa === true) {
+      delete baseTheme.fixed;
+      delete baseTheme.bt;
+    } else if (HEX6_RE.test(String(qc.acc || "").trim())) {
+      const qAcc = String(qc.acc).trim().toLowerCase();
+      baseTheme.fixed = qAcc;
+      baseTheme.bt = lum(qAcc) > 0.52 ? "#111" : "#fff";
+    }
+    if (qcStops && qcStops.length >= 2) {
+      baseTheme.grad = 1;
+      baseTheme.gradStops = qcStops;
+      baseTheme.gs = qcStops[0];
+      if (baseTheme.gradType !== "radial") {
+        baseTheme.gradType = qcStops.length >= 4 ? "multi" : (qcStops.length === 3 ? "triple" : "");
+      }
+    }
+  }
   const pal = c0.palette && typeof c0.palette === "object" ? c0.palette : null;
   const tapeHex = typeof c0.tape === "string" && HEX6_RE.test(c0.tape.trim()) ? c0.tape.trim().toLowerCase() : "";
   let theme = baseTheme;

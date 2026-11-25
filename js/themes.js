@@ -106,14 +106,17 @@ export const mix = (a, b, t) => {
 export function compileCustomTheme(cfg, grp = "Custom") {
   const C = { ...DEFAULT_CUSTOM, ...cfg };
   const isGrad = Boolean(C.grad);
-  const baseBg = isGrad ? (C.gs || C.bg) : C.bg;
+  const gradStops = Array.isArray(C.gradStops) && C.gradStops.length >= 2 ? C.gradStops.slice(0, 4) : undefined;
+  const baseBg = isGrad ? ((gradStops && gradStops[0]) || C.gs || C.bg) : C.bg;
 
   return {
     grp,
     n: C.name || "My theme",
     bg: baseBg,
     grad: isGrad ? 1 : 0,
-    gs: C.gs || baseBg,
+    ...(C.gradType ? { gradType: C.gradType } : {}),
+    ...(gradStops ? { gradStops } : {}),
+    gs: (gradStops && gradStops[0]) || C.gs || baseBg,
     gl: Number(C.gl) || 0.45,
     ink: C.ink,
     mute: mix(C.ink, baseBg, 0.25),
