@@ -1,5 +1,5 @@
 import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.1";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase8.1";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase8.1";
 import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.1";
 import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.1";
 import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.1";
@@ -243,6 +243,7 @@ function applySettings(settings = {}) {
   syncBorderControls();
   syncStampControls();
   syncQuickColorsControls();
+  syncThemeDropdown();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -583,6 +584,98 @@ function syncQuickColorsControls({ rebuildStops = true } = {}) {
 
   const quickScope = $("ct_bg")?.closest(".sec");
   if (quickScope) syncColorHexFields(quickScope);
+}
+
+function themeTagLabel(theme) {
+  if (!theme.grad) return "";
+  if (theme.gradType === "radial") return "Radial";
+  if (theme.gradType === "triple" || (Array.isArray(theme.gradStops) && theme.gradStops.length === 3)) return "3-colour";
+  if (theme.gradType === "multi" || (Array.isArray(theme.gradStops) && theme.gradStops.length >= 4)) return "4-colour";
+  return "Gradient";
+}
+
+function effectivePreviewThemeForThumb(key, theme) {
+  if (key !== ($("style")?.value || "cream") || !studioState.quickColors || key === "custom") return theme;
+  const qc = studioState.quickColors;
+  return {
+    ...theme,
+    ...(qc.bg ? { bg: qc.bg } : {}),
+    ...(qc.ink ? { ink: qc.ink } : {}),
+    ...(qc.acc && qc.pa !== true ? { fixed: qc.acc } : {}),
+    ...(Array.isArray(qc.gradStops) && qc.gradStops.length >= 2 ? { gradStops: qc.gradStops, gs: qc.gradStops[0] } : {})
+  };
+}
+
+function buildThemeDropdown(filterText = "") {
+  const listEl = $("theme-menu-list");
+  if (!listEl) return;
+  const q = String(filterText || "").trim().toLowerCase();
+  const activeKey = $("style")?.value || "cream";
+  const groups = getGroupedThemes();
+  const html = groups.map(([groupLabel, entries]) => {
+    const filtered = q
+      ? entries.filter(([, theme]) =>
+        theme.n.toLowerCase().includes(q) || groupLabel.toLowerCase().includes(q) || themeTagLabel(theme).toLowerCase().includes(q)
+      )
+      : entries;
+    if (!filtered.length) return "";
+    const optionsHtml = filtered.map(([key, theme]) => {
+      const tag = themeTagLabel(theme);
+      const selected = key === activeKey;
+      return `<button class="theme-option" type="button" role="option" data-theme-key="${escapeHtml(key)}" aria-selected="${selected}">
+        <span class="theme-thumb">${renderThemeThumbSvg(key, theme, "th-mnu")}</span>
+        <span class="theme-option-name">${escapeHtml(theme.n)}</span>
+        ${tag ? `<span class="theme-option-tag">${tag}</span>` : ""}
+      </button>`;
+    }).join("");
+    return `<div class="theme-group-label">${escapeHtml(groupLabel)}</div>${optionsHtml}`;
+  }).join("");
+  listEl.innerHTML = html || `<p class="hint" style="padding:10px">No matching themes.</p>`;
+}
+
+function syncThemeDropdown() {
+  const key = $("style")?.value || "cream";
+  const theme = THEMES[key] || THEMES.cream;
+  const previewTheme = effectivePreviewThemeForThumb(key, theme);
+  if ($("theme-trigger-thumb")) $("theme-trigger-thumb").innerHTML = renderThemeThumbSvg(key, previewTheme, "th-trg");
+  if ($("theme-trigger-label")) $("theme-trigger-label").textContent = theme.n || "Cream";
+  if ($("theme-trigger-cat")) $("theme-trigger-cat").textContent = theme.cat || theme.grp || "Theme";
+  $("theme-menu-list")?.querySelectorAll(".theme-option").forEach(btn => {
+    btn.setAttribute("aria-selected", String(btn.dataset.themeKey === key));
+  });
+}
+
+function closeThemeMenu(restoreFocus = false) {
+  const menu = $("theme-menu");
+  const trigger = $("theme-trigger");
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  trigger?.setAttribute("aria-expanded", "false");
+  if (restoreFocus) trigger?.focus();
+}
+
+function openThemeMenu() {
+  const menu = $("theme-menu");
+  const trigger = $("theme-trigger");
+  if (!menu) return;
+  if ($("theme-filter")) $("theme-filter").value = "";
+  buildThemeDropdown("");
+  menu.hidden = false;
+  trigger?.setAttribute("aria-expanded", "true");
+  const activeOption = menu.querySelector('.theme-option[aria-selected="true"]');
+  activeOption?.scrollIntoView({ block: "nearest" });
+  ($("theme-filter") || activeOption)?.focus();
+}
+
+function selectThemeKey(key) {
+  if (!key || !THEMES[key] || !$("style")) return;
+  $("style").value = key;
+  studioState.quickColors = undefined;
+  syncQuickColorsControls({ rebuildStops: true });
+  syncThemeDropdown();
+  closeThemeMenu(true);
+  recordDiscrete("change theme");
+  render();
 }
 
 function bindHistoryControlEvents() {
@@ -1184,6 +1277,7 @@ function render() {
   syncPageTools(pages);
   refreshBorderSwatches();
   refreshStampSwatches();
+  syncThemeDropdown();
   const moveBtn = $("move-stamps");
   if (moveBtn) moveBtn.setAttribute("aria-pressed", String(moveStampsMode));
   const snapWrap = $("stamp-snap-wrap");
@@ -1255,7 +1349,7 @@ function ensureSharedPhotoInput() {
 
 function buildRows() {
   const activeCards = studioState.cards.slice(0, studioState.count);
-  const fullThemeOptions = `<option value="">Same as sheet</option>${Object.entries(THEMES).map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}`;
+  const fullThemeOptions = `<option value="">Same as sheet</option>${getGroupedThemes().map(([lbl, entries]) => `<optgroup label="${escapeHtml(lbl)}">${entries.map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}</optgroup>`).join("")}`;
   const fullStampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
     .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
 
@@ -2162,8 +2256,42 @@ function bindEvents() {
   ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
   $("style").addEventListener("change", () => {
     studioState.quickColors = undefined;
-    syncQuickColorsControls();
+    syncQuickColorsControls({ rebuildStops: true });
+    syncThemeDropdown();
     scheduleRender();
+  });
+  $("theme-trigger")?.addEventListener("click", () => {
+    if ($("theme-menu")?.hidden) openThemeMenu();
+    else closeThemeMenu();
+  });
+  $("theme-filter")?.addEventListener("input", event => {
+    buildThemeDropdown(event.target.value);
+  });
+  $("theme-menu-list")?.addEventListener("click", event => {
+    const option = event.target.closest?.(".theme-option");
+    if (option?.dataset.themeKey) selectThemeKey(option.dataset.themeKey);
+  });
+  $("theme-menu")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeThemeMenu(true);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      const options = [...$("theme-menu-list").querySelectorAll(".theme-option")];
+      if (!options.length) return;
+      event.preventDefault();
+      const idx = options.indexOf(document.activeElement);
+      const next = idx < 0
+        ? (event.key === "ArrowDown" ? 0 : options.length - 1)
+        : (idx + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+      options[next].focus();
+    }
+  });
+  document.addEventListener("pointerdown", event => {
+    if (!$("theme-menu")?.hidden && !event.target.closest?.("#theme-dropdown")) {
+      closeThemeMenu();
+    }
   });
   $("drag").addEventListener("change", () => {
     if ($("drag").checked && moveStampsMode) {
@@ -2970,6 +3098,7 @@ function cycleTheme(direction) {
   select.value = options[(current + direction + options.length) % options.length].value;
   studioState.quickColors = undefined;
   syncQuickColorsControls({ rebuildStops: true });
+  syncThemeDropdown();
   recordDiscrete("change theme");
   render();
 }
@@ -2986,8 +3115,8 @@ function syncPageTools(pageCount) {
   ).join("");
   $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${pageCount}`;
   if (!themeSelect.options.length || themeSelect.options.length === 1) {
-    themeSelect.innerHTML = `<option value="">Use global</option>${Object.entries(THEMES).map(([key, theme]) =>
-      `<option value="${key}">${escapeHtml(theme.n)}</option>`
+    themeSelect.innerHTML = `<option value="">Use global</option>${getGroupedThemes().map(([lbl, entries]) =>
+      `<optgroup label="${escapeHtml(lbl)}">${entries.map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}</optgroup>`
     ).join("")}`;
   }
   themeSelect.value = studioState.pageThemes[studioState.activePage] || "";
@@ -3030,6 +3159,8 @@ async function init() {
   bindTapTooltips();
   attachColorHexFields();
   populateThemeSelect($("style"));
+  buildThemeDropdown();
+  syncThemeDropdown();
   buildBorderPicker();
   populateBorderPresets();
   syncBorderControls();

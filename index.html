@@ -118,17 +118,33 @@
     <details class="sec">
       <summary><span>Look</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
-        <label class="fld full">
+        <div class="fld full">
           <span class="lbl-row">
-            <span>Theme</span>
+            <label for="theme-trigger">Theme</label>
             <a class="manage-themes" href="theme-studio.html">Manage themes</a>
           </span>
           <div class="theme-nav">
             <button class="g" type="button" id="prev-style" aria-label="Previous theme" data-tooltip="Previous theme"><span data-icon="previous"></span></button>
-            <select id="style"></select>
+            <select id="style" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+            <div class="theme-dropdown" id="theme-dropdown">
+              <button class="theme-trigger" id="theme-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="theme-menu">
+                <span class="theme-thumb" id="theme-trigger-thumb" aria-hidden="true"></span>
+                <span class="theme-trigger-text">
+                  <span class="theme-trigger-label" id="theme-trigger-label">Cream</span>
+                  <span class="theme-trigger-cat" id="theme-trigger-cat">Light · Classic &amp; Paper</span>
+                </span>
+                <span class="disclosure-icon" data-icon="chevron"></span>
+              </button>
+              <div class="theme-menu" id="theme-menu" role="listbox" aria-label="Choose theme" hidden>
+                <div class="theme-menu-search">
+                  <input type="search" id="theme-filter" placeholder="Filter themes…" aria-label="Filter themes">
+                </div>
+                <div class="theme-menu-list" id="theme-menu-list"></div>
+              </div>
+            </div>
             <button class="g" type="button" id="next-style" aria-label="Next theme" data-tooltip="Next theme"><span data-icon="next"></span></button>
           </div>
-        </label>
+        </div>
         <label class="fld">
           <span>Title font</span>
           <select id="tfont" data-live>
