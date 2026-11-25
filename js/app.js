@@ -1073,6 +1073,9 @@ function render() {
   $("dial").setAttribute("aria-disabled", String(!gradientEnabled));
   $("dial").tabIndex = gradientEnabled ? 0 : -1;
   $("dial").classList.toggle("disabled", !gradientEnabled);
+  if ($("grad-angle-reset")) {
+    $("grad-angle-reset").disabled = !gradientEnabled || studioState.gradientAngle === 180;
+  }
   $("gradient-hint").textContent = gradientEnabled
     ? "Drag the dial or use arrow keys to set the angle."
     : "Choose a gradient theme to enable the angle control.";
@@ -1696,6 +1699,10 @@ function setGradientAngle(angle, snap = true) {
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
   $("gav").textContent = studioState.gradientAngle + "°";
+  if ($("grad-angle-reset")) {
+    const gradientActive = Boolean((THEMES[$("style").value] || THEMES.cream)?.grad);
+    $("grad-angle-reset").disabled = !gradientActive || studioState.gradientAngle === 180;
+  }
   scheduleRender();
 }
 
@@ -2544,6 +2551,10 @@ function bindEvents() {
       setGradientAngle(180, false);
       recordContinuous("change gradient angle", "setting:gradient-angle");
     }
+  });
+  $("grad-angle-reset")?.addEventListener("click", () => {
+    setGradientAngle(180, false);
+    recordDiscrete("reset gradient angle");
   });
 
   $("sheets").addEventListener("pointerdown", event => {
