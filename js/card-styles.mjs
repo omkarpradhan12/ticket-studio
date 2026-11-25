@@ -1,6 +1,6 @@
 // Per-card optional style override schema, sanitization & WCAG contrast helpers
-import { sanitizeBorderPatch } from "./borders.mjs?v=phase8";
-import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase8";
+import { sanitizeBorderPatch } from "./borders.mjs?v=phase8.1";
+import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase8.1";
 
 export const MAX_CARDS_LIMIT = 300;
 
