@@ -267,3 +267,11 @@ const SAMPLE = [
   assert.ok(dt < 500, `200-card batch took ${dt.toFixed(1)}ms, expected < 500ms`);
   console.log(`Randomiser module tests passed (200-card generation: ${dt.toFixed(1)}ms).`);
 }
+
+// 9. New handwriting, calligraphy & poster fonts accepted by sanitizer
+{
+  for (const fontKey of ["script", "calligraphy", "brush", "marker", "impact", "georgia", "trebuchet", "consolas"]) {
+    const clean = sanitizeCardStyleOverrides({ titleFont: fontKey });
+    assert.equal(clean.titleFont, fontKey, `font key ${fontKey} should survive sanitization`);
+  }
+}

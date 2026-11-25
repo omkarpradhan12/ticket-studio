@@ -1,6 +1,6 @@
 // Per-card optional style override schema, sanitization & WCAG contrast helpers
-import { sanitizeBorderPatch } from "./borders.mjs?v=phase8.2";
-import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase8.2";
+import { sanitizeBorderPatch } from "./borders.mjs?v=phase8.3";
+import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase8.3";
 
 export const MAX_CARDS_LIMIT = 300;
 
@@ -63,7 +63,7 @@ export const SURPRISE_MANAGED_STYLE_KEYS = Object.freeze([
 ]);
 
 const HEX_RE = /^#[\da-f]{6}$/i;
-const FONT_KEYS = ["pirata", "playfair", "mont", "bebas", "type", "courier"];
+const FONT_KEYS = ["pirata", "playfair", "georgia", "mont", "trebuchet", "bebas", "impact", "script", "calligraphy", "brush", "marker", "type", "courier", "consolas"];
 
 export function normalizeHex(hex, fallback = "") {
   let clean = String(hex || "").trim();

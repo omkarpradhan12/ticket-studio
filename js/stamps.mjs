@@ -119,21 +119,21 @@ export const STAMPS = {
   cloud: defStamp("Cloud", '<path d="M-12 11H13A6 6 0 0 0 14-1A7.5 7.5 0 0 0 0-7A7 7 0 0 0-12-1A6 6 0 0 0-12 11Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-10.5 8.5H11.5A4.2 4.2 0 0 0 12.2 0A5.5 5.5 0 0 0 0-4.5A5 5 0 0 0-10.2 0A4.2 4.2 0 0 0-10.5 8.5Z" stroke-width=".5"/>', { yr: -1.5, nm: 5, w: 22 }),
   spotify: defStamp(
     "Spotify",
-    '<circle r="18" stroke-width="1"/>',
-    '<circle r="15.8" stroke-width=".45" stroke-opacity=".5"/><path d="M-8.8 -7.4Q0.2 -11.4 9.0 -5.2" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="none"/><path d="M-7.1 -4.2Q0.2 -7.4 7.3 -2.3" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="none"/><path d="M-5.3 -1.2Q0.2 -3.7 5.5 0.4" stroke-width="1.15" stroke-linecap="round" stroke-dasharray="none"/>',
-    { yr: 12.8, ys: 3.3, nm: 7.6, w: 21 }
+    '<path d="M-12.5 -10.3Q0.2 -16.1 13.0 -7.0A1.3 1.3 0 0 1 11.6 -4.8Q0.1 -13.1 -11.3 -7.8A1.3 1.3 0 0 1 -12.5 -10.3ZM-10.2 -5.0Q0.2 -9.8 10.6 -2.2A1.1 1.1 0 0 1 9.4 -0.3Q0.1 -7.2 -9.1 -2.8A1.1 1.1 0 0 1 -10.2 -5.0ZM-7.8 -0.2Q0.1 -4.1 8.1 2.0A0.95 0.95 0 0 1 7.0 3.7Q0.1 -1.9 -6.8 1.7A0.95 0.95 0 0 1 -7.8 -0.2Z" stroke-width=".95" stroke-linejoin="round"/>',
+    '<path d="M-9.5 -8.8Q0.1 -14.2 10.1 -5.8" stroke-width=".4" stroke-opacity=".55" stroke-linecap="round" stroke-dasharray="none"/>',
+    { yr: 14.8, ys: 3.3, nm: 10, w: 22, openText: true }
   ),
   ytmusic: defStamp(
     "YT Music",
-    '<circle r="18" stroke-width="1"/>',
-    '<circle r="15.8" stroke-width=".45" stroke-opacity=".5"/><circle cx="0" cy="-6" r="6.9" stroke-width=".45" stroke-opacity=".55" stroke-dasharray="none"/><circle cx="0" cy="-6" r="5" stroke-width=".95" stroke-dasharray="none"/><path d="M-1.6 -8.3L3.0 -6L-1.6 -3.7Z" stroke-width=".9" stroke-linejoin="round" stroke-dasharray="none"/>',
-    { yr: 12.8, ys: 3.3, nm: 7.6, w: 21 }
+    '<circle cx="0" cy="-5.2" r="12" stroke-width="1"/>',
+    '<circle cx="0" cy="-5.2" r="7.4" stroke-width=".6" stroke-dasharray="none"/><path d="M-2.2 -8.6L4.2 -5.2L-2.2 -1.8Z" stroke-width="1" stroke-linejoin="round" stroke-dasharray="none"/>',
+    { yr: 16.5, ys: 3.3, nm: 12.2, w: 22, openText: true }
   ),
   clef: defStamp(
     "Treble clef",
-    '<circle r="18" stroke-width="1"/>',
-    '<circle r="15.8" stroke-width=".45" stroke-opacity=".5"/><path d="M-11.5 -9.4H-5.4M-12.2 -6.7H-5.4M-11.5 -4.0H-5.4M5.4 -9.4H11.5M5.4 -6.7H12.2M5.4 -4.0H11.5" stroke-width=".4" stroke-opacity=".55" stroke-linecap="round" stroke-dasharray="none"/><path d="M-0.2 -5.2C-1.5 -5.4 -1.6 -7.3 0.2 -7.4C2.5 -7.5 3.4 -4.9 1.7 -3.1C-0.2 -1.2 -3.8 -2.5 -3.7 -5.4C-3.6 -8.3 2.2 -9.8 2.0 -12.5C1.9 -14.3 0.2 -14.7 -0.3 -12.9L0.2 -0.9C0.3 0.4 -1.7 0.6 -2.1 -0.4" stroke-width=".95" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="none"/><circle cx="-2.1" cy="-0.4" r=".55" stroke-width=".85" stroke-dasharray="none"/>',
-    { yr: 12.8, ys: 3.3, nm: 7.6, w: 21 }
+    '<path d="M-0.4 -4.5C-2.3 -4.8 -2.4 -7.8 0.3 -7.9C3.8 -8.0 5.1 -3.9 2.5 -1.1C-0.3 1.7 -5.8 -0.4 -5.6 -4.8C-5.4 -9.2 3.4 -11.5 3.1 -15.4C2.9 -18.0 0.3 -18.6 -0.5 -16.0L0.3 2.4C0.5 4.4 -2.6 4.7 -3.2 3.1" fill="none" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><circle cx="-3.1" cy="2.9" r=".95" fill="none" stroke-width="1.15"/>',
+    '<path d="M-12.5 -7.5H-7.2M-12.5 -4.2H-7.2M7.2 -7.5H12.5M7.2 -4.2H12.5" stroke-width=".45" stroke-opacity=".5" stroke-linecap="round" stroke-dasharray="none"/>',
+    { yr: 16.5, ys: 3.3, nm: 11.8, w: 22, openText: true }
   )
 };
 
@@ -307,6 +307,7 @@ export function renderStampMarkup({
   const isSolid = resolved.fillMode === "solid";
   const isTinted = resolved.fillMode === "tinted";
   const fg = isSolid ? contrastInk(color, themeBg) : color;
+  const textFg = isSolid && d.openText ? color : fg;
   const opStr = (resolved.opacity / 100).toFixed(2).replace(/^0/, "");
   const dashAttr = stampDashAttrs(resolved.pattern);
   const outerShape = scaleStrokeWidths(d.outer, resolved.weight);
@@ -327,10 +328,10 @@ export function renderStampMarkup({
   }
 
   const yearMarkup = resolved.showYear && year
-    ? `<text y="${d.yr}" text-anchor="middle" fill="${fg}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(year)}</text>`
+    ? `<text y="${d.yr}" text-anchor="middle" fill="${textFg}" stroke="none" font-size="${d.ys || 4}" font-weight="700" ${FT}>${U(year)}</text>`
     : "";
-  const nameMarkup = `<text y="${d.nm}" text-anchor="middle" fill="${fg}" stroke="none" font-size="${fit(text, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(text)}</text>`;
-  const ruleMarkup = d.r ? `<path d="${d.r}" stroke="${fg}" stroke-width="${ruleW}"/>` : "";
+  const nameMarkup = `<text y="${d.nm}" text-anchor="middle" fill="${textFg}" stroke="none" font-size="${fit(text, 5.4, d.w, 0.7)}" font-weight="800" ${FT}>${U(text)}</text>`;
+  const ruleMarkup = d.r ? `<path d="${d.r}" stroke="${textFg}" stroke-width="${ruleW}"/>` : "";
 
   return `<g${idPart}${filterAttr} transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${rotation.toFixed(1)}) scale(${scale})" fill="none" stroke="${color}" opacity="${opStr}">${frame}${yearMarkup}${nameMarkup}${ruleMarkup}</g>`;
 }

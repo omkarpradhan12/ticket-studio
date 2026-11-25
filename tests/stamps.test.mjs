@@ -88,6 +88,19 @@ import {
   const vinylSvg = renderStampMarkup({ shapeKey: "vinyl", text: "LIVE", year: "2026" });
   assert.ok(vinylSvg.includes('<circle r="10.8"'), "vinyl should include center record label ring");
   assert.ok(vinylSvg.includes('<circle r="2"'), "vinyl should include center spindle hole");
+  for (const standaloneKey of ["spotify", "ytmusic", "clef"]) {
+    const standaloneSvg = renderStampMarkup({ shapeKey: standaloneKey, text: "LIVE", year: "2026" });
+    assert.equal(standaloneSvg.includes('<circle r="18"'), false, `${standaloneKey} must be standalone without outer ring`);
+  }
+  const solidSpotify = renderStampMarkup({
+    shapeKey: "spotify",
+    text: "LIVE",
+    year: "2026",
+    color: "#1db954",
+    style: resolveStampStyle({ stampStyle: { fillMode: "solid" } }),
+    themeBg: "#141211"
+  });
+  assert.ok(solidSpotify.includes('fill="#1db954" stroke="none"'), "open-emblem solid stamp keeps label ink color");
   for (const opt of STAMP_OPTIONS) {
     const svg = renderStampSwatchSvg(opt.id, "#ff5a36", { bg: "#141211", ink: "#ffffff" });
     assert.ok(svg.startsWith("<svg ") && svg.endsWith("</svg>"));

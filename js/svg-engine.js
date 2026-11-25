@@ -1,8 +1,8 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8.2";
-import { hsl } from "./image-utils.js?v=phase8.2";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8.2";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8.2";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8.3";
+import { hsl } from "./image-utils.js?v=phase8.3";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8.3";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8.3";
 
 export { SKINDS, STAMPS };
 
@@ -93,12 +93,11 @@ export function computeLayout(paperVal = "a4", csizeVal = "ticket") {
   return { W, H, K, CH, CWp, CHp, GX, GY, COLS, ROWS, PER, MX, MY, isLetter };
 }
 
-export function fitBox(c, CH = 239) {
+export function fitBox(c, CH = 239, PS = 136, PH = 136 + CH - 239) {
   if (!c.iw || !c.ih) return null;
-  const ph = 136 + CH - 239;
-  const k = Math.max(136 / c.iw, ph / c.ih) * (c.zm || 1);
+  const k = Math.max(PS / c.iw, PH / c.ih) * (c.zm || 1);
   const w = c.iw * k, h = c.ih * k;
-  return { w, h, mx: (w - 136) / 2, my: (h - ph) / 2 };
+  return { w, h, mx: (w - PS) / 2, my: (h - PH) / 2 };
 }
 
 const inkFilter = (id, seed, wear) => {
@@ -314,6 +313,7 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
   };
 
   const titleFontKey = c0.titleFont || cfg.titleFont;
+  const defaultFont = theme.polaroid ? TF.script : TF.pirata;
   return {
     theme,
     resolvedBorder,
@@ -324,7 +324,7 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
     stampColor: HEX6_RE.test(String(c0.stampColor || "").trim()) ? String(c0.stampColor).trim().toLowerCase() : (cfg.stampColor || "#d9322f"),
     stampWear: c0.stampWear ?? c0.stampStyle?.wear ?? cfg.stampWear ?? 0,
     borderWear: c0.border?.wear !== undefined ? resolvedBorder.wear : (cfg.borderWear || 0),
-    titleFont: TF[titleFontKey] || TF.pirata,
+    titleFont: TF[titleFontKey] || defaultFont,
     titleScale: c0.titleScale ?? cfg.titleScale ?? 0.85,
     gradientAngle: c0.gradientAngle ?? cfg.gradientAngle ?? 180,
     gradientSpread: c0.gradientSpread ?? cfg.gradientSpread ?? 32,
@@ -371,12 +371,18 @@ export function renderCard(c0, i, cfg) {
   const accLum = (T.fixed || customAccent) ? lum(T.fixed || customAccent) : hslLum(c.h ?? 35, effS, effL);
   const bt = T.bt || (accLum > 0.52 ? "#111" : "#fff");
 
-  const odd = i % 2, PX = 17, PY = 16, PS = 136, PH = 136 + D, PB = PY + PH, PM = PX + PS / 2, PMY = PY + PH / 2;
+  const isPolaroid = Boolean(T.polaroid) && cfg.minimalLayout !== true;
+  const odd = i % 2;
+  const PX = isPolaroid ? 12 : 17;
+  const PY = isPolaroid ? 13 : 16;
+  const PS = isPolaroid ? 146 : 136;
+  const PH = PS + D;
+  const PB = PY + PH, PM = PX + PS / 2, PMY = PY + PH / 2;
 
-  const b = c.img && fitBox(c, CH);
+  const b = c.img && fitBox(c, CH, PS, PH);
   const ph = c.img
     ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="xMidYMid slice"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${design.photoFilter ? ` filter="url(#np${i})"` : ""}/></g>`
-    : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
+    : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${isPolaroid ? (T.hi || "#ffffff") : A}"${isPolaroid ? ' opacity=".65"' : ""} font-size="9" ${FT}>Add photo</text>`;
 
   const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
   const ss = (resolved.stampSize || 100) / 100;
@@ -539,6 +545,25 @@ export function renderCard(c0, i, cfg) {
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
   const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, resolved.borderWear) : borderRendered.defs;
+
+  if (isPolaroid) {
+    const useCustomPolaroidBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
+    const polaroidBorderDefs = useCustomPolaroidBorder ? borderDefs : "";
+    const polaroidBorderMarkup = useCustomPolaroidBorder
+      ? borderRendered.markup
+      : `<rect x=".3" y=".3" width="${CW - 0.6}" height="${CH - 0.6}" fill="none" stroke="${T.frame}" stroke-width=".6"/>`;
+    const polaroidTitleLayout = titleLayout(cleanTitle, tf, 138, resolved.titleScale);
+    const polaroidLines = polaroidTitleLayout.lines;
+    const polaroidSize = polaroidTitleLayout.size;
+    const polaroidTitleMarkup = polaroidTitleLayout.wrapped
+      ? polaroidLines.map((line, lineIndex) =>
+          `<text x="${CW / 2}" y="${(188 + lineIndex * 14 + D).toFixed(1)}" text-anchor="middle" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${polaroidSize.toFixed(1)}" letter-spacing=".4">${esc(line)}</text>`
+        ).join("")
+      : `<text x="${CW / 2}" y="${(195 + D).toFixed(1)}" text-anchor="middle" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${polaroidSize.toFixed(1)}" letter-spacing=".4">${esc(polaroidLines[0])}</text>`;
+    const yearY = (polaroidTitleLayout.wrapped ? 219 + D : 214 + D).toFixed(1);
+    const yearMarkup = c0.year === "" ? "" : `<text x="${CW / 2}" y="${yearY}" text-anchor="middle" fill="${mute}" opacity=".85" font-family="${tf.f}" font-weight="${tf.w}" font-size="8" letter-spacing="1.2">${esc(c.year)}</text>`;
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${polaroidBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${polaroidBorderMarkup}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width=".7"/><path d="M${PX + 0.5} ${PB - 0.5}V${PY + 0.5}H${PX + PS - 0.5}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>${polaroidTitleMarkup}${yearMarkup}${nfc}${tex}${drag}${mk}</g>`;
+  }
 
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
    <defs>${gradDef}${inkFilter("ink" + i, i + 3, resolved.stampWear)}${borderDefs}${grayDef}${halftoneDef}

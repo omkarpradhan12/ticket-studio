@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.2";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase8.2";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.2";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.2";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.2";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase8.2";
-import { History } from "./history.mjs?v=phase8.2";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase8.2";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase8.2";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.3";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase8.3";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.3";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.3";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.3";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase8.3";
+import { History } from "./history.mjs?v=phase8.3";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase8.3";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase8.3";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase8.2";
+} from "./borders.mjs?v=phase8.3";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase8.2";
+} from "./stamps.mjs?v=phase8.3";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,13 +46,13 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase8.2";
+} from "./card-styles.mjs?v=phase8.3";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase8.2";
+} from "./randomiser.mjs?v=phase8.3";
 
 const MOUNT_NAMES = {
   "0": "Tape",
