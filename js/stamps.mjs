@@ -94,7 +94,12 @@ export const STAMPS = {
   arch: defStamp("Arch", '<path d="M-18 13V-3A18 18 0 0 1 18-3V13Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-14.5 10V-2A14.5 14.5 0 0 1 14.5-2V10Z" stroke-width=".5"/>', { yr: -5, nm: 3, w: 21, r: "M-6 6.5h12" }),
   ribbon: defStamp("Ribbon", '<path d="M-18 -12H18V8H7L4 14L0 8H-18Z" stroke-width="1" stroke-linejoin="round"/>', '<rect x="-15" y="-9" width="30" height="14" rx="1" stroke-width=".5"/>', { yr: -4, nm: 4.5, w: 25, r: "M-7 7h14" }),
   cross: defStamp("Cross", '<path d="M-7 -18H7V-7H18V7H7V18H-7V7H-18V-7H-7Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-4.5 -14.5H4.5V-4.5H14.5V4.5H4.5V14.5H-4.5V4.5H-14.5V-4.5H-4.5Z" stroke-width=".5"/>', { yr: -4.5, nm: 3.5, w: 19, r: "M-5.5 7h11" }),
-  vinyl: defStamp("Vinyl", '<circle r="18" stroke-width="1"/>', '<path d="M-15.4 0A15.4 15.4 0 0 1 0-15.4M15.4 0A15.4 15.4 0 0 1 0 15.4" stroke-width=".45" stroke-linecap="round"/><circle r="13.2" stroke-width=".55"/>', { yr: -4.5, nm: 3, w: 20, r: "M-6 6.5h12" }),
+  vinyl: defStamp(
+    "Vinyl",
+    '<circle r="18" stroke-width="1"/>',
+    '<circle r="15.9" stroke-width=".4" stroke-opacity=".45"/><circle r="13.8" stroke-width=".4" stroke-opacity=".45"/><path d="M-15.4 -4.1A15.9 15.9 0 0 1 -4.1 -15.4M15.4 4.1A15.9 15.9 0 0 1 4.1 15.4M-13.0 -4.7A13.8 13.8 0 0 1 -4.7 -13.0M13.0 4.7A13.8 13.8 0 0 1 4.7 13.0" stroke-width=".55" stroke-linecap="round"/><circle r="10.8" stroke-width=".75"/><circle r="2" stroke-width=".95" stroke-dasharray="none"/><path d="M-8.8 0H-5.2M5.2 0H8.8" stroke-width=".45" stroke-opacity=".6" stroke-linecap="round"/>',
+    { yr: -4.2, ys: 3.5, nm: 6.4, w: 17.5 }
+  ),
   pick: defStamp("Guitar pick", '<path d="M0 -18C14 -18 19 -8 14 5C10 14 4 19 0 19C-4 19 -10 14 -14 5C-19 -8 -14 -18 0 -18Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M0 -14.5C11 -14.5 15 -6.5 11 4C7.8 11.2 3.2 15.2 0 15.2C-3.2 15.2 -7.8 11.2 -11 4C-15 -6.5 -11 -14.5 0 -14.5Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -6, nm: 1.5, w: 20, r: "M-5.5 5.5h11" }),
   octagon: defStamp("Octagon", '<path d="M-7.2 -17.5H7.2L17.5 -7.2V7.2L7.2 17.5H-7.2L-17.5 7.2V-7.2Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-5.8 -14.2H5.8L14.2 -5.8V5.8L5.8 14.2H-5.8L-14.2 5.8V-5.8Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -5, nm: 3, w: 22, r: "M-7 7h14" }),
   banner: defStamp("Banner", '<path d="M-20 -11H20L16 0L20 11H-20L-16 0Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-16.5 -8H16.5L13.5 0L16.5 8H-16.5L-13.5 0Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -2.5, nm: 4.5, w: 24 }),
@@ -111,7 +116,25 @@ export const STAMPS = {
   compass: defStamp("Compass", '<circle r="17" stroke-width="1"/><path d="M0-19.5V-15.5M0 15.5V19.5M-19.5 0H-15.5M15.5 0H19.5" stroke-width="1" stroke-linecap="round"/>', '<circle r="13.5" stroke-width=".5" stroke-dasharray="2 2"/>', { yr: -4.5, nm: 3, w: 21, r: "M-6 6.5h12" }),
   pennant: defStamp("Pennant", '<path d="M-18-13L19 0L-18 13Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-15-9.5L12 0L-15 9.5Z" stroke-width=".5" stroke-linejoin="round"/>', { yr: -2, nm: 4, w: 20 }),
   keyhole: defStamp("Keyhole", '<path d="M-8.5 3.5A12 12 0 1 1 8.5 3.5L11 17H-11Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-6 2A9 9 0 1 1 6 2L8 14H-8Z" stroke-width=".5"/>', { yr: -6.5, nm: 0.5, w: 17, r: "M-5 8h10" }),
-  cloud: defStamp("Cloud", '<path d="M-12 11H13A6 6 0 0 0 14-1A7.5 7.5 0 0 0 0-7A7 7 0 0 0-12-1A6 6 0 0 0-12 11Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-10.5 8.5H11.5A4.2 4.2 0 0 0 12.2 0A5.5 5.5 0 0 0 0-4.5A5 5 0 0 0-10.2 0A4.2 4.2 0 0 0-10.5 8.5Z" stroke-width=".5"/>', { yr: -1.5, nm: 5, w: 22 })
+  cloud: defStamp("Cloud", '<path d="M-12 11H13A6 6 0 0 0 14-1A7.5 7.5 0 0 0 0-7A7 7 0 0 0-12-1A6 6 0 0 0-12 11Z" stroke-width="1" stroke-linejoin="round"/>', '<path d="M-10.5 8.5H11.5A4.2 4.2 0 0 0 12.2 0A5.5 5.5 0 0 0 0-4.5A5 5 0 0 0-10.2 0A4.2 4.2 0 0 0-10.5 8.5Z" stroke-width=".5"/>', { yr: -1.5, nm: 5, w: 22 }),
+  spotify: defStamp(
+    "Spotify",
+    '<circle r="18" stroke-width="1"/>',
+    '<circle r="15.8" stroke-width=".45" stroke-opacity=".5"/><path d="M-8.8 -7.4Q0.2 -11.4 9.0 -5.2" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="none"/><path d="M-7.1 -4.2Q0.2 -7.4 7.3 -2.3" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="none"/><path d="M-5.3 -1.2Q0.2 -3.7 5.5 0.4" stroke-width="1.15" stroke-linecap="round" stroke-dasharray="none"/>',
+    { yr: 12.8, ys: 3.3, nm: 7.6, w: 21 }
+  ),
+  ytmusic: defStamp(
+    "YT Music",
+    '<circle r="18" stroke-width="1"/>',
+    '<circle r="15.8" stroke-width=".45" stroke-opacity=".5"/><circle cx="0" cy="-6" r="6.9" stroke-width=".45" stroke-opacity=".55" stroke-dasharray="none"/><circle cx="0" cy="-6" r="5" stroke-width=".95" stroke-dasharray="none"/><path d="M-1.6 -8.3L3.0 -6L-1.6 -3.7Z" stroke-width=".9" stroke-linejoin="round" stroke-dasharray="none"/>',
+    { yr: 12.8, ys: 3.3, nm: 7.6, w: 21 }
+  ),
+  clef: defStamp(
+    "Treble clef",
+    '<circle r="18" stroke-width="1"/>',
+    '<circle r="15.8" stroke-width=".45" stroke-opacity=".5"/><path d="M-11.5 -9.4H-5.4M-12.2 -6.7H-5.4M-11.5 -4.0H-5.4M5.4 -9.4H11.5M5.4 -6.7H12.2M5.4 -4.0H11.5" stroke-width=".4" stroke-opacity=".55" stroke-linecap="round" stroke-dasharray="none"/><path d="M-0.2 -5.2C-1.5 -5.4 -1.6 -7.3 0.2 -7.4C2.5 -7.5 3.4 -4.9 1.7 -3.1C-0.2 -1.2 -3.8 -2.5 -3.7 -5.4C-3.6 -8.3 2.2 -9.8 2.0 -12.5C1.9 -14.3 0.2 -14.7 -0.3 -12.9L0.2 -0.9C0.3 0.4 -1.7 0.6 -2.1 -0.4" stroke-width=".95" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="none"/><circle cx="-2.1" cy="-0.4" r=".55" stroke-width=".85" stroke-dasharray="none"/>',
+    { yr: 12.8, ys: 3.3, nm: 7.6, w: 21 }
+  )
 };
 
 export const SKINDS = Object.keys(STAMPS);
