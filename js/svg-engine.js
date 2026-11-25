@@ -1,8 +1,8 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8";
-import { hsl } from "./image-utils.js?v=phase8";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8.1";
+import { hsl } from "./image-utils.js?v=phase8.1";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8.1";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8.1";
 
 export { SKINDS, STAMPS };
 
@@ -123,6 +123,51 @@ function gradDir(ga, gd, CH) {
   const e = (Math.abs(dx) * CW + Math.abs(dy) * CH) / 2, L = 2 * e * gd / 100;
   const x2 = CW / 2 + dx * e, y2 = CH / 2 + dy * e;
   return `x1="${(x2 - dx * L).toFixed(1)}" y1="${(y2 - dy * L).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"`;
+}
+
+function renderGradDef(T, i, CH, angle, spread, hue, sat, explicitEnd, isCustomSat) {
+  if (!T.grad) return "";
+  const id = `bgg${i}`;
+  const endSat = isCustomSat ? Math.min(1, sat) : Math.min(1, Math.max(0.5, sat));
+  const computedEnd = explicitEnd || hsl(hue, endSat, T.gl);
+
+  // Preserve exact legacy 2-stop markup when theme uses standard linear mode without extra stops
+  if (!T.gradType && !Array.isArray(T.gradStops)) {
+    return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" ${gradDir(angle, spread, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${computedEnd}"/></linearGradient>`;
+  }
+
+  if (T.gradType === "radial") {
+    const t = angle * Math.PI / 180;
+    const cx = (CW / 2 + Math.sin(t) * CW * 0.16).toFixed(1);
+    const cy = (CH / 2 - Math.cos(t) * CH * 0.16).toFixed(1);
+    const r = (Math.max(CW, CH) * (0.36 + (Math.max(10, Math.min(100, spread)) / 100) * 0.62)).toFixed(1);
+    let stops;
+    if (Array.isArray(T.gradStops) && T.gradStops.length >= 2) {
+      stops = T.gradStops;
+    } else if (lum(T.gs) < 0.45) {
+      const midHex = explicitEnd ? mix(explicitEnd, T.gs, 0.55) : hsl(hue, isCustomSat ? endSat : Math.max(0.42, sat * 0.8), Math.max(0.14, T.gl * 0.55));
+      stops = [computedEnd, midHex, T.gs];
+    } else {
+      const mid = explicitEnd ? mix(T.gs, explicitEnd, 0.48) : hsl(hue, isCustomSat ? endSat : Math.max(0.4, sat * 0.75), Math.min(0.95, T.gl + (0.98 - T.gl) * 0.48));
+      stops = [T.gs, mid, computedEnd];
+    }
+    const stopMarkup = stops.map((col, idx) => `<stop offset="${(idx / (stops.length - 1)).toFixed(2)}" stop-color="${col}"/>`).join("");
+    return `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" fx="${cx}" fy="${cy}" r="${r}">${stopMarkup}</radialGradient>`;
+  }
+
+  let stops;
+  if (Array.isArray(T.gradStops) && T.gradStops.length >= 2) {
+    stops = explicitEnd ? [...T.gradStops.slice(0, -1), explicitEnd] : T.gradStops;
+  } else {
+    // Triple reactive gradient (dark or light base -> harmonious mid -> card accent end)
+    const gsLum = lum(T.gs);
+    const mid = explicitEnd
+      ? mix(T.gs, explicitEnd, 0.52)
+      : hsl(hue, isCustomSat ? endSat : Math.max(0.38, sat * 0.78), Number(((gsLum < 0.45 ? 0.18 : 0.88) + T.gl) / 2));
+    stops = [T.gs, mid, computedEnd];
+  }
+  const stopMarkup = stops.map((col, idx) => `<stop offset="${(idx / (stops.length - 1)).toFixed(2)}" stop-color="${col}"/>`).join("");
+  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" ${gradDir(angle, spread, CH)}>${stopMarkup}</linearGradient>`;
 }
 
 function mount(tt, PX, PY, PS, PB, odd, i, A, T) {
@@ -271,13 +316,14 @@ export function renderCard(c0, i, cfg) {
   const resolved = resolveCardRenderOptions(c0, cfg);
   const T = resolved.theme;
   const design = resolved.design;
-  const effS = Math.min(1, Math.max(T.sm || 0, c.s ?? 0.75));
+  const customAccent = HEX6_RE.test(String(c0.accent || "").trim()) ? String(c0.accent).trim().toLowerCase() : "";
+  const effS = Math.min(1, Math.max(customAccent ? 0 : (T.sm || 0), c.s ?? 0.75));
   const effL = T.l || 0.52;
-  const A = T.fixed || hsl(c.h ?? 35, effS, effL);
+  const A = T.fixed || customAccent || hsl(c.h ?? 35, effS, effL);
   const bgF = T.grad ? `url(#bgg${i})` : T.bg;
   const ink = T.ink, mute = T.mute;
 
-  const accLum = T.fixed ? lum(T.fixed) : hslLum(c.h ?? 35, effS, effL);
+  const accLum = (T.fixed || customAccent) ? lum(T.fixed || customAccent) : hslLum(c.h ?? 35, effS, effL);
   const bt = T.bt || (accLum > 0.52 ? "#111" : "#fff");
 
   const odd = i % 2, PX = 17, PY = 16, PS = 136, PH = 136 + D, PB = PY + PH, PM = PX + PS / 2, PMY = PY + PH / 2;
@@ -444,7 +490,7 @@ export function renderCard(c0, i, cfg) {
     return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${minimalBorderDefs}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
   }
 
-  const gradDef = T.grad ? `<linearGradient id="bgg${i}" gradientUnits="userSpaceOnUse" ${gradDir(resolved.gradientAngle, resolved.gradientSpread, CH)}><stop offset="0" stop-color="${T.gs}"/><stop offset="1" stop-color="${resolved.gradEnd || hsl(c.h ?? 35, Math.min(1, Math.max(0.5, c.s ?? 0.75)), T.gl)}"/></linearGradient>` : "";
+  const gradDef = renderGradDef(T, i, CH, resolved.gradientAngle, resolved.gradientSpread, c.h ?? 35, c.s ?? 0.75, resolved.gradEnd, Boolean(customAccent));
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
   const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, resolved.borderWear) : borderRendered.defs;

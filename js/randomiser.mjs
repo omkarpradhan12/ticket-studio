@@ -1,5 +1,5 @@
 // Seeded per-card "Surprise me" style randomiser with WCAG contrast, print-safe & stamp bounds guard rails
-import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase8";
+import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase8.1";
 import {
   SKINDS,
   STAMP_MAX_SCALE,
@@ -7,7 +7,7 @@ import {
   clampStampNorm,
   compactStampStyle,
   stampNormBounds
-} from "./stamps.mjs?v=phase8";
+} from "./stamps.mjs?v=phase8.1";
 import {
   SURPRISE_MANAGED_STYLE_KEYS,
   blendHex,
@@ -17,7 +17,7 @@ import {
   hslObjectToHex,
   normalizeHex,
   relativeLuminance
-} from "./card-styles.mjs?v=phase8";
+} from "./card-styles.mjs?v=phase8.1";
 
 const FALLBACK_THEMES = Object.freeze({
   cream: { grp: "Light", n: "Cream", bg: "#f2eadb", ink: "#1b1a19", mute: "#3a3733" }
@@ -175,8 +175,12 @@ function buildContrastCheckedPalette({ baseTheme, card, rng, strength, keepTheme
     patchBg = blendHex(bg, tintTarget, strength === 2 ? 0.14 : 0.07);
   }
 
-  const baseInk = ensureContrastHex(normalizeHex(baseTheme.ink, "#1b1a19"), [patchBg, gsHex], 4.5);
-  const baseMute = ensureContrastHex(normalizeHex(baseTheme.mute, blendHex(baseInk, patchBg, 0.28)), [patchBg, gsHex], 4.5);
+  const extraStops = Array.isArray(baseTheme.gradStops)
+    ? baseTheme.gradStops.slice(0, -1).map(s => normalizeHex(s, "")).filter(Boolean)
+    : [];
+  const staticGradStops = baseTheme.grad ? [gsHex, ...extraStops] : [patchBg];
+  const baseInk = ensureContrastHex(normalizeHex(baseTheme.ink, "#1b1a19"), staticGradStops, 4.5);
+  const baseMute = ensureContrastHex(normalizeHex(baseTheme.mute, blendHex(baseInk, patchBg, 0.28)), staticGradStops, 4.5);
 
   if (gradEnd) {
     for (let step = 0; step <= 20; step++) {
@@ -189,7 +193,7 @@ function buildContrastCheckedPalette({ baseTheme, card, rng, strength, keepTheme
     }
   }
 
-  const finalStops = gradEnd ? [gsHex, gradEnd] : [patchBg];
+  const finalStops = gradEnd ? [...staticGradStops, gradEnd] : [patchBg];
   const checkedInk = ensureContrastHex(baseInk, finalStops, 4.5);
   const checkedMute = ensureContrastHex(baseMute, finalStops, 4.5);
 

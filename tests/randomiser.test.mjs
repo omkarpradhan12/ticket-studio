@@ -219,7 +219,33 @@ const SAMPLE = [
   assert.equal(clean.locked, true);
 }
 
-// 7. 200-card batch performance check
+// 7. Multi-stop triple/radial gradient contrast checking
+{
+  const GRAD_TEST_THEMES = {
+    ...TEST_THEMES,
+    tridusk: { grp: "Gradient", n: "Triple twilight", grad: 1, gradType: "triple", gradStops: ["#0f0924", "#47194b", "#9e3022"], gs: "#0f0924", gl: 0.38, bg: "#2b1236", ink: "#ffffff", mute: "#f2d8d0" },
+    hologram: { grp: "Gradient", n: "Iridescent pearl", grad: 1, gradType: "multi", gradStops: ["#e6f7ff", "#f7e8ff", "#fff1df", "#dffae9"], gs: "#e6f7ff", gl: 0.88, bg: "#f7e8ff", ink: "#181822", mute: "#44445a" },
+    radhalo: { grp: "Gradient", n: "Radial halo", grad: 1, gradType: "radial", gradStops: ["#5a1846", "#1d1135", "#07060f"], gs: "#5a1846", gl: 0.35, bg: "#140d24", ink: "#ffffff", mute: "#e8d8ff" }
+  };
+  const res = surpriseCardsBatch({
+    cards: Array.from({ length: 18 }, (_, i) => ({ ...SAMPLE[i % 2], h: i * 20 })),
+    count: 18,
+    seed: 919191,
+    cfg: { style: "tridusk" },
+    prefs: normalizeSurprisePrefs({ scope: { colors: true, border: false, stamps: false, wear: false, font: false }, strength: 2 }),
+    themes: GRAD_TEST_THEMES
+  });
+  for (const card of res.cards) {
+    const t = GRAD_TEST_THEMES[card.theme] || GRAD_TEST_THEMES.cream;
+    const stops = t.grad ? [...(t.gradStops ? t.gradStops.slice(0, -1) : [t.gs]), card.palette.gradEnd || t.bg] : [card.palette.bg || t.bg];
+    for (const stop of stops) {
+      assert.ok(contrastRatio(card.palette.ink, stop) >= 4.5, `ink ${card.palette.ink} vs stop ${stop}`);
+      assert.ok(contrastRatio(card.palette.mute, stop) >= 4.5, `mute ${card.palette.mute} vs stop ${stop}`);
+    }
+  }
+}
+
+// 8. 200-card batch performance check
 {
   const twoHundred = Array.from({ length: 200 }, (_, i) => ({
     ...SAMPLE[i % 2],
