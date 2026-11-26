@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9d">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9e">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase9d">
-<link rel="stylesheet" href="css/app.css?v=phase9d">
+<link rel="stylesheet" href="css/tokens.css?v=phase9e">
+<link rel="stylesheet" href="css/app.css?v=phase9e">
 </head>
 <body>
 <header class="topbar">
@@ -471,9 +471,14 @@
           <legend>Ticket details</legend>
           <div class="hardware-toggle-row">
             <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
+            <label class="chk" id="nfc-yt-wrap"><input type="checkbox" id="nfc-yt" checked> With YT Music logo</label>
             <label class="chk"><input type="checkbox" id="serial" data-live> Serial number</label>
             <label class="chk"><input type="checkbox" id="punch" data-live> Punch hole</label>
           </div>
+          <label class="fld full" id="nfc-scale-wrap">
+            <span class="lbl-row"><span>NFC logo size</span><output id="nfc-scale-val" for="nfc-scale">100%</output></span>
+            <input type="range" id="nfc-scale" min="50" max="200" step="10" value="100" data-live aria-valuetext="100%">
+          </label>
           <span class="hint">Punch hole is a printed guide; use a 4 mm punch.</span>
         </fieldset>
       </div>
@@ -716,6 +721,8 @@
       <span id="pvt" class="preview-title"></span>
       <button class="g" id="pvn" type="button" aria-label="Next card" data-tooltip="Next card"><span data-icon="next"></span></button>
       <span class="preview-spacer" aria-hidden="true"></span>
+      <button class="g sm" id="pv-drag-photo" type="button" aria-pressed="false" data-tooltip="Drag photo inside card"><span data-icon="move"></span> Drag photo</button>
+      <button class="g sm" id="pv-move-stamps" type="button" aria-pressed="false" data-tooltip="Drag or rotate stamp inside card"><span data-icon="move"></span> Move stamps</button>
       <button class="g" id="pve" type="button">Jump to sidebar</button>
       <button class="g" id="pvpng" type="button">PNG</button>
       <button class="g" id="pvsvg" type="button">SVG</button>
@@ -737,6 +744,7 @@
         <div class="pv-ed-group">
           <div class="pv-ed-row">
             <button class="g sm" id="pv-photo-btn" type="button"><span data-icon="upload"></span> Photo…</button>
+            <button class="g sm" id="pv-photo-remove" type="button" disabled>Remove photo</button>
             <button class="g sm" id="pv-crop-reset" type="button">Reset crop</button>
             <label class="pv-accent-pick"><input type="color" id="pv-accent" aria-label="Card accent colour"><span>Accent</span></label>
           </div>
@@ -789,6 +797,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase9d"></script>
+<script type="module" src="js/app.js?v=phase9e"></script>
 </body>
 </html>

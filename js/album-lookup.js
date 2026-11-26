@@ -1,15 +1,15 @@
-import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase9d";
-import { populateThemeSelect } from "./themes.js?v=phase9d";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase9d";
-import { processImageFile, processImageUrl } from "./image-utils.js?v=phase9d";
-import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase9d";
-import { rasterizeSvg, triggerDownload } from "./export.js?v=phase9d";
-import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase9d";
+import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase9e";
+import { populateThemeSelect } from "./themes.js?v=phase9e";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase9e";
+import { processImageFile, processImageUrl } from "./image-utils.js?v=phase9e";
+import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase9e";
+import { rasterizeSvg, triggerDownload } from "./export.js?v=phase9e";
+import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase9e";
 import {
   ALBUM_LOOKUP_CONFIG,
   fetchAlbumCoverArt,
   searchOnlineAlbums
-} from "./album-lookup-providers.mjs?v=phase9d";
+} from "./album-lookup-providers.mjs?v=phase9e";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
@@ -36,10 +36,12 @@ function setBusy(busy) {
 }
 
 function buildAlbumCardObject() {
-  const title = $("alb-title").value.trim() || "Album Name";
-  const loc = $("alb-artist-field").value.trim() || "Artist Name";
+  const rawTitle = $("alb-title").value.trim();
+  const rawArtist = $("alb-artist-field").value.trim();
+  const title = rawTitle || "Album Name";
+  const loc = rawArtist || "Artist Name";
   const year = $("alb-year").value.trim() || "2026";
-  const code = $("alb-code").value.trim() || abbr(title);
+  const code = $("alb-code").value.trim() || abbr(rawArtist || rawTitle || loc);
   return {
     ...blankCard(),
     kind: "album",
@@ -105,7 +107,8 @@ function populateDraftFromAlbum(item) {
   $("alb-title").value = item.albumName || "";
   $("alb-artist-field").value = item.artistName || "";
   $("alb-year").value = item.year || "";
-  $("alb-code").value = item.code || abbr(item.albumName || "");
+  delete $("alb-code").dataset.manual;
+  $("alb-code").value = item.code || abbr(item.artistName || item.albumName || "");
   $("alb-source-pill").hidden = false;
   $("alb-source-pill").textContent = item.licenseNote || item.source || "";
   renderResults();
@@ -279,7 +282,7 @@ async function commitFillExisting() {
   const title = $("alb-title").value.trim();
   const artist = $("alb-artist-field").value.trim();
   const year = $("alb-year").value.trim();
-  const code = $("alb-code").value.trim() || abbr(title);
+  const code = $("alb-code").value.trim() || abbr(artist || title);
   if (!title && !artist && !year && !draftCover) {
     setStatus("Enter or pick album details first.");
     return;
@@ -353,8 +356,8 @@ function init() {
   });
   ["alb-title", "alb-artist-field", "alb-year", "alb-code"].forEach(id => {
     $(id).addEventListener("input", () => {
-      if (id === "alb-title" && !$("alb-code").dataset.manual) {
-        $("alb-code").value = abbr($("alb-title").value);
+      if ((id === "alb-artist-field" || id === "alb-title") && !$("alb-code").dataset.manual) {
+        $("alb-code").value = abbr($("alb-artist-field").value.trim() || $("alb-title").value);
       }
       refreshLivePreview();
     });

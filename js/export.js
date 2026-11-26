@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase9d";
-import { hslToHex } from "./image-utils.js?v=phase9d";
-import { abbr } from "./svg-engine.js?v=phase9d";
+import { FONTCSS } from "./fonts.js?v=phase9e";
+import { hslToHex } from "./image-utils.js?v=phase9e";
+import { abbr } from "./svg-engine.js?v=phase9e";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -108,7 +108,7 @@ export function exportProjectJson(settings, cards, count) {
         year: c.year,
         genre: c.genre,
         place: c.loc,
-        abbreviation: c.code || abbr(c.title),
+        abbreviation: c.code || abbr(c.kind === "album" ? (c.loc || c.title) : c.title),
         accent: hslToHex(c)
       };
       if (c.kind === "album") r.kind = "album";

@@ -1,9 +1,9 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9d";
-import { hsl } from "./image-utils.js?v=phase9d";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9d";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9d";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9d";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9e";
+import { hsl } from "./image-utils.js?v=phase9e";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9e";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9e";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9e";
 
 export { SKINDS, STAMPS };
 
@@ -378,6 +378,26 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
   };
 }
 
+export function renderNfcBadge({ CW, D = 0, accent, theme = {}, withYt = true, scale = 1 }) {
+  const sc = Math.max(0.5, Math.min(2, Number(scale) || 1));
+  const anchorX = CW - 20;
+  const anchorY = 209 + D;
+  const scaleAttr = sc !== 1 ? ` scale(${sc.toFixed(2)})` : "";
+  let waves = "";
+  if (withYt) {
+    for (let k = 1; k <= 3; k++) {
+      const px = 7 + k * 2.6, h = 2 + k * 1.5;
+      waves += `<path d="M${px} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px} ${h}" fill="none" stroke="${accent}" stroke-width="1.1" stroke-linecap="round"/>`;
+    }
+    return `<g class="nfc-badge" transform="translate(${anchorX} ${anchorY})${scaleAttr} translate(-18 0)"><circle r="5.6" fill="${theme.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${theme.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${theme.np || "#fff"}"/>${waves}</g>`;
+  }
+  for (let k = 1; k <= 3; k++) {
+    const px = -11.5 + k * 2.8, h = 2 + k * 1.5;
+    waves += `<path d="M${px.toFixed(1)} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px.toFixed(1)} ${h}" fill="none" stroke="${accent}" stroke-width="1.2" stroke-linecap="round"/>`;
+  }
+  return `<g class="nfc-badge nfc-only" transform="translate(${anchorX} ${anchorY})${scaleAttr}"><circle cx="-11.5" cy="0" r="1.4" fill="${accent}"/>${waves}</g>`;
+}
+
 /**
  * Renders a single SVG <g> card element
  * @param {Object} c0 - Card data
@@ -451,7 +471,7 @@ export function renderCard(c0, i, cfg) {
     color: sco,
     wear: resolved.stampWear,
     filterId: `ink${i}`,
-    idAttr: cfg.moveStamps && !cfg.one ? `st0-${i}` : "",
+    idAttr: cfg.moveStamps && (!cfg.one || cfg.interactive) ? `st0-${i}` : "",
     style: resolvedStampStyle,
     themeBg: T.bg
   });
@@ -466,7 +486,7 @@ export function renderCard(c0, i, cfg) {
     color: sco,
     wear: resolved.stampWear,
     filterId: `ink${i}`,
-    idAttr: cfg.moveStamps && !cfg.one ? `st1-${i}` : "",
+    idAttr: cfg.moveStamps && (!cfg.one || cfg.interactive) ? `st1-${i}` : "",
     style: resolvedStampStyle,
     themeBg: T.bg
   }) : "";
@@ -482,7 +502,7 @@ export function renderCard(c0, i, cfg) {
     const vText = `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`;
     return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${rotY.toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${rotY.toFixed(1)}" r="56" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${rotY.toFixed(1)}" r="4.8"/></g>`;
   };
-  const stampUi = cfg.moveStamps && !cfg.one
+  const stampUi = cfg.moveStamps && (!cfg.one || cfg.interactive)
     ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
     : "";
 
@@ -513,15 +533,16 @@ export function renderCard(c0, i, cfg) {
     ? `<g clip-path="url(#ck${i})" pointer-events="none">${texDefs ? `<defs>${texDefs}</defs>` : ""}${grVal ? `<rect width="${CW}" height="${CH}" fill="#000" filter="url(#gr${i})" opacity="${(grVal / 100 * 0.55).toFixed(2)}"/>` : ""}${ewVal ? `<rect width="${CW}" height="${CH}" fill="none" stroke="${tcol}" stroke-width="12" filter="url(#ew${i})" opacity="${(ewVal / 100 * 0.55).toFixed(2)}"/>` : ""}${scVal ? `<g transform="rotate(${Math.round(rn(5) * 60 - 30)} ${CW / 2} ${CH / 2})"><rect x="-60" y="-60" width="${CW + 120}" height="${CH + 120}" fill="#000" filter="url(#sc${i})" opacity="${(scVal / 100 * 0.7).toFixed(2)}"/></g>` : ""}${cre}</g>`
     : "";
 
-  let nfc = "";
-  if (cfg.nfc) {
-    let ar = "";
-    for (let k = 1; k <= 3; k++) {
-      const px = 7 + k * 2.6, h = 2 + k * 1.5;
-      ar += `<path d="M${px} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px} ${h}" fill="none" stroke="${A}" stroke-width="1.1" stroke-linecap="round"/>`;
-    }
-    nfc = `<g transform="translate(${CW - 38} ${209 + D})"><circle r="5.6" fill="${T.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${T.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${T.np || "#fff"}"/>${ar}</g>`;
-  }
+  let nfc = cfg.nfc
+    ? renderNfcBadge({
+        CW,
+        D,
+        accent: A,
+        theme: T,
+        withYt: cfg.nfcWithYt !== false,
+        scale: (Number(cfg.nfcScale ?? 100) || 100) / 100
+      })
+    : "";
   if (cfg.punchHole) {
     nfc += `<g aria-label="NFC punch hole" transform="translate(${CW / 2} ${PMY})"><circle r="3.4" fill="#fff" stroke="${T.frame}" stroke-width=".6"/><circle r="1.7" fill="#e7e4dc" stroke="${A}" stroke-width=".35"/></g>`;
   }
@@ -538,7 +559,7 @@ export function renderCard(c0, i, cfg) {
   const gl = isAlbum
     ? (String(c0.loc || "").trim() || String(c0.genre || "").trim() || "Artist")
     : `${c.genre} // ${c.loc}`;
-  const no = `NO. ${c0.year || "0000"}-${c0.code || abbr(c0.title) || "XXXX"}`;
+  const no = `NO. ${c0.year || "0000"}-${c0.code || abbr(isAlbum ? (c0.loc || c0.title) : c0.title) || "XXXX"}`;
 
   const sc = renderCornerHardware({ style: resolved.cornerHardware, index: i, CW, CH, accent: A, theme: T });
   const surfaceFxMarkup = renderSurfaceFx({ index: i, CW, CH, theme: T, fx: resolved.surfaceFx });
@@ -547,7 +568,7 @@ export function renderCard(c0, i, cfg) {
   const tx = tcn ? CW / 2 : 17, ta = tcn ? ' text-anchor="middle"' : "";
   const badge = `<rect x="17" y="168" width="${(bw + 9).toFixed(1)}" height="10" rx="${bdg === 1 ? 5 : 0}" fill="${bdg === 2 ? "none" : A}"${bdg === 2 ? ` stroke="${A}" stroke-width=".8"` : ""}/><text x="21.5" y="175.2" fill="${bdg === 2 ? A : bt}" font-size="6" font-weight="800" textLength="${bw.toFixed(1)}" lengthAdjust="spacingAndGlyphs" ${FT}>EST. ${esc(c.year)}</text>`;
   const perf = `<path d="M9 161H${CW - 9}" stroke="${mute}" stroke-width="${pf === 1 ? 1.3 : 0.6}"${pf === 0 ? ' stroke-dasharray="2 2"' : pf === 1 ? ' stroke-dasharray="0.1 3" stroke-linecap="round"' : ""}/>` + (pf === 2 ? "" : `<circle cx="0" cy="161" r="3.6" fill="#fff"/><circle cx="${CW}" cy="161" r="3.6" fill="#fff"/>`);
-  const drag = cfg.drag && !cfg.one ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
+  const drag = cfg.drag && (!cfg.one || cfg.interactive) ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
 
   const cleanTitle = String(c.title || "Add name");
   const titleLayoutResult = titleLayout(cleanTitle, tf, 136, resolved.titleScale);

@@ -27,12 +27,12 @@ import {
   assert.equal(parsed[0].albumName, "OK Computer");
   assert.equal(parsed[0].artistName, "Radiohead");
   assert.equal(parsed[0].year, "1997");
-  assert.equal(parsed[0].code, "OKCO");
+  assert.equal(parsed[0].code, "RADI");
   assert.equal("albumOrdinal" in parsed[0], false);
   assert.equal(extractReleaseYear("2013-05-17"), "2013");
 }
 
-// 2. Wikipedia fallback HTML entity decode & formatting
+// 2. Wikipedia fallback HTML entity decode & formatting (uses band/artist hint for abbreviation)
 {
   const wiki = parseWikipediaAlbumSearch({
     query: {
@@ -42,6 +42,7 @@ import {
   assert.equal(wiki[0].albumName, "OK Computer");
   assert.equal(wiki[0].artistName, "Radiohead");
   assert.equal(wiki[0].year, "1997");
+  assert.equal(wiki[0].code, "RADI");
   assert.ok(wiki[0].disambiguation.includes('"Radiohead"'));
 }
 

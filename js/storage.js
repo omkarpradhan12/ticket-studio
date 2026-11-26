@@ -46,6 +46,8 @@ export const SET0 = {
   bleed: true,
   regMarks: false,
   nfc: true,
+  nfcWithYt: true,
+  nfcScale: 100,
   cutTemplate: true,
   punchHole: false,
   pageThemes: [],

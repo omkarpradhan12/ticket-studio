@@ -416,10 +416,21 @@ button.sm, .btn.sm {
 
 .c-row {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   align-items: center;
   font-size: 11.5px;
   color: var(--mute);
+}
+.row-remove-photo {
+  margin-left: auto;
+}
+.row-remove-photo[hidden] {
+  display: none !important;
+}
+#nfc-yt-wrap.is-disabled,
+#nfc-scale-wrap.is-disabled {
+  opacity: 0.45;
 }
 
 .adj {
@@ -3290,7 +3301,9 @@ details.sec > summary {
 }
 
 @layer app {
-  #move-stamps[aria-pressed="true"] {
+  #move-stamps[aria-pressed="true"],
+  #pv-move-stamps[aria-pressed="true"],
+  #pv-drag-photo[aria-pressed="true"] {
     border-color: var(--accent);
     background: var(--accent-soft);
     color: var(--ink);

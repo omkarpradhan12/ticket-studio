@@ -50,7 +50,7 @@ export function parseMusicBrainzReleaseGroups(json) {
       albumName: title,
       artistName: artistNames,
       year: extractReleaseYear(rg["first-release-date"]),
-      code: makeAlbumAbbr(title),
+      code: makeAlbumAbbr(artistNames || title),
       releaseType: typeLabel,
       score: Number(rg.score) || 0,
       licenseNote: "Metadata: MusicBrainz Release Group (CC0)"
@@ -80,7 +80,7 @@ export function parseWikipediaAlbumSearch(json, artistHint = "") {
       albumName: cleanAlbum || rawTitle,
       artistName: String(artistHint || "").trim(),
       year: extractReleaseYear(cleanSnippet),
-      code: makeAlbumAbbr(cleanAlbum || rawTitle),
+      code: makeAlbumAbbr(artistHint || cleanAlbum || rawTitle),
       releaseType: "Album",
       score: 100,
       disambiguation: cleanSnippet.slice(0, 96) + (cleanSnippet.length > 96 ? "…" : ""),
