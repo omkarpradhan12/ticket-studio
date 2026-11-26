@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase8.1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9e">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase8.1">
-<link rel="stylesheet" href="css/app.css?v=phase8.1">
+<link rel="stylesheet" href="css/tokens.css?v=phase9e">
+<link rel="stylesheet" href="css/app.css?v=phase9e">
 </head>
 <body>
 <header class="topbar">
@@ -20,6 +21,8 @@
       <a class="nav-tab active" href="index.html">Sheet Editor</a>
       <a class="nav-tab" href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
       <a class="nav-tab" href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+      <a class="nav-tab" href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
+      <a class="nav-tab" href="album-lookup.html"><span data-icon="view"></span> Album Lookup</a>
     </nav>
     <div class="history-actions" aria-label="History controls. Undo history is in memory only and clears on reload.">
       <button class="g history-action" id="undo" type="button" aria-label="Undo" data-tooltip="Undo" disabled><span data-icon="undo"></span></button>
@@ -52,6 +55,8 @@
         <a href="index.html" aria-current="page">Sheet Editor</a>
         <a href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
         <a href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+        <a href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
+        <a href="album-lookup.html"><span data-icon="view"></span> Album Lookup</a>
       </div>
     </details>
   </div>
@@ -142,6 +147,25 @@
           <span>Stamp ink wear</span>
           <input type="range" id="wear" min="0" max="100" value="35">
         </label>
+        <label class="fld full">
+          <span>Corner hardware</span>
+          <select id="corner-hw">
+            <option value="bolts">Bolts (Default)</option>
+            <option value="pins">Push pins</option>
+            <option value="staples">Corner staples</option>
+            <option value="rivets">Eyelet rivets</option>
+            <option value="none">None (Clean corners)</option>
+          </select>
+        </label>
+        <fieldset class="fx-marks-group full">
+          <legend>Fun distress marks</legend>
+          <div class="ctrl-grid fx-marks-grid">
+            <label class="chk"><input type="checkbox" id="fx-claw"> Claw marks</label>
+            <label class="chk"><input type="checkbox" id="fx-tear"> Corner tear</label>
+            <label class="chk"><input type="checkbox" id="fx-bullet"> Bullet hole</label>
+            <label class="chk"><input type="checkbox" id="fx-blood"> Blood spatter</label>
+          </div>
+        </fieldset>
       </div>
     </details>
 
@@ -377,13 +401,23 @@
         <label class="fld">
           <span>Title font</span>
           <select id="tfont" data-live>
-            <option value="theme">Default (Pirata One)</option>
-            <option value="pirata">Pirata One</option>
-            <option value="playfair">Playfair Display</option>
-            <option value="mont">Montserrat</option>
-            <option value="bebas">Bebas Neue</option>
-            <option value="type">Special Elite</option>
-            <option value="courier">Courier</option>
+            <option value="theme">Default (Theme / Pirata One)</option>
+            <option value="scrawl">Scraggly Handwriting (Reenie Beanie)</option>
+            <option value="rough">Rough Scrawl (Rock Salt)</option>
+            <option value="script">Handwriting (Caveat / Script)</option>
+            <option value="calligraphy">Calligraphy (Great Vibes)</option>
+            <option value="brush">Brush Script (Dancing Script)</option>
+            <option value="marker">Sharpie Marker (Permanent Marker)</option>
+            <option value="pirata">Pirata One (Gothic)</option>
+            <option value="playfair">Playfair Display (Editorial)</option>
+            <option value="georgia">Georgia Serif (Classic)</option>
+            <option value="mont">Montserrat (Modern Sans)</option>
+            <option value="trebuchet">Trebuchet MS (Retro Sans)</option>
+            <option value="bebas">Bebas Neue (Condensed)</option>
+            <option value="impact">Oswald / Impact (Poster)</option>
+            <option value="type">Special Elite (Typewriter)</option>
+            <option value="courier">Courier (Mono)</option>
+            <option value="consolas">Space Mono / Consolas (Tech)</option>
           </select>
         </label>
         <label class="fld">
@@ -437,9 +471,14 @@
           <legend>Ticket details</legend>
           <div class="hardware-toggle-row">
             <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
+            <label class="chk" id="nfc-yt-wrap"><input type="checkbox" id="nfc-yt" checked> With YT Music logo</label>
             <label class="chk"><input type="checkbox" id="serial" data-live> Serial number</label>
             <label class="chk"><input type="checkbox" id="punch" data-live> Punch hole</label>
           </div>
+          <label class="fld full" id="nfc-scale-wrap">
+            <span class="lbl-row"><span>NFC logo size</span><output id="nfc-scale-val" for="nfc-scale">100%</output></span>
+            <input type="range" id="nfc-scale" min="50" max="200" step="10" value="100" data-live aria-valuetext="100%">
+          </label>
           <span class="hint">Punch hole is a printed guide; use a 4 mm punch.</span>
         </fieldset>
       </div>
@@ -557,11 +596,15 @@
         <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
       </div>
     </div>
-    <label class="card-search-slot">
-      <span class="sr-only">Search cards</span>
-      <span class="search-slot-icon" data-icon="search"></span>
-      <input id="card-search" type="search" placeholder="Search cards (coming in Phase 9)" disabled>
-    </label>
+    <div class="card-search-bar">
+      <div class="card-search-slot">
+        <label class="sr-only" for="card-search">Search cards</label>
+        <span class="search-slot-icon" data-icon="search"></span>
+        <input id="card-search" type="search" placeholder="Search title, genre, origin, year…" autocomplete="off" spellcheck="false" aria-describedby="card-search-count">
+        <button class="g icon-only card-search-clear" id="card-search-clear" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><span data-icon="close"></span></button>
+      </div>
+      <output class="card-search-count" id="card-search-count" for="card-search" aria-live="polite" hidden></output>
+    </div>
     <div id="rows"></div>
   </div>
 
@@ -671,22 +714,89 @@
 </div>
 
 <!-- CARD PREVIEW MODAL -->
-<div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview">
+<div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview and quick editor">
   <div class="pvbox">
     <div class="pvbar">
-      <button class="g" id="pvp" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
+      <button class="g" id="pvp" type="button" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
       <span id="pvt" class="preview-title"></span>
-      <button class="g" id="pvn" aria-label="Next card" data-tooltip="Next card"><span data-icon="next"></span></button>
+      <button class="g" id="pvn" type="button" aria-label="Next card" data-tooltip="Next card"><span data-icon="next"></span></button>
       <span class="preview-spacer" aria-hidden="true"></span>
-      <button class="g" id="pve">Edit</button>
-      <button class="g" id="pvpng">PNG</button>
-      <button class="g" id="pvsvg">SVG</button>
-      <button id="pvx" aria-label="Close preview" data-tooltip="Close preview"><span data-icon="close"></span></button>
+      <button class="g sm" id="pv-drag-photo" type="button" aria-pressed="false" data-tooltip="Drag or scroll/pinch photo inside card"><span data-icon="move"></span> Drag photo</button>
+      <button class="g sm" id="pv-move-stamps" type="button" aria-pressed="false" data-tooltip="Drag or rotate stamp inside card"><span data-icon="move"></span> Move stamps</button>
+      <button class="g" id="pve" type="button">Jump to sidebar</button>
+      <button class="g" id="pvpng" type="button">PNG</button>
+      <button class="g" id="pvsvg" type="button">SVG</button>
+      <button id="pvx" type="button" aria-label="Close preview" data-tooltip="Close preview"><span data-icon="close"></span></button>
     </div>
-    <div id="pvi" aria-label="Card preview"></div>
+    <div class="pv-body">
+      <div id="pvi" aria-label="Card preview"></div>
+      <div class="pv-editor" id="pv-editor" aria-label="Edit selected card">
+        <div class="pv-ed-group">
+          <div class="pv-ed-grid">
+            <label class="fld w"><span>Artist / band name</span><input type="text" id="pv-title" placeholder="Artist / band name"></label>
+            <label class="fld"><span>Genre</span><input type="text" id="pv-genre" placeholder="Genre"></label>
+            <label class="fld"><span>Origin / place</span><input type="text" id="pv-loc" placeholder="Place"></label>
+            <label class="fld"><span>Year</span><input type="text" id="pv-year" placeholder="Year"></label>
+            <label class="fld"><span>Code</span><input type="text" id="pv-code" placeholder="Abbr"></label>
+            <label class="fld"><span>Stamp text</span><input type="text" id="pv-stx" placeholder="Same as sheet"></label>
+          </div>
+        </div>
+        <div class="pv-ed-group">
+          <div class="pv-ed-row">
+            <button class="g sm" id="pv-photo-btn" type="button"><span data-icon="upload"></span> Photo…</button>
+            <button class="g sm" id="pv-photo-remove" type="button" disabled>Remove photo</button>
+            <button class="g sm" id="pv-crop-reset" type="button">Reset crop</button>
+            <label class="pv-accent-pick"><input type="color" id="pv-accent" aria-label="Card accent colour"><span>Accent</span></label>
+          </div>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Photo zoom</span><output id="pv-zm-val" for="pv-zm">100%</output></span>
+            <input type="range" id="pv-zm" min="100" max="300" step="1" value="100">
+          </label>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Photo horizontal</span><output id="pv-px-val" for="pv-px">0</output></span>
+            <input type="range" id="pv-px" min="-100" max="100" step="1" value="0">
+          </label>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Photo vertical</span><output id="pv-py-val" for="pv-py">0</output></span>
+            <input type="range" id="pv-py" min="-100" max="100" step="1" value="0">
+          </label>
+        </div>
+        <div class="pv-ed-group">
+          <div class="pv-ed-grid">
+            <label class="fld"><span>Card theme</span><select id="pv-theme"></select></label>
+            <label class="fld"><span>Card stamp</span><select id="pv-stamp"></select></label>
+            <label class="fld w">
+              <span>Corner hardware</span>
+              <select id="pv-hardware">
+                <option value="">Same as sheet</option>
+                <option value="bolts">Bolts (Default)</option>
+                <option value="pins">Push pins</option>
+                <option value="staples">Corner staples</option>
+                <option value="rivets">Eyelet rivets</option>
+                <option value="none">None (Clean corners)</option>
+              </select>
+            </label>
+          </div>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Stamp angle</span><output id="pv-srot-val" for="pv-srot">0°</output></span>
+            <input type="range" id="pv-srot" min="-180" max="180" step="5" value="0">
+          </label>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Stamp scale</span><output id="pv-sscale-val" for="pv-sscale">100%</output></span>
+            <input type="range" id="pv-sscale" min="40" max="250" step="5" value="100">
+          </label>
+          <div class="pv-ed-row pv-ed-actions">
+            <button class="g sm" id="pv-surprise" type="button"><span data-icon="surprise"></span> Surprise</button>
+            <button class="g sm" id="pv-lock" type="button" aria-pressed="false"><span data-icon="lock"></span> Keep</button>
+            <button class="g sm" id="pv-reset-stamp" type="button">Reset stamp</button>
+            <button class="g sm" id="pv-reset-style" type="button" hidden>Reset style</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase8.1"></script>
+<script type="module" src="js/app.js?v=phase9e"></script>
 </body>
 </html>

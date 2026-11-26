@@ -2,8 +2,10 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 8 ("Surprise me" per-card randomisation) complete (`7ce1da6`); ready for Phase 9 (Band search) upon owner go-ahead
-- Next approval: owner confirmation before starting Phase 9.
+- Current phase: Photo wheel/pinch zoom (`31b8eb2`) + Phase 10 Step 1 & Card Back design specs recorded; paused while owner stepped away.
+- Next queue when owner resumes:
+  1. **Pre-Phase 10 Export UI Update**: Make **PDF (300 dpi)** the primary download CTA (`index.html`, `#mobile-export`), move **SVG** under an **Advanced** exports dropdown menu, and add a **Copy page SVG code** dialog with copyable per-page SVG blocks.
+  2. **Phase 10 Step 2 & Step 3**: Visiting Card layout (`vc_eu` `85×55`, `vc_us` `89×51`, `vc_90` `90×50`, landscape/portrait) + Optional Mirrored Duplex Card Back (`settings.cardBack`) across all card sizes.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -71,8 +73,10 @@
 | P7-02 | Stamp drag hit-test/touch/export/undo | L | high | done | 7b341db, ced4597, 276f6bd, d0d93b6 | `Move stamps` mode, 1-step undo, `.st-ui` export stripping, strict card-boundary clamping (`276f6bd`), visual 23+ stamp picker & `Customise` fold (`a6b67ca`, `d0d93b6`); stamps customized in `0c7e278`, `155b2a0` |
 | P8-01 | Per-card Surprise me style overrides | L | high | done | 1b07075, 07af698 | Optional per-card style schema (`js/card-styles.mjs`), unified `resolveCardRenderOptions` in `svg-engine.js` (Card > Page > Sheet priority), JSON/Bulk Import support, `MAX_CARDS = 300` |
 | P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
-| P9-01 | Band search and match count | M | medium | todo | - | |
-| P10-01 | Visiting card layout | L | high | todo | - | |
+| P9-01 | Band search and match count (Part A: local) | M | medium | done | ac5d0e9 | Non-destructive accent/case-insensitive filter (`js/search.mjs`), `M of N`, Escape/Clear/Enter/ArrowDown, preview page scroll, `tests/search.test.mjs`, browser QA passed |
+| P9-02 | Online band lookup (Part B: isolated page + providers) | M | medium | done | 19d3674 | Standalone `band-lookup.html` + `js/band-lookup.js` + `js/band-lookup-providers.mjs` (MusicBrainz v2 + Wikipedia/Wikimedia photo, rate queue, cache, non-overwriting fill, undo transfer); `0c728b3` adds Corner Hardware & Fun Distress FX |
+| P9-03 | PDF 300 dpi primary export + Advanced SVG & copyable page SVG code dialog | S | low | todo | - | Owner requested right before Phase 10; make `#pdf` primary CTA (`#mobile-export` -> PDF), move `#svg` into `Advanced` menu, add `#svg-code-dialog` with per-page SVG code blocks |
+| P10-01 | Visiting card layout & optional mirrored card back (Step 1 spec done; run after `P9-03`) | L | high | in_progress | 0e96d1f, 3f40efc | Step 1 + Duplex Card Back spec recorded in `docs/PROGRESS.md` |
 
 ## Known issue disposition
 - Phase 3 verified and addressed B4, B5, B14, and U1-U8 at desktop and 390px. U6's Surprise me/search controls are intentionally disabled placeholders for Phases 8-9.
@@ -684,4 +688,187 @@ Every new style override lives as an **optional** property on each card object i
   - Made **Quick colours** (`Paper`, `Text`, `Accent`, `Tape`, `Use photo accent`) reflect and live-override any active sheet theme via optional `settings.quickColors` with `#ct_reset` (**Reset colours**), and added `#grad-stops-block` (**Gradient colours**: 2–4 stop pickers + hex inputs + `+ Colour` / `− Remove`) whenever a Gradient theme is selected (`1c2035e`).
   - Organised all `44` built-in themes + Saved Custom/Custom into `8` clear built-in categories (`Light · Classic & Paper`, `Light · Pastel & Pop`, `Dark · Moody & Ink`, `Dark · Neon & Retro`, `Gradient · Dual & Triple`, `Gradient · Radial`, `Gradient · Dark Presets`, `Gradient · Light Presets`) via `getGroupedThemes()` and replaced the plain `#style` `<select>` UI with a custom visual dropdown (`#theme-trigger` + `#theme-menu`, live miniature card SVG thumbnails via `renderThemeThumbSvg()`, type badges, and quick filter input `#theme-filter`) synced 2-way with `#style` (`1c0f4e2`).
   - Split the overloaded sidebar drawers into `6` focused accordions (`Page`, `Paper & wear`, `Theme & colours`, `Borders`, `Card & photo`, `Stamps` — moving grain/vignette/creases/scuffs next to `Page` and removing the nested `Effects -> Advanced` drawer), added `#delete-page` (`deleteActivePage`, 1-step undoable, disabled at 1 page) beside `#duplicate-page`, and added `.rows-page-break` dividers (`End of page N · Cards X–Y`) inside `#rows` (`getCardRowEl` replaces child-index assumptions) (`e5dea0b`).
-  - Re-ran all 6 Node unit test suites (`randomiser.test.mjs` — `24.2 ms` for 200 cards, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `217` unique HTML ID check, and `git diff --check` after `e5dea0b`; `?v=phase8.1` is live on `http://127.0.0.1:8090/` for interactive user verification.
+  - Re-ran all 6 Node unit test suites (`randomiser.test.mjs` — `24.2 ms` for 200 cards, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `217` unique HTML ID check, and `git diff --check` after `e5dea0b`.
+  - Overhauled the `vinyl` stamp (`r=18` outer disc, `r=15.9`/`13.8` vinyl micro-groove tracks + diagonal shimmer arcs, `r=10.8` center record label ring, `r=2` center spindle hole with flanking label ticks and `yr: -4.2` / `nm: 6.4` clearance) and appended `3` new music stamp variants (`spotify` "Spotify", `ytmusic` "YT Music", `clef` "Treble clef") bringing `SKINDS` to `34` and `STAMP_OPTIONS` to `36` (`560b07c`), bumped `?v=phase8.2` uniformly across local references, and re-verified all 6 Node test suites + `git diff --check`.
+  - Updated `spotify`, `ytmusic` (concentric double-ring disc + play triangle emblem), and `clef` to standalone ringless stamp shapes (`openText: true` preserving stamp color below solid emblems), expanded `TF` + `#tfont` + `FONT_KEYS` + `FONT_POOLS` to `14` fonts (`script` Handwriting, `calligraphy`, `brush`, `marker`, `georgia`, `trebuchet`, `impact`, `consolas`, alongside `pirata`, `playfair`, `mont`, `bebas`, `type`, `courier` + Google Fonts links), and added the **Polaroid** built-in theme (`polaroid: 1`, recessed `146×146` film aperture + deep bottom white chin rendering only band name + year, custom Polaroid swatch thumbnail) (`b36f160`).
+  - Added scraggly handwriting options (`scrawl` Reenie Beanie / Covered By Your Grace / Ink Free, and `rough` Rock Salt, bringing `TF` to `16` fonts), switched `polaroid` default font to `scrawl` (`TF.scrawl` with `ys: 11`), wired `T.min` (**Minimal** `min` and **Minimal ink** `mini`) into `isMinimal` in `js/svg-engine.js` (previously unhooked because only `cfg.minimalLayout === true` was checked, causing Minimal themes to render full cluttered ticket layouts!) with `TF.mont` default, wrapped 2-line minimal spacing (`210 + D`), `centerTitle` alignment, and `<defs>` support for photo filters/halftone (`de221e7`, `?v=phase8.4`). Re-verified all 6 Node unit test suites and `git diff --check`.
+
+---
+
+## Phase 9 Part A (Local Band Search) — Implementation & Verification (`ac5d0e9`, `?v=phase9`)
+
+- **Implemented (`js/search.mjs`, `index.html`, `css/app.css`, `js/app.js`, `tests/search.test.mjs`)**:
+  - Built pure filter utilities in `js/search.mjs` (`normalizeSearchText` with NFD diacritic stripping + Latin ligature normalization `æ`/`ø`/`œ`/`ß`/`ł`/`đ`/`ð`/`þ`, `tokenizeSearchQuery` for multi-word queries across fields, `cardSearchHaystack` covering `title`, `genre`, `loc`, `year`, `code`, `stx`, and `imgUrl`, `filterCardIndices`, `formatSearchCount`, and `debounce` with `.cancel()` / `.flush()`).
+  - Enabled `#card-search` in the Phase 3 `.card-search-slot`, paired with `#card-search-clear`, `#card-search-count` (`"1 of 18"`, `"0 of 18"`), and `#card-search-empty` with inline **"Clear search"** button.
+  - Wired transient `cardSearchQuery` completely outside `studioState`, `History` snapshots, autosave, page layout, `#sheets` SVG rendering, and exports; typing debounces at `110ms` over cached DOM rows without rebuilding `#rows` (keeping active focused inputs visible even while editing).
+  - Keyboard & click navigation: `Escape` / Clear restores all rows and keeps focus on `#card-search`; `Enter` selects the first matching card; `ArrowDown` moves focus to the first visible match; clicking any matching row (`[data-action="select-card"]` / `.row`) calls `scrollStageToPage()` to sync `#page-select` and scroll `#stage` to the selected card's page.
+- **Verification**:
+  - **Node unit tests**: `node tests/search.test.mjs` + all 6 existing suites (`stamps.test.mjs`, `borders.test.mjs`, `randomiser.test.mjs` — `26.8 ms` 200-card generation, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `219` unique HTML ID check (`0` duplicates), and `git diff --check` all passed.
+  - **Browser QA (`http://127.0.0.1:8090/`)**: Tested `index.html` at `1440×900` (`18`-card sheet: Card 12 `"Björk"` matched by `"bjork"` -> `"1 of 18"`, 17 rows collapsed cleanly via `[hidden] { display: none !important }`, Undo stack untouched, clicking Card 12 updated `#page-count-label` to `"Page 2 of 2"` and scrolled `#stage` so `page2Y` moved from `1220.5` to `207.14`, `Escape` / Clear / `"0 of 18"` unclipped empty state all verified), `390×844` mobile (`0` horizontal overflow), `theme-studio.html`, `bulk-import.html`, and `tests/title-layout.test.html` (`4` passed) with `0` console errors.
+
+---
+
+## Phase 9 Part B (Online Band Lookup) — Pre-Build TheAudioDB Browser Test Report
+
+Before writing any Part B lookup UI, tested `https://www.theaudiodb.com/api/v1/json/123/search.php?s=...` directly from a real browser origin (`http://127.0.0.1:8090`), plus loaded returned media URLs from `https://r2.theaudiodb.com` and inspected TheAudioDB's documentation/terms pages (`https://www.theaudiodb.com/free_music_api` and `https://www.theaudiodb.com/docs_terms_of_use.php`).
+
+### 1. Cross-Origin Readability (CORS for Plain GET)
+- **Result: PASS (`HTTP 200`, `access-control-allow-origin: *`)**.
+- All 6 plain `GET` `fetch()` calls (no custom headers) from `http://127.0.0.1:8090` succeeded cross-origin cleanly (`corsReadable: true`).
+- Response headers from `www.theaudiodb.com`: `access-control-allow-origin: *`, `access-control-allow-methods: GET, PUT, POST, DELETE, OPTIONS`.
+
+### 2. Sample Band Responses (5 Bands + 1 Nonexistent Band)
+| Query | HTTP Status | `artists` count | Key fields returned (`artists[0]`) |
+|---|---|---|---|
+| `Radiohead` | `200` | `1` | `strArtist: "Radiohead"`, `strGenre: "Alternative Rock"`, `strStyle: "Rock/Pop"`, `strCountry: "Abingdon, England"`, `intFormedYear: "1991"`, `strLabel: "XL Recordings"`, `strArtistThumb`, `strArtistLogo`, `strArtistBanner` |
+| `The Black Keys` | `200` | `1` | `strArtist: "The Black Keys"`, `strGenre: "Indie"`, `strStyle: "Rock/Pop"`, `strCountry: "Akron, Ohio, USA"`, `intFormedYear: "2001"`, `strLabel: "Fat Possum Records"` |
+| `Black Sabbath` | `200` | `1` | `strArtist: "Black Sabbath"`, `strGenre: "Heavy Metal"`, `strStyle: "Metal"`, `strCountry: "Birmingham, England"`, `intFormedYear: "1969"`, `strLabel: "Vertigo"` |
+| `Oasis` | `200` | `1` | `strArtist: "Oasis"`, `strGenre: "Rock"`, `strStyle: "Britpop"`, `strCountry: "Manchester, England"`, `intFormedYear: "1991"`, `strLabel: "Epic"` |
+| `Muse` | `200` | `1` | `strArtist: "Muse"`, `strGenre: "Alternative Rock"`, `strStyle: "Rock/Pop"`, `strCountry: "Teignmouth, England"`, `intFormedYear: "1994"`, `strLabel: "Warner Bros. Records"` |
+| `xyzzy_no_such_band_99999` | `200` | `0` (`null`) | Body is `{"artists":null}` (`artists` is `null`, not `[]`). |
+
+- **Schema note**: `strBiographyEN` is **not** present in the returned JSON object; the English biography is stored in **`strBiography`**. Free tier strictly caps `search.php` to `1` artist (`Free Limit: 1` vs Premium `10`), which can mis-match ambiguous/common band names if the top hit isn't the intended band.
+
+### 3. Image Load & Canvas CORS Readback (`r2.theaudiodb.com`)
+- Tested returned thumb URL `https://r2.theaudiodb.com/images/media/artist/thumb/35poth1668098458.jpg` in real browser from `http://127.0.0.1:8090`:
+  - **Plain `<img src=...>` (no `crossOrigin`)**: **Loaded cleanly** (`loaded: true`, `700×700`, `image/jpeg`), so SVG card previews and SVG exports render the image.
+  - **Canvas pixel read on plain `<img>`**: Blocked with `SecurityError: Failed to execute 'getImageData' on 'CanvasRenderingContext2D': The canvas has been tainted by cross-origin data.`
+  - **`<img crossOrigin="anonymous" src=...>`**: **Failed to load (`loaded: false`)** — `https://r2.theaudiodb.com` does **not** emit `access-control-allow-origin` headers on image responses.
+- **Impact on Ticket Studio**:
+  - Automatic accent sampling (`sampleImageColor()` via canvas) **cannot** sample pixel colors from `r2.theaudiodb.com` URLs; if built, `corsLimited: true` must be preserved so it gracefully keeps default/existing accent without crashing.
+  - Likewise, canvas-based PNG/PDF exports (`rasterizeSvg`) cannot rasterize external `r2.theaudiodb.com` images directly (SVG export & Print work; users who need PNG/PDF raster export will still need a local photo upload or CORS-enabled image host, as warned by the existing `CORS-limited image` tag).
+
+### 4. TheAudioDB Terms, Key `"123"`, Rate Limits, Attribution & Images
+- Verified on `https://www.theaudiodb.com/free_music_api` and `https://www.theaudiodb.com/docs_terms_of_use.php`:
+  - **Shared key `"123"`**: Officially documented free/test API key (`"The current free API key is: 123"`). Free API explicitly allows testing & lookup in development projects, **but states**: *"You cannot publish apps to an appstore unless you are a paid subscriber ($8/month Premium)"* — so free key `"123"` is appropriate for personal/local/open test tools, while a public consumer distribution would breach their free-key rule unless paid/attributed.
+  - **Rate limit**: Free tier is **30 requests/minute** (excess returns `HTTP 429` for 1 minute); Premium = 100/min.
+  - **Attribution & Image reuse**: Paid/public usage requires crediting & linking back to TheAudioDB as the data/artwork source (`"must not pass artwork off as your own and should link back to our website"`). Front-end image access allows appending `/medium` (500px) or `/small` (250px) to artwork URLs; trademarked logos must be used `"As is"`.
+
+### 5. Owner Decision Needed Before Building Phase 9 Part B
+1. **Online lookup provider & photo handling for Part B**:
+   - **Option A (Recommended if single-match text lookup + optional CORS-limited photo is sufficient)**: Build Part B using **TheAudioDB v1 (key `123`)** with an explicit user-triggered lookup dialog (explicit disclosure that the typed query goes to `theaudiodb.com`, `30/min` session throttling + in-memory cache), **metadata fill first** (artist name, genre, origin, formed year), and an opt-in copyright-warned photo checkbox that sets `imgUrl` + `corsLimited: true` cleanly (falling back to default accent without canvas crash; keeping upload/URL fallback). Best if you use this app as a personal/static web tool.
+   - **Option B (Multi-result pick list & appstore/public-safe metadata)**: Switch Part B's pre-build test & dialog to **MusicBrainz API** (`ws/2/artist/?query=...&fmt=json`, CC0 metadata, returns multiple ranked matches to disambiguate similar band names cleanly) + optional **Wikipedia/Wikimedia Commons** CORS-friendly images, tested the same way in-browser before building.
+   - **Option C**: Skip Part B (keep Phase 9 strictly local search only) and move to **Phase 10 (Visiting card layout)**.
+
+---
+
+### 6. Single-Card Preview Quick Editor (`3430114`)
+- Replaced `#pv`'s read-only view with an inline live editor (`.pv-body` side-by-side on desktop `920px`, flex-column stacked on mobile `<= 780px`): `#pv-title`, `#pv-genre`, `#pv-loc`, `#pv-year`, `#pv-code`, `#pv-stx`, photo upload/crop sliders (`#pv-zm`, `#pv-px`, `#pv-py`), `#pv-accent`, card `#pv-theme`/`#pv-stamp`, stamp angle/scale sliders (`#pv-srot`, `#pv-sscale`), lock/surprise/reset actions, and `"Jump to sidebar"` (`#pve`).
+- Guarded `ArrowLeft`/`ArrowRight` card flipping while typing or scrubbing sliders inside `#pv`, synced `#rows` inputs cleanly, and verified live SVG updates + Undo + mobile `390×844` stacking (`#pvi` `115..486.36`, `.pv-editor` `500.36..1270.13`, `0` overflow, `0` console errors, `245` unique DOM IDs, all 7 Node tests passing in `23.8ms`).
+
+---
+
+## Option B — MusicBrainz & Wikipedia/Wikimedia Pre-Build Browser Test Report
+
+Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console errors):
+
+1. **MusicBrainz v2 JSON Search (`https://musicbrainz.org/ws/2/artist/?query=artist:...&fmt=json&limit=5`, spaced `1150ms` apart)**:
+   - **CORS**: `corsReadable: true` on all requests; returns rich multi-candidate disambiguation (`Nirvana`: `43` hits with `"1980s–1990s US grunge band"` vs `"60s band from the UK"`; `Muse`: `"UK rock band"` vs Japanese/French bands; `Oasis`: `"Noel & Liam Gallagher"` vs US duo/Mexican group) with `name`, `disambiguation`, `begin-area`, `area`, `country`, `life-span.begin`, top `tags[]`, and `score`.
+   - **Browser `User-Agent` & `HTTP 503` constraint**: Browsers cannot override `User-Agent` in `fetch()`, placing direct static-site calls in MusicBrainz's shared **anonymous throttle pool** — **`Black Sabbath` and `xyzzy_no_such_band_99999` returned `HTTP 503`** even at `1150ms` spacing (`Radiohead`, `Nirvana`, `Oasis`, `Muse` returned `HTTP 200`). Any client implementation using MusicBrainz directly must enforce `>= 1200ms` serialized queueing, session caching, explicit retry/backoff on `503`, and clear offline/throttle feedback (with no proxy per constraints).
+2. **Wikipedia REST v1 & MediaWiki Action API (`origin=*`)**:
+   - **CORS & Reliability**: Returned **`HTTP 200` and `corsReadable: true`** across all calls (`en.wikipedia.org/api/rest_v1/page/summary/...` & `w/api.php?action=query&prop=pageimages|extracts&pithumbsize=600&format=json&origin=*`), with `0` `503` errors and concise band descriptions + disambiguation links.
+3. **Wikimedia Commons Thumbnails (`https://thumb.wikimedia.org/...`) & Canvas Readback**:
+   - Plain `<img>`: Loaded cleanly (`330×120`).
+   - **`<img crossOrigin="anonymous">` + `<canvas>` `ctx.getImageData(0, 0, 1, 1)`**: **`loaded: true`, `canvasOk: true`, `pixel: [210, 179, 213, 255]`, `canvasErr: null`**. Unlike TheAudioDB (`r2.theaudiodb.com`), Wikimedia Commons allows full CORS canvas reads so automatic **accent sampling** AND **300-DPI PNG/PDF exports** work cleanly.
+4. **Licensing & Attribution**:
+   - MusicBrainz core metadata is **CC0** (public domain); Wikipedia/Wikimedia photos carry per-file free licenses (CC-BY-SA / Public Domain / fair-use, with attribution/right-to-use reminder shown to the user before loading).
+
+### Ready to build Part B upon approval
+- **Proposed build (`Option B1 — Recommended`)**: Use **MusicBrainz v2** (primary metadata: multi-match pick list showing Name, Disambiguation, Origin, Formed year, Genres, CC0) + **on-demand Wikipedia/Wikimedia photo lookup** for the chosen artist (CORS-safe image preview with automatic accent sampling + copyright/license notice + PNG/PDF export compatibility), backed by a serialized `1.2s` request queue, `503` backoff/retry button, in-memory cache, and fallback to **Wikipedia search** if MusicBrainz returns `503` — filling only unedited fields (`Fill this card` / `Add as new card`, each 1 Undo step). Confirm to start building!
+
+---
+
+## Phase 9 Part B (`19d3674`) & Corner Hardware / Fun Distress FX (`0c728b3`) Implementation (`?v=phase9b`)
+
+- **Isolated Online Band Lookup (`band-lookup.html`, `js/band-lookup.js`, `js/band-lookup-providers.mjs`, `tests/band-lookup.test.mjs`, `19d3674`)**:
+  - Created standalone `band-lookup.html` linked via a single nav tab across `index.html`, `theme-studio.html`, and `bulk-import.html` so it can be cleanly disabled/hidden (`LOOKUP_FEATURE_CONFIG.enabled`) or have providers swapped without touching the core Sheet Editor.
+  - Wired MusicBrainz v2 serialized search (`>=1250ms` queue, session cache, `10s` timeout, `503`/offline recovery bar with **Retry** and **Try Wikipedia search instead**), HTML-entity decoding in Wikipedia fallback snippets, optional Wikimedia Commons thumbnail fetch + upload/URL fallbacks, explicit disclosure & copyright notices, `Add as new card to sheet`, non-overwriting `Fill selected card` (`mergeCardLookupFields`), and 1-step Undo transfer toast.
+- **Corner Hardware & Fun Surface Effects (`js/corners.mjs`, `js/storage.js`, `js/svg-engine.js`, `js/card-styles.mjs`, `js/export.js`, `index.html`, `css/app.css`, `js/app.js`, `tests/corners.test.mjs`, `0c728b3`)**:
+  - Replaced hardcoded 4-corner screw bolts in `renderCard()` with `renderCornerHardware()` (`bolts` preserving byte-for-byte legacy parity, `pins` Push pins, `staples` Corner staples, `rivets` Eyelet rivets, `none` Clean corners) + `#corner-hw` in **Paper & wear** and per-card `#pv-hardware` in `#pv`.
+  - Added optional fun surface distress toggles (`#fx-claw` Claw marks, `#fx-tear` Corner tear, `#fx-bullet` Bullet hole, `#fx-blood` Blood spatter) rendered cleanly across standard, minimal, and Polaroid cards with 1-step Undo/Redo and JSON export/import persistence.
+- **Verification**:
+  - Added `wrapToTwoLines()` and `subtitleLayout()` in `js/svg-engine.js` so long `Genre // Place` subtitles wrap cleanly onto 2 readable lines (`y=213.0` & `221.0` on standard tickets, `minimalSubY` & `+7.5` on Minimal cards, preferring clean breaks after `//` when both parts fit) while keeping short subtitles identical (`561d0d2`, `?v=phase9c`). Expanded `tests/title-layout.test.html` to `7` checks and verified in browser (`"Passed 7 card title layout checks."`, long subtitle rendered at `font-size="4.8"` across 2 lines, `#lookup-recovery` cleanly hidden on `band-lookup.html`, `0` console errors) alongside all `9` Node unit test suites.
+  - Built standalone **Album Lookup** workspace (`album-lookup.html`, `js/album-lookup.js`, `js/album-lookup-providers.mjs`, `tests/album-lookup.test.mjs`, `1b99442`, `?v=phase9d`) per Option 2 (skipping any 3rd-studio-album ordinal lookup per owner instruction) and wired `kind: "album"` card rendering in `js/svg-engine.js` (Album Name headline, clean Artist Name subtitle without `"Genre //"` prefix, `EST. <Year>` & left-border `NO. <Year>-<Abbr>`, `"ALBUM PASS"` tag) + JSON export/import round-trip (`js/export.js`, `js/app.js`). Verified MusicBrainz `OK Computer` + `Radiohead` (`5` candidates), CORS-safe Cover Art Archive `thumb500.jpg` + sampled accent `#3b9bce`, live SVG preview & direct SVG/PNG export, Undo/sheet transfer onto `index.html`, all `10` Node test suites (`25.6 ms`), `git diff --check`, and 5-page desktop + `390×844` browser QA (`0` console errors, `0` horizontal overflow).
+  - **Follow-up UX polish (`?v=phase9e`, `662bbae`, `31b8eb2`)**: Updated album abbreviations everywhere to derive from the band/artist (`artistName` / `loc`) instead of album title (`"OK Computer"` by `"Radiohead"` -> `RADI`, typing `"Pink Floyd"` -> `PINK`); added `#nfc-yt` (`With YT Music logo` toggle -> `.nfc-only` mode) and `#nfc-scale` (`50%`–`200%` NFC logo size slider) via `renderNfcBadge()` + `SET0`; added 1-step undoable `removeCardPhoto()` in both sidebar card rows (`.row-remove-photo`) and Single Card View (`#pv-photo-remove`); wired `#pv-drag-photo` and `#pv-move-stamps` directly into `#pv` via shared `bindCardStageInteractions()`; and (`31b8eb2`) added scroll-to-zoom (`wheel`), trackpad pinch (`ctrlKey` + `wheel`), and touchscreen two-finger pinch-to-zoom (`activePpPointers` / `pinchState`) over `.pp` whenever photo drag is active, syncing zoom live with `[data-adjust='zm']` / `#pv-zm` and 1-step coalesced undo.
+
+---
+
+## Phase 10 Step 1 — Visiting Card Layout Design Proposal (Awaiting Approval)
+
+### 1. Card Dimensions, Orientation Toggle & Real Sheet Packing Math
+- **Card Size Selector (`#csize`) + Orientation Toggle (`#corient`)**:
+  - Keep existing 5 legacy keys untouched at their current values (`ticket`, `poker`, `credit`, `mini`, `tarot`) so existing sheets and exports remain byte-for-byte identical.
+  - Append a `"Visiting Cards"` `<optgroup>` to `#csize` (`index.html` Page accordion + `SIZES` in `js/svg-engine.js`):
+    - `vc_eu`: **Visiting Card EU** — `85 × 55 mm` (`[85, 55]`)
+    - `vc_us`: **Visiting Card US** — `89 × 51 mm` (`[89, 51]`, `3.5 × 2 in`)
+    - `vc_90`: **Visiting Card Wide** — `90 × 50 mm` (`[90, 50]`)
+  - Pair `#csize` with an **Orientation** control (`#corient` -> optional `settings.cardOrientation`: `"landscape"` default | `"portrait"`, defaulting cleanly to `"landscape"` for older sheets or when first selecting any `vc_*` size; hidden/ignored when any legacy size is active).
+- **Layout Engine Fix (`computeLayout(paperVal, csizeVal, orientation)` in `js/svg-engine.js`)**:
+  - Legacy branch unchanged (`CH = Math.max(204, Math.min(309, Math.round(S[1] * 2.83465 / K * 10) / 10))`).
+  - Visiting branch (`isVisiting = /^vc_/.test(csizeVal)`): swap `[wMm, hMm]` when `orientation === "portrait"`, compute `K = wMm * 2.83465 / CW` (`CW = 170`), and compute proportional internal height **without** the `204` clamp (`CH = Math.round(hMm * 2.83465 / K * 10) / 10`).
+  - Real cards-per-page counts (`GX = 22 pt`, `GY = 20 pt`; adjacent `3 mm` bleed = `17.01 pt < 20 pt` so neighbouring bleeds never overlap):
+
+| Size | Orient. | `CW × CH` (SVG) | A4 (`210×297 mm`) Grid & Margins | US Letter (`8.5×11 in`) Grid & Margins |
+|---|---|---:|---|---|
+| `85 × 55 mm` (`vc_eu`) | Landscape | `170 × 110.0` | **2×4 = 8/page** (`MX=45.7pt, MY=79.1pt`) | **2×4 = 8/page** (`MX=54.1pt, MY=54.2pt`) |
+| `55 × 85 mm` (`vc_eu`) | Portrait | `170 × 262.7` | **3×3 = 9/page** (`MX=41.8pt, MY=39.5pt`) | **3×3 = 9/page** (`MX=50.1pt, MY=14.6pt`*) |
+| `89 × 51 mm` (`vc_us`) | Landscape | `170 × 97.4` | **2×5 = 10/page** (`MX=34.4pt, MY=19.5pt`) | **2×4 = 8/page** (`MX=42.7pt, MY=76.9pt`) |
+| `51 × 89 mm` (`vc_us`) | Portrait | `170 × 296.7` | **3×3 = 9/page** (`MX=58.8pt, MY=22.5pt`) | **3×2 = 6/page** (`MX=67.1pt, MY=133.7pt`) |
+| `90 × 50 mm` (`vc_90`) | Landscape | `170 × 94.4` | **2×5 = 10/page** (`MX=31.5pt, MY=26.6pt`) | **2×4 = 8/page** (`MX=39.9pt, MY=82.5pt`) |
+| `50 × 90 mm` (`vc_90`) | Portrait | `170 × 306.0` | **3×3 = 9/page** (`MX=63.0pt, MY=18.3pt`) | **3×2 = 6/page** (`MX=71.4pt, MY=130.9pt`) |
+
+  - *Crop/bleed margin note*: On US Letter `55 × 85 mm` Portrait (`MY = 14.6 pt`), tightening portrait vertical gutter `GY` slightly (from `20` to `16 pt` when `MY < 18 pt`, yielding `MY = 18.6 pt`, while keeping inter-card vertical bleed `17.01 pt` clear at `>= 17.5 pt` or trimming outer tick to `5 pt`) keeps every 3 mm bleed (`8.5 pt`) and outer crop mark (`7 pt`) cleanly inside physical paper edges.
+  - Also update `previewSvg()` (`app.js`), `tplSvg()`, and `cutSvg()` (`svg-engine.js`) to read `lay.CH` instead of clamping to `204` or assuming the `17×16×136` ticket photo cutout.
+
+### 2. Backward-Compatible Content Fields & Card Data Mapping
+- Add **optional fields only** on per-card records (omitted when blank so existing saved sheets, Theme Studio, Band/Album Lookup, and `DEFAULT_CARDS` are unaffected):
+  - **Name**: reuses `card.title` (preserves row labels `Card N · <Name>`, `#card-search`, `titleFont`, `titleScale`, `centerTitle`, and undo).
+  - **Job title**: optional `card.role` (when empty in visiting mode, gracefully falls back to `card.genre` so switching an existing concert deck to visiting preview shows non-empty preview text without mutating saved data).
+  - **Company**: optional `card.company` (falls back to `card.loc` if previewing a legacy card).
+  - **Phone / Email / Website / Address**: optional `card.phone`, `card.email`, `card.website`, `card.address`.
+  - **QR / NFC icon**: reuses existing `nfc` / `nfcWithYt` / `nfcScale` plus optional `settings.vcBadge` (`"qr-nfc"` | `"nfc"` | `"qr"` | `"none"`) and optional per-card `card.qrText` (defaulting cleanly to `website`, `email`, or minimal `BEGIN:VCARD` payload rendered as an inline zero-dependency pure-JS SVG QR matrix inside the card).
+  - **Logo or Photo**: reuses `card.img` / `card.imgUrl` / `zm` / `px` / `py` with `fitBox()` cover-style fitting (`xMidYMid slice`, zero stretching), optional rounded frame, drag + scroll/pinch zoom (`#drag`), and `Remove photo`.
+- Sidebar Card Row & `#pv` Quick Editor: show the visiting-card field set (`Full name`, `Job title`, `Company`, `Phone`, `Email`, `Website`, `Address`, `QR value`) cleanly when a `vc_*` card size is active (and show Band/Album fields when any non-visiting size is active), backed by the same copy-on-write `updateCard()` + coalesced `History` path.
+
+### 3. Shared Renderer & Full Feature Reuse (No Forked Copy)
+- Implement visiting layout inside the existing `renderCard(c0, i, cfg)` function (`js/svg-engine.js`) via a dedicated geometry branch triggered strictly when `cfg.lay?.isVisiting` is true:
+  - **Landscape (`CH ≈ 94.4–110.0`)**: Two-zone horizontal card — square/compact framed Logo or Photo slot (`PS ≈ 44–50`, cover-fitted via `fitBox()`, draggable `.pp`) + optional subtle mount, bold **Name** (`titleLayout()`), **Job title / Company** (`subtitleLayout()`), left-aligned auto-fitted contact lines (**Phone**, **Email**, **Website**, **Address** using `fit()` + 2-line wrap on long URLs/addresses), and bottom-right **NFC / QR badge**.
+  - **Portrait (`CH ≈ 262.7–306.0`)**: Clean two-tier vertical layout — upper centered/framed **Logo or Photo** (`PS ≈ 88`), **Name** + **Job title / Company**, lower contact stack, and bottom-right **NFC / QR badge**.
+- Automatically inherits the full Phase 4–9 stack because it runs inside `renderCard()`'s shared theme/border/stamp/wear pipeline:
+  - All Themes, `Quick colours`, and linear/radial/triple/4-stop Gradients (`renderGradDef`).
+  - All 16 `titleFont` choices + `titleScale` + `centerTitle`.
+  - All 16 Phase 6 Borders (`renderBorder`, customisation, presets, card overrides, `borderWear`).
+  - All 34+ Phase 7 Draggable Stamps (`resolveStampTransform` parameterized with dynamic `CH`, `.st-ui` handles, `Move stamps`, snap, arrow nudges, rotary dial, presets).
+  - Phase 8 per-card styling overrides, `Keep this one` locks, and seeded `Surprise me` (`randomiser.mjs` updated so `pickSafeStampNorm` respects visiting landscape `CH` bounds cleanly).
+  - Surface wear (`grain`, `edgeWear`, `creases`, `scuffs`), Corner Hardware (`renderCornerHardware`), Distress FX (`renderSurfaceFx`), `3 mm` bleed clip `ck${i}`, crop marks, `History` undo/redo, SVG/PNG/PDF exports, and `@media print`.
+- **Optional Back Side**: Propose as a **separate follow-up (`Phase 10B`)** after single-sided front layouts + exports pass verification, since double-sided duplex print pairing doubles pagination and alignment complexity.
+
+### 4. Bulk Import, Samples, Effort & Risk
+- **Bulk Import (`js/bulk-import.js`) & JSON Import/Export (`js/app.js`, `js/export.js`)**:
+  - Parse optional visiting columns case-insensitively in CSV and JSON (`role`/`jobTitle`, `company`/`org`, `phone`/`tel`, `email`, `website`/`web`, `address`/`addr`, `qrText`, `kind`), storing only non-empty optional values and safely ignoring missing columns for regular band/album sheets.
+- **Sample Visiting Cards (Step 3)**: Add 3 dedicated visiting-card samples accessible via a `"Load visiting samples"` button (or preset pack alongside `#smp`) without altering `SAMPLE_CARDS` / `.baseline/` band sheet defaults.
+- **Effort**: **L** (~2 increments: Step 2 core layout/renderer/QR/editor/stamps; Step 3 samples, Bulk Import, SVG/PDF physical measurement & cross-browser verification).
+- **Key Risks & Mitigations**:
+  1. *Dynamic `CH < 204` assumptions*: Several helpers (`stamps.mjs` `autoStampGeometry` / `snapStampNorm`, `randomiser.mjs` `pickSafeStampNorm`, `app.js` `previewSvg` / `getCardPhotoGeometry`) currently use `D = CH - 239` or clamp `CH >= 204`. Guard/parameterize these with `isVisiting` / `photoRect` so stamps and photos never jump out of landscape bounds.
+  2. *US Letter `55 × 85 mm` Portrait outer crop clearance (`MY = 14.6 pt`)*: Adjust outer crop mark tick or `GY` (`>= 17.5 pt` clearance) specifically for visiting portrait packing so `3 mm` bleed + crop marks never clip page margins.
+  3. *Text collision at 50–51 mm width*: Strictly bound every contact row via `fit()` + `wrapToTwoLines()` and add automated layout assertions in `tests/title-layout.test.html` and a new `tests/visiting-layout.test.mjs`.
+  4. *Legacy regression parity*: Add an explicit automated check verifying SVG output for all 5 legacy sizes (`ticket`, `poker`, `credit`, `mini`, `tarot`) remains 100% unchanged.
+
+### 5. Owner-Approved Addition — Optional Mirrored Card Back (All Card Sizes)
+- **Scope**: Applies to **all card sizes** (Ticket, Poker, Credit, Mini, Tarot, AND Visiting Cards), toggled cleanly via an optional Page setting (`settings.cardBack`, default `false` — no change to existing sheets/exports when off).
+- **Duplex Mirrored Interleaving**: When enabled, each front sheet page `P` is followed immediately by its mirrored back page (`Page 1 Front`, `Page 1 Back`, `Page 2 Front`, `Page 2 Back`, …) in `#sheets`, Print, SVG, PNG, and PDF exports:
+  - Physical column position mirrors horizontally (`x_back = W - x_front - CWp`, i.e., `col_back = (COLS - 1) - col`) so even partial final pages align slot-for-slot behind each front card on two-sided printing, with matching `3 mm` bleed and crop/reg marks.
+- **Trading-Card Uniform Back Design**:
+  - Consistent sheet-wide look for the active theme (or page theme) — **never uses per-card sampled `card.accent` or per-card random theme/border variations** so all card backs on a sheet/theme look identical from behind.
+  - Retains the sheet/page theme's paper background/gradient, surface grain/wear/creases/scuffs, and border style, rendered with consistent uniform theme colours (`theme.fixed || theme.frame || theme.ink`, never per-card accent bleed).
+  - Features the selected sheet **stamp** cleanly rendered as a centered centerpiece emblem (`(CW / 2, CH / 2)`), **slightly rotated**, with **no ink wear/bleed (`wear = 0`)** so it reads like a crisp trading-card logo.
+
+---
+
+## Queued Before Phase 10 — Export Priority & Copyable Per-Page SVG Code (`P9-03`)
+- **Primary Download = PDF (300 dpi)**: Promote `#pdf` (`Export PDF (300 dpi)`) to the primary `.accent` button in `.topbar-actions` and wire `#mobile-export` (`Export PDF`) to `#pdf`. Keep in mind `CLAUDE.md` target layout note updating SVG -> PDF primary CTA while preserving existing export functions (`exportPdf`, `exportAllSvgs`, `serializeSheetSvg`).
+- **SVG as Advanced Option**: Rename `.export-menu > summary` to `Advanced` and place `#svg` (`Vector SVG (files)`), `#svg-code-open` (`Copy SVG code (pages)`), `#png` (`PNG (300 dpi)`), and `#cut` (`Cutter SVG`) inside its `.menu-panel`.
+- **Copyable Per-Page SVG Code Dialog (`#svg-code-dialog`)**:
+  - Iterate over rendered `#sheets .sheet` pages (including `Cut Template` if enabled) and display each page's standalone SVG (from `serializeSheetSvg`, plus an optional toggle to include/exclude the embedded ~208 KB `@font-face` `FONTCSS` block for readability) inside a readonly `<textarea>` block with byte/KB count and a 1-click `Copy SVG` button (using `duplicate` icon from `js/icons.mjs`, clipboard copy + select fallback).
+
+*Owner confirmed direction and stepped away — paused cleanly here until owner returns and gives the go-ahead to build `P9-03` first, then Phase 10.*

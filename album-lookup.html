@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Album Lookup — Ticket Card Studio</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9e">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
+<link rel="stylesheet" href="css/tokens.css?v=phase9e">
+<link rel="stylesheet" href="css/app.css?v=phase9e">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-badge"><span data-icon="logo"></span></span>
+      <span class="brand-title">Ticket Card Studio</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Workspace pages">
+      <a class="nav-tab" href="index.html">Sheet Editor</a>
+      <a class="nav-tab" href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
+      <a class="nav-tab" href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+      <a class="nav-tab" href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
+      <a class="nav-tab active" href="album-lookup.html"><span data-icon="view"></span> Album Lookup</a>
+    </nav>
+    <details class="mobile-nav">
+      <summary aria-label="Open workspace menu" data-tooltip="Open workspace menu"><span data-icon="menu"></span></summary>
+      <div class="menu-panel">
+        <a href="index.html"><span data-icon="view"></span> Sheet Editor</a>
+        <a href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
+        <a href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+        <a href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
+        <a href="album-lookup.html" aria-current="page"><span data-icon="view"></span> Album Lookup</a>
+      </div>
+    </details>
+  </div>
+</header>
+
+<main class="studio-wrap lookup-page">
+  <section class="panel lookup-intro" aria-labelledby="alb-page-title">
+    <div class="lookup-header">
+      <div>
+        <h1 id="alb-page-title">Standalone Album Card Maker &amp; Lookup</h1>
+        <p class="subtitle">Search albums, preview Album cards (Album Name, Artist Name, Release Year, left-border <code>NO. YYYY-ABCD</code> + <code>EST. YYYY</code>), export SVG/PNG directly, or send cards to your print sheet.</p>
+      </div>
+      <a class="btn-link" href="index.html"><span data-icon="view"></span> Back to Sheet Editor</a>
+    </div>
+
+    <div class="lookup-disclosure" role="note">
+      <strong>How album lookups work:</strong> Searches run only when you click <strong>Search albums</strong>. Queries go directly to <code>musicbrainz.org</code> release groups (CC0 metadata; browser anonymous pool ~1 req/sec) and cover artwork checks <code>coverartarchive.org</code> / <code>en.wikipedia.org</code>. Results are cached for this session.
+    </div>
+
+    <div id="alb-disabled-banner" class="lookup-warning" hidden>
+      Album lookup is currently disabled in <code>js/album-lookup-providers.mjs</code>. You can still type Album details manually, upload cover art, export, or add to sheet below.
+    </div>
+
+    <form id="alb-form" class="lookup-form">
+      <label class="fld lookup-query-fld">
+        <span>Album name</span>
+        <input id="alb-query" type="search" placeholder="e.g. OK Computer, Random Access Memories, In Rainbows…" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="fld lookup-provider-fld">
+        <span>Artist (optional filter)</span>
+        <input id="alb-artist" type="text" placeholder="e.g. Radiohead, Daft Punk" autocomplete="off">
+      </label>
+      <label class="fld lookup-provider-fld">
+        <span>Source</span>
+        <select id="alb-provider">
+          <option value="musicbrainz">MusicBrainz Albums (CC0)</option>
+          <option value="wikipedia">Wikipedia Album search</option>
+        </select>
+      </label>
+      <div class="lookup-submit-wrap">
+        <button class="accent" id="alb-search-btn" type="submit"><span data-icon="search"></span> Search albums</button>
+      </div>
+    </form>
+
+    <div class="lookup-status-row">
+      <div id="alb-status" class="hint" role="status" aria-live="polite"></div>
+      <div id="alb-recovery" class="ctrl-flex" hidden>
+        <button class="g sm" id="alb-retry-btn" type="button"><span data-icon="reset"></span> Retry</button>
+        <button class="g sm" id="alb-wiki-fallback-btn" type="button">Try Wikipedia search instead</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="lookup-workspace album-workspace">
+    <section class="panel lookup-results-panel" aria-labelledby="alb-results-heading">
+      <h2 id="alb-results-heading">Album matches (<span id="alb-match-count">0</span>)</h2>
+      <div id="alb-results" class="lookup-results">
+        <p class="hint">Enter an album name above and click Search albums.</p>
+      </div>
+    </section>
+
+    <section class="panel lookup-draft-panel" aria-labelledby="alb-draft-heading">
+      <div class="lookup-draft-head">
+        <h2 id="alb-draft-heading">Album card &amp; live preview</h2>
+        <span id="alb-source-pill" class="lookup-pill" hidden></span>
+      </div>
+
+      <div class="album-editor-split">
+        <div class="album-preview-pane">
+          <div id="alb-svg-preview" class="album-svg-preview" aria-label="Live album card preview"></div>
+          <div class="ctrl-flex">
+            <label class="fld album-theme-fld">
+              <span>Preview theme</span>
+              <select id="alb-theme"></select>
+            </label>
+            <button class="g sm" id="alb-dl-svg" type="button"><span data-icon="download"></span> SVG</button>
+            <button class="g sm" id="alb-dl-png" type="button"><span data-icon="download"></span> PNG</button>
+          </div>
+        </div>
+
+        <div class="album-fields-pane">
+          <div class="lookup-draft-grid">
+            <label class="fld w"><span>Album name</span><input type="text" id="alb-title" placeholder="Album name"></label>
+            <label class="fld w"><span>Artist name</span><input type="text" id="alb-artist-field" placeholder="Artist name"></label>
+            <label class="fld"><span>Release year</span><input type="text" id="alb-year" placeholder="YYYY"></label>
+            <label class="fld"><span>Band abbreviation</span><input type="text" id="alb-code" placeholder="Band abbr"></label>
+          </div>
+
+          <div class="lookup-photo-box">
+            <div class="lookup-photo-head">
+              <div class="stage-thumb lookup-thumb" id="alb-thumb">No cover art</div>
+              <div class="lookup-photo-actions">
+                <div class="ctrl-flex">
+                  <button class="g sm" id="alb-fetch-cover" type="button"><span data-icon="search"></span> Find cover art</button>
+                  <button class="g sm" id="alb-upload-btn" type="button"><span data-icon="upload"></span> Upload cover</button>
+                  <input type="file" id="alb-file" accept="image/*" hidden>
+                  <button class="g sm" id="alb-clear-cover" type="button" hidden>Clear cover</button>
+                </div>
+                <label class="fld">
+                  <span>Or paste Cover URL</span>
+                  <div class="url-row">
+                    <input type="url" id="alb-url" placeholder="https://…">
+                    <button class="g sm" id="alb-load-url" type="button">Load</button>
+                  </div>
+                </label>
+                <div id="alb-photo-status" class="hint"></div>
+              </div>
+            </div>
+            <p class="hint lookup-rights-note">Cover art may be copyrighted. Only print or share artwork you have rights to; upload local files anytime.</p>
+          </div>
+
+          <div class="lookup-commit-box">
+            <button class="accent" id="alb-add-new" type="button"><span data-icon="plus"></span> Add as new album card to sheet</button>
+            <div class="lookup-commit-existing">
+              <label class="fld">
+                <span>Or fill existing sheet card</span>
+                <div class="lookup-fill-row">
+                  <select id="alb-fill-target"></select>
+                  <button class="g" id="alb-fill-btn" type="button">Update card</button>
+                </div>
+              </label>
+              <label class="chk"><input type="checkbox" id="alb-overwrite"> Overwrite existing card fields</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lookup-sheet-preview">
+        <h3>Current saved sheet (<span id="alb-sheet-count">0</span> / 300 cards)</h3>
+        <div id="alb-sheet-list" class="lookup-sheet-list"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="alb-transfer-toast" class="history-toast" role="status" aria-live="polite" hidden>
+  <span id="alb-transfer-message"></span>
+  <button class="g sm" id="alb-undo-transfer" type="button">Undo</button>
+  <button class="accent sm" id="alb-open-editor" type="button"><span data-icon="view"></span> Open editor</button>
+</div>
+
+<script type="module" src="js/album-lookup.js?v=phase9e"></script>
+</body>
+</html>

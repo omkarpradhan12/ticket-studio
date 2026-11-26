@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase8.1";
-import { hslToHex } from "./image-utils.js?v=phase8.1";
-import { abbr } from "./svg-engine.js?v=phase8.1";
+import { FONTCSS } from "./fonts.js?v=phase9e";
+import { hslToHex } from "./image-utils.js?v=phase9e";
+import { abbr } from "./svg-engine.js?v=phase9e";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -108,9 +108,10 @@ export function exportProjectJson(settings, cards, count) {
         year: c.year,
         genre: c.genre,
         place: c.loc,
-        abbreviation: c.code || abbr(c.title),
+        abbreviation: c.code || abbr(c.kind === "album" ? (c.loc || c.title) : c.title),
         accent: hslToHex(c)
       };
+      if (c.kind === "album") r.kind = "album";
       if (c.img) {
         r.photo = c.img;
         if (c.imgUrl && !c.img.startsWith("http")) r.photoUrl = c.imgUrl;
@@ -145,6 +146,11 @@ export function exportProjectJson(settings, cards, count) {
       if (c.halftone !== undefined) r.halftone = Boolean(c.halftone);
       if (c.gradientAngle !== undefined) r.gradientAngle = c.gradientAngle;
       if (c.gradientSpread !== undefined) r.gradientSpread = c.gradientSpread;
+      if (c.cornerHardware) r.cornerHardware = c.cornerHardware;
+      if (c.fxClaw !== undefined) r.fxClaw = Boolean(c.fxClaw);
+      if (c.fxTear !== undefined) r.fxTear = Boolean(c.fxTear);
+      if (c.fxBullet !== undefined) r.fxBullet = Boolean(c.fxBullet);
+      if (c.fxBlood !== undefined) r.fxBlood = Boolean(c.fxBlood);
       if (c.locked) r.locked = true;
       return r;
     })

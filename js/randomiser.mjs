@@ -1,5 +1,5 @@
 // Seeded per-card "Surprise me" style randomiser with WCAG contrast, print-safe & stamp bounds guard rails
-import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase8.1";
+import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase9d";
 import {
   SKINDS,
   STAMP_MAX_SCALE,
@@ -7,7 +7,7 @@ import {
   clampStampNorm,
   compactStampStyle,
   stampNormBounds
-} from "./stamps.mjs?v=phase8.1";
+} from "./stamps.mjs?v=phase9d";
 import {
   SURPRISE_MANAGED_STYLE_KEYS,
   blendHex,
@@ -17,7 +17,7 @@ import {
   hslObjectToHex,
   normalizeHex,
   relativeLuminance
-} from "./card-styles.mjs?v=phase8.1";
+} from "./card-styles.mjs?v=phase9d";
 
 const FALLBACK_THEMES = Object.freeze({
   cream: { grp: "Light", n: "Cream", bg: "#f2eadb", ink: "#1b1a19", mute: "#3a3733" }
@@ -39,9 +39,9 @@ export const DEFAULT_SURPRISE_PREFS = Object.freeze({
 });
 
 const FONT_POOLS = {
-  0: ["pirata", "playfair", "mont"],
-  1: ["pirata", "playfair", "mont", "bebas", "type"],
-  2: ["pirata", "playfair", "mont", "bebas", "type", "courier"]
+  0: ["pirata", "playfair", "mont", "georgia"],
+  1: ["pirata", "playfair", "mont", "bebas", "type", "impact", "trebuchet", "script", "scrawl", "marker"],
+  2: ["pirata", "playfair", "georgia", "mont", "trebuchet", "bebas", "impact", "script", "scrawl", "rough", "calligraphy", "brush", "marker", "type", "courier", "consolas"]
 };
 
 const BORDER_POOLS = {

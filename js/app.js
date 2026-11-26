@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.1";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase8.1";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.1";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.1";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.1";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase8.1";
-import { History } from "./history.mjs?v=phase8.1";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase8.1";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase8.1";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9e";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9e";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9e";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9e";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9e";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase9e";
+import { History } from "./history.mjs?v=phase9e";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9e";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9e";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase8.1";
+} from "./borders.mjs?v=phase9e";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase8.1";
+} from "./stamps.mjs?v=phase9e";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,13 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase8.1";
+} from "./card-styles.mjs?v=phase9e";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase8.1";
+} from "./randomiser.mjs?v=phase9e";
+import {
+  cardSearchHaystack,
+  debounce,
+  filterCardIndices,
+  formatSearchCount
+} from "./search.mjs?v=phase9e";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -76,13 +82,15 @@ const SETTINGS_FIELDS = {
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize",
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
-  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc",
-  yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
+  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc", cornerHardware: "corner-hw",
+  yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter",
+  nfcScale: "nfc-scale"
 };
 const CHECK_FIELDS = {
-  cropMarks: "marks", bleed: "bleed", nfc: "nfc", cutTemplate: "tpl",
+  cropMarks: "marks", bleed: "bleed", nfc: "nfc", nfcWithYt: "nfc-yt", cutTemplate: "tpl",
   serials: "serial", stampAuto: "sauto", regMarks: "regmarks", punchHole: "punch",
-  centerTitle: "design-center", halftone: "design-halftone"
+  centerTitle: "design-center", halftone: "design-halftone",
+  fxClaw: "fx-claw", fxTear: "fx-tear", fxBullet: "fx-bullet", fxBlood: "fx-blood"
 };
 const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa"];
 
@@ -110,7 +118,10 @@ let currentLayout;
 let renderFrame = 0;
 let saveTimer;
 let dragState = null;
+let pinchState = null;
 let stampDragState = null;
+const activePpPointers = new Map();
+const photoZoomWheelTimers = new Map();
 let moveStampsMode = false;
 let selectedStampIndex = 0;
 let previewIndex = -1;
@@ -119,6 +130,8 @@ let historyReady = false;
 let batchImportInProgress = false;
 let undoToastTimer;
 let previewZoom = 1;
+// Transient local card-list filter (never stored in studioState, history, layout, or exports)
+let cardSearchQuery = "";
 let lastSurpriseSeed = generateSeed();
 let pendingPhotoUploadIndex = -1;
 let sharedPhotoFileInput = null;
@@ -173,6 +186,15 @@ function readSettings() {
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
   $("title-size-value").textContent = `${settings.titleScale}%`;
   $("title-size").setAttribute("aria-valuetext", `${settings.titleScale}%`);
+  const nfcScaleVal = settings.nfcScale ?? 100;
+  if ($("nfc-scale-val")) $("nfc-scale-val").textContent = `${nfcScaleVal}%`;
+  if ($("nfc-scale")) {
+    $("nfc-scale").setAttribute("aria-valuetext", `${nfcScaleVal}%`);
+    $("nfc-scale").disabled = !settings.nfc;
+  }
+  if ($("nfc-yt")) $("nfc-yt").disabled = !settings.nfc;
+  $("nfc-yt-wrap")?.classList.toggle("is-disabled", !settings.nfc);
+  $("nfc-scale-wrap")?.classList.toggle("is-disabled", !settings.nfc);
   studioState.settings = settings;
   return settings;
 }
@@ -249,12 +271,13 @@ function applySettings(settings = {}) {
   syncColorHexFields();
 }
 
-function renderConfig(one = false) {
+function renderConfig(one = false, interactive = false) {
   const settings = studioState.settings;
   return {
     lay: currentLayout,
     style: settings.style,
     one,
+    interactive,
     bleed: settings.bleed,
     cropMarks: settings.cropMarks,
     regMarks: settings.regMarks,
@@ -278,6 +301,8 @@ function renderConfig(one = false) {
     scuffs: settings.scuffs,
     serials: settings.serials,
     nfc: settings.nfc,
+    nfcWithYt: settings.nfcWithYt !== false,
+    nfcScale: settings.nfcScale ?? 100,
     punchHole: settings.punchHole,
     borderStyle: settings.borderStyle,
     border: settings.border,
@@ -289,11 +314,16 @@ function renderConfig(one = false) {
     photoMounts: settings.photoMounts,
     centerTitle: settings.centerTitle,
     halftone: settings.halftone,
+    cornerHardware: settings.cornerHardware,
+    fxClaw: settings.fxClaw,
+    fxTear: settings.fxTear,
+    fxBullet: settings.fxBullet,
+    fxBlood: settings.fxBlood,
     pageThemes: settings.pageThemes,
     doors: settings.doors,
     side: settings.side,
-    drag: $("drag").checked,
-    moveStamps: moveStampsMode && !one,
+    drag: $("drag").checked && (!one || interactive),
+    moveStamps: moveStampsMode && (!one || interactive),
     selectedCard: studioState.selectedCard,
     selectedStamp: selectedStampIndex
   };
@@ -712,13 +742,20 @@ function bindHistoryControlEvents() {
     cropMarks: "toggle crop marks",
     bleed: "toggle bleed",
     nfc: "toggle NFC icon",
+    nfcWithYt: "toggle YT Music in NFC logo",
+    nfcScale: "change NFC logo size",
     cutTemplate: "toggle cut template",
     serials: "toggle serial number",
     stampAuto: "toggle stamp accent",
     regMarks: "toggle registration marks",
     punchHole: "toggle punch hole",
     centerTitle: "toggle centered title",
-    halftone: "toggle photo halftone"
+    halftone: "toggle photo halftone",
+    cornerHardware: "change corner hardware",
+    fxClaw: "toggle claw marks",
+    fxTear: "toggle corner tear",
+    fxBullet: "toggle bullet hole",
+    fxBlood: "toggle blood spatter"
   };
   const controls = new Map();
   for (const [field, id] of Object.entries(SETTINGS_FIELDS)) controls.set(id, labels[field]);
@@ -1183,19 +1220,83 @@ function updateSnapGuides(cardGroup, snapInfo) {
 function patchLiveStampDom(index, si, snapInfo = null) {
   const st = resolveCardStamp(index, si);
   if (!st) return;
-  const stampEl = $(`st${si}-${index}`);
-  if (stampEl) {
-    stampEl.setAttribute("transform", `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)}) scale(${Number(st.scale.toFixed(3))})`);
+  const tx = `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)}) scale(${Number(st.scale.toFixed(3))})`;
+  const uiTx = `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})`;
+  const vText = `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`;
+  const patchRoot = (root, prefix = "") => {
+    if (!root) return;
+    const stampEl = $(`${prefix}st${si}-${index}`);
+    if (stampEl) stampEl.setAttribute("transform", tx);
+    const uiEl = root.querySelector(`.st-ui[data-ci="${index}"][data-si="${si}"]`);
+    if (uiEl) {
+      uiEl.setAttribute("transform", uiTx);
+      const hit = uiEl.querySelector(".st-hit");
+      if (hit) hit.setAttribute("aria-valuetext", vText);
+    }
+    updateSnapGuides(root.querySelector(`g[data-ci="${index}"]:not(.st-ui)`), snapInfo);
+  };
+  patchRoot($("sheets"), "");
+  if (!$("pv")?.hidden && previewIndex === index) {
+    patchRoot($("pvi"), "pv-");
+    const rotDeg = Math.round(st.r || 0);
+    const scalePct = Math.round((st.mult || 1) * 100);
+    if ($("pv-srot") && document.activeElement !== $("pv-srot")) $("pv-srot").value = String(rotDeg);
+    if ($("pv-srot-val")) $("pv-srot-val").textContent = `${rotDeg}°`;
+    if ($("pv-sscale") && document.activeElement !== $("pv-sscale")) $("pv-sscale").value = String(scalePct);
+    if ($("pv-sscale-val")) $("pv-sscale-val").textContent = `${scalePct}%`;
   }
-  const uiEl = $("sheets")?.querySelector(`.st-ui[data-ci="${index}"][data-si="${si}"]`);
-  if (uiEl) {
-    uiEl.setAttribute("transform", `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})`);
-    const hit = uiEl.querySelector(".st-hit");
-    if (hit) hit.setAttribute("aria-valuetext", `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`);
-  }
-  const cardGroup = $("sheets")?.querySelector(`.sheet [data-ci="${index}"]`);
-  updateSnapGuides(cardGroup, snapInfo);
   syncCardStampRow(index);
+}
+
+function getCardPhotoGeometry(index) {
+  const card = studioState.cards[index];
+  const CH = currentLayout?.CH || 239;
+  const page = Math.floor(index / (currentLayout?.PER || 9));
+  const themeKey = card?.theme || studioState.pageThemes[page] || studioState.settings?.style || "cream";
+  const isPolaroid = Boolean((THEMES[themeKey] || THEMES.cream)?.polaroid) && !studioState.settings?.minimalLayout;
+  const PS = isPolaroid ? 146 : 136;
+  const PH = PS + (CH - 239);
+  return { CH, isPolaroid, PS, PH };
+}
+
+function patchLivePhotoDom(index, px, py, box, isPolaroid = false, updateSize = false) {
+  const CH = currentLayout?.CH || 239;
+  const PX = isPolaroid ? 12 : 17;
+  const PY = isPolaroid ? 13 : 16;
+  const PS = isPolaroid ? 146 : 136;
+  const PH = PS + (CH - 239);
+  const PMY = PY + PH / 2;
+  const nextX = (PX + PS / 2 - box.w / 2 + px / 100 * box.mx).toFixed(2);
+  const nextY = (PMY - box.h / 2 + py / 100 * box.my).toFixed(2);
+  [$("photo" + index), $("pv-photo" + index)].forEach(image => {
+    if (!image) return;
+    image.setAttribute("x", nextX);
+    image.setAttribute("y", nextY);
+    if (updateSize) {
+      image.setAttribute("width", box.w.toFixed(2));
+      image.setAttribute("height", box.h.toFixed(2));
+    }
+  });
+  const card = studioState.cards[index];
+  const zmPct = Math.round((card?.zm || 1) * 100);
+  const row = getCardRowEl(index);
+  if (row) {
+    if (updateSize) row.querySelector("[data-adjust='zm']").value = zmPct;
+    row.querySelector("[data-adjust='px']").value = px;
+    row.querySelector("[data-adjust='py']").value = py;
+  }
+  if (!$("pv")?.hidden && previewIndex === index) {
+    const pxR = Math.round(px);
+    const pyR = Math.round(py);
+    if (updateSize) {
+      if ($("pv-zm") && document.activeElement !== $("pv-zm")) $("pv-zm").value = String(zmPct);
+      if ($("pv-zm-val")) $("pv-zm-val").textContent = `${zmPct}%`;
+    }
+    if ($("pv-px") && document.activeElement !== $("pv-px")) $("pv-px").value = String(pxR);
+    if ($("pv-py") && document.activeElement !== $("pv-py")) $("pv-py").value = String(pyR);
+    if ($("pv-px-val")) $("pv-px-val").textContent = String(pxR);
+    if ($("pv-py-val")) $("pv-py-val").textContent = String(pyR);
+  }
 }
 
 function copyStampPlacement(sourceIndex, targetIndices, label) {
@@ -1312,9 +1413,88 @@ function render() {
   saveSoon();
 }
 
-function selectCard(index, scroll = false) {
+function scrollStageToPage(targetPage) {
+  const stage = $("stage");
+  const sheetEl = $("sheets")?.querySelector(`svg.sheet[data-page="${targetPage}"]`);
+  if (!stage || !sheetEl) return;
+  const behavior = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth";
+  if (stage.scrollHeight > stage.clientHeight + 2) {
+    const stageRect = stage.getBoundingClientRect();
+    const sheetRect = sheetEl.getBoundingClientRect();
+    const toolsH = $("page-tools")?.offsetHeight || 48;
+    const targetTop = Math.max(0, stage.scrollTop + (sheetRect.top - stageRect.top) - toolsH - 12);
+    if (typeof stage.scrollTo === "function") stage.scrollTo({ top: targetTop, behavior });
+    else stage.scrollTop = targetTop;
+  } else {
+    sheetEl.scrollIntoView({ behavior, block: "start" });
+  }
+}
+
+function syncPreviewPageForCard(index, scrollStage = false) {
+  const per = currentLayout?.PER || computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket").PER || 9;
+  const pageCount = Math.max(1, Math.ceil(studioState.count / per));
+  const targetPage = Math.max(0, Math.min(pageCount - 1, Math.floor(index / per)));
+  if (studioState.activePage !== targetPage) {
+    studioState.activePage = targetPage;
+    syncPageTools(pageCount);
+  }
+  if (scrollStage) scrollStageToPage(targetPage);
+}
+
+function applyCardSearchFilter() {
+  const rowsContainer = $("rows");
+  const clearBtn = $("card-search-clear");
+  const countEl = $("card-search-count");
+  if (clearBtn) clearBtn.hidden = !cardSearchQuery.length;
+  const res = filterCardIndices(studioState.cards, studioState.count, cardSearchQuery);
+  if (countEl) {
+    countEl.hidden = !res.isActive;
+    countEl.textContent = res.isActive ? formatSearchCount(res.matchCount, res.totalCount) : "";
+  }
+  if (!rowsContainer) return;
+  const per = currentLayout?.PER || lastBuiltRowsPerPage || 9;
+  const activeEl = document.activeElement;
+  const visiblePages = new Set();
+  rowsContainer.querySelectorAll(".row").forEach(row => {
+    const idx = Number(row.dataset.index);
+    const matches = !res.isActive || res.matchedSet.has(idx);
+    const keepFocused = Boolean(activeEl && row.contains(activeEl));
+    const hidden = res.isActive && !matches && !keepFocused;
+    row.hidden = hidden;
+    if (!hidden) visiblePages.add(Math.floor(idx / per));
+  });
+  rowsContainer.querySelectorAll(".rows-page-break").forEach(div => {
+    const pageIdx = Number(div.dataset.page);
+    div.hidden = res.isActive && !visiblePages.has(pageIdx);
+  });
+  const emptyEl = $("card-search-empty");
+  if (emptyEl) {
+    const showEmpty = res.isActive && res.matchCount === 0;
+    emptyEl.hidden = !showEmpty;
+    const emptyMsg = emptyEl.querySelector("[data-search-empty-msg]");
+    if (emptyMsg) {
+      emptyMsg.textContent = showEmpty ? `No cards match “${cardSearchQuery.trim()}”.` : "";
+    }
+  }
+}
+
+const debouncedCardSearch = debounce(() => applyCardSearchFilter(), 110);
+
+function clearCardSearch(refocus = true) {
+  debouncedCardSearch.cancel();
+  cardSearchQuery = "";
+  const input = $("card-search");
+  if (input) {
+    input.value = "";
+    if (refocus) input.focus();
+  }
+  applyCardSearchFilter();
+}
+
+function selectCard(index, scroll = false, scrollPreview = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
+  syncPreviewPageForCard(index, scrollPreview);
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${index + 1}`;
   const applyStBtn = $("st-apply-selected");
@@ -1426,7 +1606,7 @@ function buildRows() {
           <label class="fld w"><span>Abbreviation</span><input type="text" data-field="code" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code)}"></label>
           <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">${iconMarkup("upload")} Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
           ${card.corsLimited ? '<span class="cors-tag w" tabindex="0" role="note" aria-label="This host blocks canvas access; SVG export works, raster export may not." data-tooltip="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
-          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> Accent sampled from image when available</div>
+          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> <span>Accent sampled from image when available</span><button class="g sm row-remove-photo" type="button" data-action="remove-photo"${imgSrc ? "" : " hidden"} aria-label="Remove photo from card ${index + 1}">Remove photo</button></div>
           <details class="w adj"><summary><span>Photo &amp; theme options</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
             <label><span>Zoom</span><input type="range" min="100" max="300" value="${Math.round((card.zm || 1) * 100)}" data-adjust="zm"></label>
             <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
@@ -1513,6 +1693,7 @@ function buildRows() {
           output.textContent = input.value;
           output.hidden = input.value.length <= 24;
         }
+        if (cardSearchQuery.trim()) applyCardSearchFilter();
         scheduleRender();
       });
       const fieldNames = { title: "name", genre: "genre", loc: "place", year: "year", code: "abbreviation" };
@@ -1530,6 +1711,7 @@ function buildRows() {
     row.querySelectorAll("[data-option]").forEach(input => {
       input.addEventListener("input", () => {
         updateCard(index, { [input.dataset.option]: input.value });
+        if (input.dataset.option === "stx" && cardSearchQuery.trim()) applyCardSearchFilter();
         scheduleRender();
       });
       const labels = { theme: "change card theme", sk: "change card stamp", stx: "change card stamp text" };
@@ -1640,8 +1822,12 @@ function buildRows() {
     row.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
       const action = button.dataset.action;
+      if (action === "select-card") {
+        selectCard(index, false, true);
+        return;
+      }
       selectCard(index);
-      if (action === "select-card" || action === "load-url") return;
+      if (action === "load-url") return;
       if (action === "view") { selectCard(index); openPreview(index); }
       else if (action === "surprise") {
         surpriseCards({ seed: generateSeed(), onlyIndex: index, actionLabel: "surprise card styling" });
@@ -1682,6 +1868,8 @@ function buildRows() {
         recordDiscrete("reset photo crop");
         buildRows();
         render();
+      } else if (action === "remove-photo") {
+        removeCardPhoto(index);
       } else if (action === "reset-border") {
         const current = studioState.cards[index];
         if (current && current.border) {
@@ -1737,13 +1925,21 @@ function buildRows() {
       const pageStart = (pageNum - 1) * per;
       const divider = document.createElement("div");
       divider.className = "rows-page-break";
+      divider.dataset.page = String(pageNum - 1);
       divider.setAttribute("role", "separator");
       divider.setAttribute("aria-label", `End of page ${pageNum}`);
       divider.innerHTML = `<span>End of page ${pageNum}</span><span class="rows-page-range">Cards ${pageStart + 1}–${index + 1}</span>`;
       frag.append(divider);
     }
   });
+  const emptyNotice = document.createElement("div");
+  emptyNotice.id = "card-search-empty";
+  emptyNotice.className = "card-search-empty";
+  emptyNotice.hidden = true;
+  emptyNotice.innerHTML = `<span data-search-empty-msg></span><button class="g sm" type="button" data-action="clear-search">Clear search</button>`;
+  frag.append(emptyNotice);
   $("rows").replaceChildren(frag);
+  applyCardSearchFilter();
   syncCardStampRow(studioState.selectedCard);
 }
 
@@ -1769,6 +1965,20 @@ async function setImage(index, loader) {
   } catch (error) {
     message(error instanceof Error ? error.message : "Could not load the image.");
   }
+}
+
+function removeCardPhoto(index) {
+  const current = studioState.cards[index];
+  if (!current || !(current.img || current.imgUrl)) return;
+  const { iw: _iw, ih: _ih, corsLimited: _cors, ...rest } = current;
+  const next = { ...rest, img: null, imgUrl: "", zm: 1, px: 0, py: 0 };
+  cardIds.set(next, cardIdentity(current));
+  studioState.cards = studioState.cards.map((card, cardIndex) => cardIndex === index ? next : card);
+  recordDiscrete("remove card photo");
+  buildRows();
+  render();
+  message(`Removed photo from card ${index + 1}.`);
+  showUndoToast(`Removed photo from card ${index + 1}.`);
 }
 
 function moveCard(from, to) {
@@ -1831,7 +2041,7 @@ async function importJson(text) {
       genre: String(item.genre || ""),
       loc: String(item.place || item.location || item.loc || ""),
       year: String(item.year || ""),
-      code: String(item.abbreviation || item.abbr || item.code || abbr(title)),
+      code: String(item.abbreviation || item.abbr || item.code || abbr(item.kind === "album" ? (item.place || item.location || item.loc || title) : title)),
       h: accent?.h ?? hueOf(title),
       s: accent?.s ?? .75,
       img: photo.startsWith("data:") ? photo : null,
@@ -1840,6 +2050,7 @@ async function importJson(text) {
       px: Math.max(-100, Math.min(100, Number(item.photoX) || 0)),
       py: Math.max(-100, Math.min(100, Number(item.photoY) || 0)),
       ...styleOverrides,
+      ...(item.kind === "album" ? { kind: "album" } : {}),
       theme: styleOverrides.theme || String(item.theme || ""),
       sk: styleOverrides.sk || String(item.stampShape || ""),
       stx: String(item.stampText || ""),
@@ -2165,17 +2376,19 @@ function randomise() {
   showUndoToast("Sheet styling randomised.");
 }
 
-function previewSvg(index) {
+function previewSvg(index, { interactive = false } = {}) {
   const originalIndex = studioState.selectedCard;
   studioState.selectedCard = index;
   const layout = currentLayout;
-  const baseConfig = renderConfig(true);
+  const baseConfig = renderConfig(true, interactive);
   const page = Math.floor(index / layout.PER);
   const cardMarkup = renderCard(studioState.cards[index], index, {
     ...baseConfig,
     lay: layout,
     one: true,
-    drag: false,
+    interactive,
+    drag: interactive ? baseConfig.drag : false,
+    moveStamps: interactive ? moveStampsMode : false,
     cropMarks: false,
     style: studioState.pageThemes[page] || baseConfig.style,
     themeForce: studioState.pageThemes[page] || ""
@@ -2202,16 +2415,107 @@ function scopePreviewSvgIds(markup, prefix = "pv-") {
     .replace(/\burl\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
 }
 
+function syncPreviewSelects(force = false) {
+  const themeSel = $("pv-theme");
+  const stampSel = $("pv-stamp");
+  if (themeSel && (force || !themeSel.options.length)) {
+    populateThemeSelect(themeSel, true);
+  }
+  if (stampSel && (force || !stampSel.options.length)) {
+    stampSel.innerHTML = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
+      .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
+  }
+}
+
+function syncPreviewControls() {
+  if (previewIndex < 0 || $("pv").hidden) return;
+  const card = studioState.cards[previewIndex];
+  if (!card) return;
+  syncPreviewSelects();
+  const active = document.activeElement;
+  const setVal = (id, val) => {
+    const el = $(id);
+    if (el && active !== el) el.value = val;
+  };
+  setVal("pv-title", card.title || "");
+  setVal("pv-genre", card.genre || "");
+  setVal("pv-loc", card.loc || "");
+  setVal("pv-year", card.year || "");
+  setVal("pv-code", card.code || "");
+  setVal("pv-stx", card.stx || "");
+  const zmVal = Math.round((card.zm || 1) * 100);
+  const pxVal = card.px || 0;
+  const pyVal = card.py || 0;
+  setVal("pv-zm", zmVal);
+  setVal("pv-px", pxVal);
+  setVal("pv-py", pyVal);
+  if ($("pv-zm-val")) $("pv-zm-val").textContent = `${zmVal}%`;
+  if ($("pv-px-val")) $("pv-px-val").textContent = String(pxVal);
+  if ($("pv-py-val")) $("pv-py-val").textContent = String(pyVal);
+  setVal("pv-accent", hslToHex(card));
+  setVal("pv-theme", card.theme || "");
+  setVal("pv-stamp", card.sk || "");
+  setVal("pv-hardware", card.cornerHardware || "");
+  const st = resolveCardStamp(previewIndex, 0);
+  const rotDeg = Math.round(st.r || 0);
+  const scalePct = Math.round((st.mult || 1) * 100);
+  setVal("pv-srot", rotDeg);
+  setVal("pv-sscale", scalePct);
+  if ($("pv-srot-val")) $("pv-srot-val").textContent = `${rotDeg}°`;
+  if ($("pv-sscale-val")) $("pv-sscale-val").textContent = `${scalePct}%`;
+  const lockBtn = $("pv-lock");
+  if (lockBtn) {
+    const isLocked = Boolean(card.locked);
+    lockBtn.setAttribute("aria-pressed", String(isLocked));
+    lockBtn.classList.toggle("is-locked", isLocked);
+  }
+  const removePhotoBtn = $("pv-photo-remove");
+  if (removePhotoBtn) removePhotoBtn.disabled = !(card.img || card.imgUrl);
+  const pvDragBtn = $("pv-drag-photo");
+  if (pvDragBtn) pvDragBtn.setAttribute("aria-pressed", String(Boolean($("drag")?.checked)));
+  const pvMoveBtn = $("pv-move-stamps");
+  if (pvMoveBtn) pvMoveBtn.setAttribute("aria-pressed", String(moveStampsMode));
+  const resetStyleBtn = $("pv-reset-style");
+  if (resetStyleBtn) resetStyleBtn.hidden = !hasCustomCardStyling(card);
+}
+
+function syncSidebarRowValues(index) {
+  const row = getCardRowEl(index);
+  const card = studioState.cards[index];
+  if (!row || !card) return;
+  const setRowEl = (sel, val) => {
+    const el = row.querySelector(sel);
+    if (el) el.value = val;
+  };
+  setRowEl("[data-field='title']", card.title || "");
+  setRowEl("[data-field='genre']", card.genre || "");
+  setRowEl("[data-field='loc']", card.loc || "");
+  setRowEl("[data-field='year']", card.year || "");
+  setRowEl("[data-field='code']", card.code || "");
+  const nameBtn = row.querySelector(".card-name");
+  if (nameBtn) nameBtn.textContent = `Card ${index + 1} · ${card.title || "Untitled card"}`;
+  setRowEl("[data-adjust='zm']", Math.round((card.zm || 1) * 100));
+  setRowEl("[data-adjust='px']", card.px || 0);
+  setRowEl("[data-adjust='py']", card.py || 0);
+  setRowEl("[data-accent]", hslToHex(card));
+  setRowEl("[data-option='stx']", card.stx || "");
+  syncCardStampRow(index);
+  if (cardSearchQuery.trim()) applyCardSearchFilter();
+}
+
 function refreshPreview() {
   if (previewIndex < 0 || $("pv").hidden) return;
-  $("pvi").innerHTML = scopePreviewSvgIds(sheetCardPreviewSvg(previewIndex));
+  $("pvi").innerHTML = scopePreviewSvgIds(previewSvg(previewIndex, { interactive: true }));
   $("pvt").textContent = `Card ${previewIndex + 1} of ${studioState.count}`;
+  syncPreviewControls();
 }
 
 function openPreview(index) {
   previewIndex = (index + studioState.count) % studioState.count;
+  selectCard(previewIndex);
   if ($("pv").hidden) previousFocus = document.activeElement;
   $("pv").hidden = false;
+  syncPreviewSelects(true);
   refreshPreview();
   $("pvx").focus();
 }
@@ -2266,6 +2570,7 @@ function bindEvents() {
     $("page-theme").value = studioState.pageThemes[studioState.activePage] || "";
     $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${event.target.options.length}`;
     if (historyReady) history.refresh(captureSnapshot());
+    scrollStageToPage(studioState.activePage);
   });
   $("page-theme")?.addEventListener("change", event => {
     studioState.pageThemes = studioState.pageThemes.map((theme, page) =>
@@ -2277,11 +2582,41 @@ function bindEvents() {
   $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
   $("delete-page")?.addEventListener("click", () => deleteActivePage(currentLayout.PER));
   $("rows").addEventListener("click", event => {
+    if (event.target.closest("[data-action='clear-search']")) {
+      clearCardSearch(true);
+      return;
+    }
     const row = event.target.closest(".row");
-    if (row) selectCard(+row.dataset.index);
+    if (row) selectCard(+row.dataset.index, false, true);
   });
+  $("card-search")?.addEventListener("input", event => {
+    cardSearchQuery = event.target.value;
+    const clearBtn = $("card-search-clear");
+    if (clearBtn) clearBtn.hidden = !cardSearchQuery.length;
+    debouncedCardSearch();
+  });
+  $("card-search")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if (cardSearchQuery || event.target.value) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearCardSearch(true);
+      }
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      debouncedCardSearch.flush();
+      const firstMatch = filterCardIndices(studioState.cards, studioState.count, cardSearchQuery).matchedIndices[0];
+      if (firstMatch !== undefined) selectCard(firstMatch, true, true);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      debouncedCardSearch.flush();
+      const firstVisibleBtn = $("rows")?.querySelector(".row:not([hidden]) [data-action='select-card']");
+      firstVisibleBtn?.focus();
+    }
+  });
+  $("card-search-clear")?.addEventListener("click", () => clearCardSearch(true));
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "nfc", "nfc-yt", "punch", "tpl", "regmarks", "sauto", "corner-hw", "fx-claw", "fx-tear", "fx-bullet", "fx-blood", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
   $("style").addEventListener("change", () => {
     studioState.quickColors = undefined;
     syncQuickColorsControls({ rebuildStops: true });
@@ -2321,14 +2656,17 @@ function bindEvents() {
       closeThemeMenu();
     }
   });
-  $("drag").addEventListener("change", () => {
-    if ($("drag").checked && moveStampsMode) {
+  const syncDragPhotoMode = checked => {
+    $("drag").checked = checked;
+    if (checked && moveStampsMode) {
       moveStampsMode = false;
       message("Drag photos on (turned off Move stamps).");
+    } else {
+      message(checked ? "Drag photos on: drag or scroll/pinch inside a photo to zoom." : "Drag photos off.");
     }
     render();
-  });
-  $("move-stamps")?.addEventListener("click", () => {
+  };
+  const toggleMoveStampsMode = () => {
     moveStampsMode = !moveStampsMode;
     if (moveStampsMode && $("drag").checked) {
       $("drag").checked = false;
@@ -2337,7 +2675,11 @@ function bindEvents() {
       message(moveStampsMode ? "Move stamps on: drag or use arrow keys on a stamp." : "Move stamps off.");
     }
     render();
-  });
+  };
+  $("drag").addEventListener("change", () => syncDragPhotoMode($("drag").checked));
+  $("move-stamps")?.addEventListener("click", toggleMoveStampsMode);
+  $("pv-drag-photo")?.addEventListener("click", () => syncDragPhotoMode(!$("drag").checked));
+  $("pv-move-stamps")?.addEventListener("click", toggleMoveStampsMode);
   $("reset-all-stamps")?.addEventListener("click", () => {
     let changed = false;
     studioState.cards = studioState.cards.map(card => {
@@ -2832,6 +3174,131 @@ function bindEvents() {
     selectCard(index, true);
     getCardRowEl(index)?.querySelector("[data-field='title']")?.focus({ preventScroll: true });
   });
+  [
+    ["pv-title", "title", "change card name"],
+    ["pv-genre", "genre", "change card genre"],
+    ["pv-loc", "loc", "change card place"],
+    ["pv-year", "year", "change card year"],
+    ["pv-code", "code", "change card abbreviation"],
+    ["pv-stx", "stx", "change card stamp text"]
+  ].forEach(([id, field, label]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      updateCard(previewIndex, { [field]: el.value });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+    });
+    bindContinuousHistory(el, label, `pv:${field}`);
+  });
+  [
+    ["pv-zm", "zm", "pv-zm-val", v => `${v}%`, v => Number(v) / 100, "change photo zoom"],
+    ["pv-px", "px", "pv-px-val", v => String(v), v => Number(v), "change horizontal photo position"],
+    ["pv-py", "py", "pv-py-val", v => String(v), v => Number(v), "change vertical photo position"]
+  ].forEach(([id, field, outId, fmt, parseFn, label]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      if ($(outId)) $(outId).textContent = fmt(el.value);
+      updateCard(previewIndex, { [field]: parseFn(el.value) });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+    });
+    bindContinuousHistory(el, label, `pv:${field}`);
+  });
+  $("pv-photo-btn")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    pendingPhotoUploadIndex = previewIndex;
+    ensureSharedPhotoInput().click();
+  });
+  $("pv-photo-remove")?.addEventListener("click", () => {
+    if (previewIndex >= 0) removeCardPhoto(previewIndex);
+  });
+  $("pv-crop-reset")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { zm: 1, px: 0, py: 0 });
+    recordDiscrete("reset photo crop");
+    syncSidebarRowValues(previewIndex);
+    render();
+  });
+  $("pv-accent")?.addEventListener("input", event => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { ...hexToHS(event.target.value), autoAccent: false });
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+  });
+  if ($("pv-accent")) bindContinuousHistory($("pv-accent"), "change card accent colour", "pv:accent");
+  [
+    ["pv-theme", "theme", "change card theme"],
+    ["pv-stamp", "sk", "change card stamp"],
+    ["pv-hardware", "cornerHardware", "change card corner hardware"]
+  ].forEach(([id, field, label]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      if (previewIndex < 0) return;
+      updateCard(previewIndex, { [field]: el.value });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  const applyPreviewStampEdit = (patch, label) => {
+    if (previewIndex < 0) return;
+    const st = resolveCardStamp(previewIndex, 0);
+    const current = studioState.cards[previewIndex]?.stampPos;
+    const next = sanitizeStampOverride({
+      x: current?.x ?? st.nx,
+      y: current?.y ?? st.ny,
+      r: current?.r ?? st.r,
+      scale: current?.scale ?? st.mult,
+      ...patch
+    });
+    updateCard(previewIndex, { stampPos: next });
+    patchLiveStampDom(previewIndex, 0);
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+    recordContinuous(label, "pv:stamp-pos");
+  };
+  $("pv-srot")?.addEventListener("input", event => {
+    const angle = normalizeAngle(Number(event.target.value));
+    if ($("pv-srot-val")) $("pv-srot-val").textContent = `${angle}°`;
+    applyPreviewStampEdit({ r: angle }, "rotate stamp");
+  });
+  $("pv-srot")?.addEventListener("change", () => finishContinuous("rotate stamp", "pv:stamp-pos"));
+  $("pv-sscale")?.addEventListener("input", event => {
+    const scale = clampStampScale(Number(event.target.value) / 100);
+    if ($("pv-sscale-val")) $("pv-sscale-val").textContent = `${Math.round(scale * 100)}%`;
+    applyPreviewStampEdit({ scale }, "scale stamp");
+  });
+  $("pv-sscale")?.addEventListener("change", () => finishContinuous("scale stamp", "pv:stamp-pos"));
+  $("pv-surprise")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    surpriseCards({ seed: generateSeed(), onlyIndex: previewIndex, actionLabel: "surprise card styling" });
+  });
+  $("pv-lock")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    toggleCardLock(previewIndex);
+    syncPreviewControls();
+  });
+  $("pv-reset-stamp")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    const current = studioState.cards[previewIndex];
+    if (current && (current.stampPos || current.stamp2Pos)) {
+      const { stampPos: _p1, stamp2Pos: _p2, ...rest } = current;
+      const next = { ...rest };
+      cardIds.set(next, cardIdentity(current));
+      studioState.cards = studioState.cards.map((item, idx) => idx === previewIndex ? next : item);
+      recordDiscrete("reset stamp position");
+      buildRows();
+      render();
+    }
+  });
+  $("pv-reset-style")?.addEventListener("click", () => {
+    if (previewIndex >= 0) resetSingleCardStyling(previewIndex);
+  });
   $("pvsvg").addEventListener("click", downloadCardSvg);
   $("pvpng").addEventListener("click", async () => {
     try {
@@ -2853,8 +3320,9 @@ function bindEvents() {
   });
   document.addEventListener("keydown", event => {
     if ($("pv").hidden) return;
-    if (event.key === "Escape") closePreview();
-    else if (event.key === "ArrowLeft") openPreview(previewIndex - 1);
+    if (event.key === "Escape") { closePreview(); return; }
+    if (event.target?.matches?.("#pv input, #pv select, #pv textarea") || event.target?.closest?.(".st-hit")) return;
+    if (event.key === "ArrowLeft") openPreview(previewIndex - 1);
     else if (event.key === "ArrowRight") openPreview(previewIndex + 1);
   });
   document.addEventListener("keydown", event => {
@@ -2917,21 +3385,61 @@ function bindEvents() {
     recordDiscrete("reset gradient angle");
   });
 
-  $("sheets").addEventListener("pointerdown", event => {
-    const rotTarget = event.target.closest(".st-rot-hit");
-    if (rotTarget && moveStampsMode) {
-      event.preventDefault();
-      const index = Number(rotTarget.dataset.ci);
-      let si = Number(rotTarget.dataset.si) === 1 ? 1 : 0;
-      const cardGroup = rotTarget.closest("g[data-ci]:not(.st-ui)");
-      const ctm = cardGroup.getScreenCTM();
-      const st = resolveCardStamp(index, si);
-      const pt = new DOMPoint(st.x, st.y).matrixTransform(ctm);
-      const uiGroup = rotTarget.closest(".st-ui");
-      const knobPt = new DOMPoint(0, Number(rotTarget.getAttribute("cy")) || -32).matrixTransform(uiGroup.getScreenCTM());
-      const dKnob = Math.hypot(event.clientX - knobPt.x, event.clientY - knobPt.y);
-      const dCenter = Math.hypot(event.clientX - pt.x, event.clientY - pt.y);
-      if (dCenter < dKnob) {
+  const bindCardStageInteractions = container => {
+    if (!container) return;
+    container.addEventListener("pointerdown", event => {
+      const rotTarget = event.target.closest(".st-rot-hit");
+      if (rotTarget && moveStampsMode) {
+        event.preventDefault();
+        const index = Number(rotTarget.dataset.ci);
+        let si = Number(rotTarget.dataset.si) === 1 ? 1 : 0;
+        const cardGroup = rotTarget.closest("g[data-ci]:not(.st-ui)");
+        const ctm = cardGroup.getScreenCTM();
+        const st = resolveCardStamp(index, si);
+        const pt = new DOMPoint(st.x, st.y).matrixTransform(ctm);
+        const uiGroup = rotTarget.closest(".st-ui");
+        const knobPt = new DOMPoint(0, Number(rotTarget.getAttribute("cy")) || -32).matrixTransform(uiGroup.getScreenCTM());
+        const dKnob = Math.hypot(event.clientX - knobPt.x, event.clientY - knobPt.y);
+        const dCenter = Math.hypot(event.clientX - pt.x, event.clientY - pt.y);
+        if (dCenter < dKnob) {
+          if ($("gs2")?.value.trim()) {
+            const s0 = resolveCardStamp(index, 0);
+            const s1 = resolveCardStamp(index, 1);
+            const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
+            const p1 = new DOMPoint(s1.x, s1.y).matrixTransform(ctm);
+            si = Math.hypot(event.clientX - p1.x, event.clientY - p1.y) < Math.hypot(event.clientX - p0.x, event.clientY - p0.y) ? 1 : 0;
+          }
+          selectedStampIndex = si;
+          selectCard(index);
+          const targetSt = resolveCardStamp(index, si);
+          rotTarget.setPointerCapture?.(event.pointerId);
+          stampDragState = {
+            mode: "move",
+            index,
+            stampIndex: si,
+            startX: event.clientX,
+            startY: event.clientY,
+            startNx: targetSt.nx,
+            startNy: targetSt.ny,
+            cardScale: ctm.a,
+            moved: false
+          };
+          return;
+        }
+        selectedStampIndex = si;
+        selectCard(index);
+        rotTarget.setPointerCapture?.(event.pointerId);
+        stampDragState = { mode: "rotate", index, stampIndex: si, cx: pt.x, cy: pt.y, moved: false };
+        return;
+      }
+
+      const stTarget = event.target.closest(".st-hit");
+      if (stTarget && moveStampsMode) {
+        event.preventDefault();
+        const index = Number(stTarget.dataset.ci);
+        const cardGroup = stTarget.closest("g[data-ci]:not(.st-ui)");
+        const ctm = cardGroup.getScreenCTM();
+        let si = Number(stTarget.dataset.si) === 1 ? 1 : 0;
         if ($("gs2")?.value.trim()) {
           const s0 = resolveCardStamp(index, 0);
           const s1 = resolveCardStamp(index, 1);
@@ -2941,68 +3449,154 @@ function bindEvents() {
         }
         selectedStampIndex = si;
         selectCard(index);
-        const targetSt = resolveCardStamp(index, si);
-        rotTarget.setPointerCapture?.(event.pointerId);
+        const st = resolveCardStamp(index, si);
+        stTarget.setPointerCapture?.(event.pointerId);
         stampDragState = {
           mode: "move",
           index,
           stampIndex: si,
           startX: event.clientX,
           startY: event.clientY,
-          startNx: targetSt.nx,
-          startNy: targetSt.ny,
+          startNx: st.nx,
+          startNy: st.ny,
           cardScale: ctm.a,
           moved: false
         };
         return;
       }
-      selectedStampIndex = si;
-      selectCard(index);
-      rotTarget.setPointerCapture?.(event.pointerId);
-      stampDragState = { mode: "rotate", index, stampIndex: si, cx: pt.x, cy: pt.y, moved: false };
-      return;
-    }
 
-    const stTarget = event.target.closest(".st-hit");
-    if (stTarget && moveStampsMode) {
+      const target = event.target.closest(".pp");
+      if (!target) return;
+      const index = +target.dataset.ci, card = studioState.cards[index];
+      if (!card?.img || !card.iw) return;
       event.preventDefault();
-      const index = Number(stTarget.dataset.ci);
-      const cardGroup = stTarget.closest("g[data-ci]:not(.st-ui)");
-      const ctm = cardGroup.getScreenCTM();
-      let si = Number(stTarget.dataset.si) === 1 ? 1 : 0;
-      if ($("gs2")?.value.trim()) {
-        const s0 = resolveCardStamp(index, 0);
-        const s1 = resolveCardStamp(index, 1);
-        const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
-        const p1 = new DOMPoint(s1.x, s1.y).matrixTransform(ctm);
-        si = Math.hypot(event.clientX - p1.x, event.clientY - p1.y) < Math.hypot(event.clientX - p0.x, event.clientY - p0.y) ? 1 : 0;
+      target.setPointerCapture?.(event.pointerId);
+      const cardGroup = target.closest("g[data-ci]:not(.st-ui)");
+      const cardScale = cardGroup?.getScreenCTM()?.a || target.ownerSVGElement.getScreenCTM().a;
+      const geom = getCardPhotoGeometry(index);
+      activePpPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, index });
+      const sameCard = [...activePpPointers.entries()].filter(([, p]) => p.index === index);
+      if (sameCard.length >= 2) {
+        dragState = null;
+        const [idA, pA] = sameCard[0];
+        const [idB, pB] = sameCard[1];
+        pinchState = {
+          index,
+          idA,
+          idB,
+          startDist: Math.max(10, Math.hypot(pB.x - pA.x, pB.y - pA.y)),
+          startZm: card.zm || 1,
+          startPx: card.px || 0,
+          startPy: card.py || 0,
+          midX: (pA.x + pB.x) / 2,
+          midY: (pA.y + pB.y) / 2,
+          scale: cardScale,
+          ...geom
+        };
+        return;
       }
-      selectedStampIndex = si;
-      selectCard(index);
-      const st = resolveCardStamp(index, si);
-      stTarget.setPointerCapture?.(event.pointerId);
-      stampDragState = {
-        mode: "move",
+      dragState = {
         index,
-        stampIndex: si,
-        startX: event.clientX,
-        startY: event.clientY,
-        startNx: st.nx,
-        startNy: st.ny,
-        cardScale: ctm.a,
-        moved: false
+        x: event.clientX,
+        y: event.clientY,
+        px: card.px || 0,
+        py: card.py || 0,
+        scale: cardScale,
+        ...geom
       };
+    });
+    container.addEventListener("wheel", event => {
+      const target = event.target.closest(".pp");
+      if (!target || !$("drag")?.checked) return;
+      const index = +target.dataset.ci, card = studioState.cards[index];
+      if (!card?.img || !card.iw) return;
+      event.preventDefault();
+      const rawDelta = event.deltaMode === 1 ? event.deltaY * 16 : (event.deltaMode === 2 ? event.deltaY * 120 : event.deltaY);
+      if (!rawDelta) return;
+      const sensitivity = event.ctrlKey ? 0.008 : 0.0022;
+      const nextZm = Math.max(1, Math.min(3, Math.round((card.zm || 1) * Math.exp(-rawDelta * sensitivity) * 1000) / 1000));
+      const updated = updateCard(index, { zm: nextZm });
+      const geom = getCardPhotoGeometry(index);
+      const box = fitBox(updated, geom.CH, geom.PS, geom.PH);
+      if (box) patchLivePhotoDom(index, updated.px || 0, updated.py || 0, box, geom.isPolaroid, true);
+      const actionKey = `card:${index}:photo-zoom`;
+      recordContinuous("zoom card photo", actionKey);
+      const prevTimer = photoZoomWheelTimers.get(index);
+      if (prevTimer) clearTimeout(prevTimer);
+      photoZoomWheelTimers.set(index, setTimeout(() => {
+        photoZoomWheelTimers.delete(index);
+        finishContinuous("zoom card photo", actionKey);
+        saveSoon();
+      }, 180));
+    }, { passive: false });
+    container.addEventListener("keydown", event => {
+      const target = event.target.closest(".st-hit");
+      if (!target || !moveStampsMode) return;
+      const step = event.shiftKey ? 10 : 2;
+      const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+      if (!delta) return;
+      event.preventDefault();
+      const index = Number(target.dataset.ci);
+      const si = Number(target.dataset.si) === 1 ? 1 : 0;
+      selectedStampIndex = si;
+      const CH = currentLayout?.CH || 239;
+      const st = resolveCardStamp(index, si);
+      const current = studioState.cards[index]?.[stampKeyFor(si)];
+      const bounds = { CW, CH, effScale: st.scale };
+      const clamped = clampStampNorm(st.nx + delta[0] / CW, st.ny + delta[1] / CH, bounds);
+      const next = sanitizeStampOverride({
+        x: clamped.nx,
+        y: clamped.ny,
+        r: current?.r ?? st.r,
+        scale: current?.scale ?? st.mult
+      }, bounds);
+      updateCard(index, { [stampKeyFor(si)]: next });
+      patchLiveStampDom(index, si);
+      const resetAllStampsBtn = $("reset-all-stamps");
+      if (resetAllStampsBtn) resetAllStampsBtn.hidden = false;
+      recordContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
+      saveSoon();
+    });
+    container.addEventListener("focusout", event => {
+      const target = event.target.closest(".st-hit");
+      if (!target) return;
+      const index = Number(target.dataset.ci);
+      const si = Number(target.dataset.si) === 1 ? 1 : 0;
+      finishContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
+    });
+  };
+
+  bindCardStageInteractions($("sheets"));
+  bindCardStageInteractions($("pvi"));
+
+  window.addEventListener("pointermove", event => {
+    if (activePpPointers.has(event.pointerId)) {
+      const entry = activePpPointers.get(event.pointerId);
+      entry.x = event.clientX;
+      entry.y = event.clientY;
+    }
+
+    if (pinchState) {
+      const pA = activePpPointers.get(pinchState.idA);
+      const pB = activePpPointers.get(pinchState.idB);
+      if (!pA || !pB) return;
+      const curDist = Math.max(10, Math.hypot(pB.x - pA.x, pB.y - pA.y));
+      const curMidX = (pA.x + pB.x) / 2;
+      const curMidY = (pA.y + pB.y) / 2;
+      const nextZm = Math.max(1, Math.min(3, Math.round(pinchState.startZm * (curDist / pinchState.startDist) * 1000) / 1000));
+      const curCard = studioState.cards[pinchState.index];
+      const box = curCard ? fitBox({ ...curCard, zm: nextZm }, pinchState.CH, pinchState.PS, pinchState.PH) : null;
+      if (!box) return;
+      const dx = (curMidX - pinchState.midX) / pinchState.scale;
+      const dy = (curMidY - pinchState.midY) / pinchState.scale;
+      const px = box.mx > 0 ? Math.max(-100, Math.min(100, pinchState.startPx + dx / box.mx * 100)) : 0;
+      const py = box.my > 0 ? Math.max(-100, Math.min(100, pinchState.startPy + dy / box.my * 100)) : 0;
+      updateCard(pinchState.index, { zm: nextZm, px, py });
+      recordContinuous("zoom and pan card photo", `card:${pinchState.index}:photo-pinch`);
+      patchLivePhotoDom(pinchState.index, px, py, box, pinchState.isPolaroid, true);
       return;
     }
 
-    const target = event.target.closest(".pp");
-    if (!target) return;
-    const index = +target.dataset.ci, card = studioState.cards[index];
-    if (!card?.img || !card.iw) return;
-    event.preventDefault();
-    dragState = { index, x: event.clientX, y: event.clientY, px: card.px || 0, py: card.py || 0, scale: target.ownerSVGElement.getScreenCTM().a };
-  });
-  window.addEventListener("pointermove", event => {
     if (stampDragState) {
       const { mode, index, stampIndex: si } = stampDragState;
       const st = resolveCardStamp(index, si);
@@ -3047,7 +3641,8 @@ function bindEvents() {
     }
 
     if (!dragState) return;
-    const card = studioState.cards[dragState.index], box = fitBox(card, currentLayout.CH);
+    const card = studioState.cards[dragState.index];
+    const box = fitBox(card, currentLayout.CH, dragState.PS, dragState.PH);
     if (!box) return;
     const dx = (event.clientX - dragState.x) / dragState.scale;
     const dy = (event.clientY - dragState.y) / dragState.scale;
@@ -3055,23 +3650,20 @@ function bindEvents() {
     const py = box.my > 0 ? Math.max(-100, Math.min(100, dragState.py + dy / box.my * 100)) : 0;
     updateCard(dragState.index, { px, py });
     recordContinuous("reposition card photo", `card:${dragState.index}:photo-position`);
-    const image = $("photo" + dragState.index);
-    if (image) {
-      const photoHeight = 136 + currentLayout.CH - 239;
-      image.setAttribute("x", (17 + 68 - box.w / 2 + px / 100 * box.mx).toFixed(2));
-      image.setAttribute("y", (16 + photoHeight / 2 - box.h / 2 + py / 100 * box.my).toFixed(2));
-    }
-    const row = getCardRowEl(dragState.index);
-    if (row) {
-      row.querySelector("[data-adjust='px']").value = px;
-      row.querySelector("[data-adjust='py']").value = py;
-    }
+    patchLivePhotoDom(dragState.index, px, py, box, dragState.isPolaroid);
   });
-  ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, () => {
+  ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, event => {
+    activePpPointers.delete(event.pointerId);
+    if (pinchState && (event.pointerId === pinchState.idA || event.pointerId === pinchState.idB || activePpPointers.size < 2)) {
+      finishContinuous("zoom and pan card photo", `card:${pinchState.index}:photo-pinch`);
+      pinchState = null;
+      render();
+      return;
+    }
     if (stampDragState) {
       const { mode, moved } = stampDragState;
       stampDragState = null;
-      $("sheets")?.querySelectorAll(".st-snap-guide").forEach(node => node.remove());
+      [$("sheets"), $("pvi")].forEach(root => root?.querySelectorAll(".st-snap-guide").forEach(node => node.remove()));
       if (moved) {
         recordDiscrete(mode === "rotate" ? "rotate stamp" : "move stamp");
         render();
@@ -3082,41 +3674,6 @@ function bindEvents() {
     dragState = null;
     render();
   }));
-  $("sheets").addEventListener("keydown", event => {
-    const target = event.target.closest(".st-hit");
-    if (!target || !moveStampsMode) return;
-    const step = event.shiftKey ? 10 : 2;
-    const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
-    if (!delta) return;
-    event.preventDefault();
-    const index = Number(target.dataset.ci);
-    const si = Number(target.dataset.si) === 1 ? 1 : 0;
-    selectedStampIndex = si;
-    const CH = currentLayout?.CH || 239;
-    const st = resolveCardStamp(index, si);
-    const current = studioState.cards[index]?.[stampKeyFor(si)];
-    const bounds = { CW, CH, effScale: st.scale };
-    const clamped = clampStampNorm(st.nx + delta[0] / CW, st.ny + delta[1] / CH, bounds);
-    const next = sanitizeStampOverride({
-      x: clamped.nx,
-      y: clamped.ny,
-      r: current?.r ?? st.r,
-      scale: current?.scale ?? st.mult
-    }, bounds);
-    updateCard(index, { [stampKeyFor(si)]: next });
-    patchLiveStampDom(index, si);
-    const resetAllStampsBtn = $("reset-all-stamps");
-    if (resetAllStampsBtn) resetAllStampsBtn.hidden = false;
-    recordContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
-    saveSoon();
-  });
-  $("sheets").addEventListener("focusout", event => {
-    const target = event.target.closest(".st-hit");
-    if (!target) return;
-    const index = Number(target.dataset.ci);
-    const si = Number(target.dataset.si) === 1 ? 1 : 0;
-    finishContinuous("nudge stamp", `card:${index}:stamp-nudge:${si}`);
-  });
 }
 
 function cycleTheme(direction) {

@@ -1,8 +1,9 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8.1";
-import { hsl } from "./image-utils.js?v=phase8.1";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8.1";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8.1";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9e";
+import { hsl } from "./image-utils.js?v=phase9e";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9e";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9e";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9e";
 
 export { SKINDS, STAMPS };
 
@@ -25,30 +26,18 @@ export const displayText = (t, n) => {
   return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 };
 
-export function titleLayout(title, font, maxWidth = 136, scale = 1) {
-  const clean = String(title || "Add name");
-  const requestedScale = Number(scale);
-  const boundedScale = Number.isFinite(requestedScale) ? Math.max(0.7, Math.min(1, requestedScale)) : 1;
-  const scaledFont = { ...font, s: font.s * boundedScale };
-  const singleSize = Number(fit(clean, scaledFont.s, maxWidth, scaledFont.k));
-  if (singleSize >= scaledFont.s - 0.05) return { lines: [clean], size: singleSize, wrapped: false };
-
-  const maxChars = Math.max(4, Math.floor(maxWidth / (scaledFont.s * scaledFont.k)));
+function wrapToTwoLines(clean, maxChars) {
   const words = clean.split(/\s+/).filter(Boolean);
   const lines = [];
   let current = "";
-
   const pushWord = word => {
-    if (!current) {
-      current = word;
-    } else if ((current + " " + word).length <= maxChars) {
-      current += " " + word;
-    } else {
+    if (!current) current = word;
+    else if ((current + " " + word).length <= maxChars) current += " " + word;
+    else {
       lines.push(current);
       current = word;
     }
   };
-
   words.forEach(word => {
     if (word.length <= maxChars) {
       pushWord(word);
@@ -65,12 +54,58 @@ export function titleLayout(title, font, maxWidth = 136, scale = 1) {
     }
   });
   if (current) lines.push(current);
+  return { lines, wrapped: lines.length > 1, twoLines: lines.length > 1 ? lines.slice(0, 2) : lines };
+}
 
-  const twoLines = lines.length > 1 ? lines.slice(0, 2) : lines;
+export function titleLayout(title, font, maxWidth = 136, scale = 1) {
+  const clean = String(title || "Add name");
+  const requestedScale = Number(scale);
+  const boundedScale = Number.isFinite(requestedScale) ? Math.max(0.7, Math.min(1, requestedScale)) : 1;
+  const scaledFont = { ...font, s: font.s * boundedScale };
+  const singleSize = Number(fit(clean, scaledFont.s, maxWidth, scaledFont.k));
+  if (singleSize >= scaledFont.s - 0.05) return { lines: [clean], size: singleSize, wrapped: false };
+
+  const maxChars = Math.max(4, Math.floor(maxWidth / (scaledFont.s * scaledFont.k)));
+  const { twoLines, wrapped } = wrapToTwoLines(clean, maxChars);
   const size = Math.max(3.4, Math.min(scaledFont.s,
     ...twoLines.map(line => Number(fit(line, scaledFont.s, maxWidth, scaledFont.k)))
   ));
-  return { lines: twoLines, size, wrapped: lines.length > 1 };
+  return { lines: twoLines, size, wrapped };
+}
+
+export function subtitleLayout(text, maxSize = 5.8, maxWidth = 96, k = 0.64) {
+  const clean = String(text || "").trim();
+  if (!clean) return { lines: [""], size: maxSize, wrapped: false };
+  const singleSize = Number(fit(clean, maxSize, maxWidth, k));
+  if (singleSize >= maxSize - 0.35) return { lines: [clean], size: singleSize, wrapped: false };
+
+  // Target slightly relaxed ~4.9pt before wrapping; prefer clean break after " // " when both sides fit cleanly
+  const targetSize = Math.max(4.6, maxSize - 0.6);
+  const maxChars = Math.max(10, Math.floor(maxWidth / (targetSize * k)));
+  const sepIdx = clean.indexOf(" // ");
+  if (sepIdx > 0) {
+    const left = clean.slice(0, sepIdx + 3).trim();
+    const right = clean.slice(sepIdx + 4).trim();
+    if (left && right && left.length <= maxChars && right.length <= maxChars) {
+      const size = Math.max(3.6, Math.min(maxSize,
+        Number(fit(left, maxSize, maxWidth, k)),
+        Number(fit(right, maxSize, maxWidth, k))
+      ));
+      return { lines: [left, right], size, wrapped: true };
+    }
+  }
+
+  const { lines, twoLines, wrapped } = wrapToTwoLines(clean, maxChars);
+  // If remainder truncated beyond 2 lines at targetChars, relax per-line char capacity evenly across 2 lines
+  if (lines.length > 2) {
+    const evenMax = Math.max(maxChars, Math.ceil(clean.length / 2) + 2);
+    const balanced = wrapToTwoLines(clean, evenMax);
+    const chosen = balanced.lines.length <= 2 ? balanced.twoLines : [clean.slice(0, Math.ceil(clean.length / 2)).trim(), clean.slice(Math.ceil(clean.length / 2)).trim()];
+    const size = Math.max(3.6, Math.min(maxSize, ...chosen.map(l => Number(fit(l, maxSize, maxWidth, k)))));
+    return { lines: chosen, size, wrapped: true };
+  }
+  const size = Math.max(3.6, Math.min(maxSize, ...twoLines.map(l => Number(fit(l, maxSize, maxWidth, k)))));
+  return { lines: twoLines, size, wrapped };
 }
 
 const FT = 'font-family="Montserrat,Arial,sans-serif"';
@@ -93,12 +128,11 @@ export function computeLayout(paperVal = "a4", csizeVal = "ticket") {
   return { W, H, K, CH, CWp, CHp, GX, GY, COLS, ROWS, PER, MX, MY, isLetter };
 }
 
-export function fitBox(c, CH = 239) {
+export function fitBox(c, CH = 239, PS = 136, PH = 136 + CH - 239) {
   if (!c.iw || !c.ih) return null;
-  const ph = 136 + CH - 239;
-  const k = Math.max(136 / c.iw, ph / c.ih) * (c.zm || 1);
+  const k = Math.max(PS / c.iw, PH / c.ih) * (c.zm || 1);
   const w = c.iw * k, h = c.ih * k;
-  return { w, h, mx: (w - 136) / 2, my: (h - ph) / 2 };
+  return { w, h, mx: (w - PS) / 2, my: (h - PH) / 2 };
 }
 
 const inkFilter = (id, seed, wear) => {
@@ -314,6 +348,7 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
   };
 
   const titleFontKey = c0.titleFont || cfg.titleFont;
+  const defaultFont = theme.polaroid ? TF.scrawl : (theme.min ? TF.mont : TF.pirata);
   return {
     theme,
     resolvedBorder,
@@ -324,7 +359,7 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
     stampColor: HEX6_RE.test(String(c0.stampColor || "").trim()) ? String(c0.stampColor).trim().toLowerCase() : (cfg.stampColor || "#d9322f"),
     stampWear: c0.stampWear ?? c0.stampStyle?.wear ?? cfg.stampWear ?? 0,
     borderWear: c0.border?.wear !== undefined ? resolvedBorder.wear : (cfg.borderWear || 0),
-    titleFont: TF[titleFontKey] || TF.pirata,
+    titleFont: TF[titleFontKey] || defaultFont,
     titleScale: c0.titleScale ?? cfg.titleScale ?? 0.85,
     gradientAngle: c0.gradientAngle ?? cfg.gradientAngle ?? 180,
     gradientSpread: c0.gradientSpread ?? cfg.gradientSpread ?? 32,
@@ -332,8 +367,35 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
     grain: c0.grain ?? cfg.grain ?? 0,
     edgeWear: c0.edgeWear ?? cfg.edgeWear ?? 0,
     creases: c0.creases ?? cfg.creases ?? 0,
-    scuffs: c0.scuffs ?? cfg.scuffs ?? 0
+    scuffs: c0.scuffs ?? cfg.scuffs ?? 0,
+    cornerHardware: normalizeCornerHardware(c0.cornerHardware || cfg.cornerHardware || "bolts", "bolts"),
+    surfaceFx: {
+      claw: Boolean(c0.fxClaw ?? cfg.fxClaw),
+      tear: Boolean(c0.fxTear ?? cfg.fxTear),
+      bullet: Boolean(c0.fxBullet ?? cfg.fxBullet),
+      blood: Boolean(c0.fxBlood ?? cfg.fxBlood)
+    }
   };
+}
+
+export function renderNfcBadge({ CW, D = 0, accent, theme = {}, withYt = true, scale = 1 }) {
+  const sc = Math.max(0.5, Math.min(2, Number(scale) || 1));
+  const anchorX = CW - 20;
+  const anchorY = 209 + D;
+  const scaleAttr = sc !== 1 ? ` scale(${sc.toFixed(2)})` : "";
+  let waves = "";
+  if (withYt) {
+    for (let k = 1; k <= 3; k++) {
+      const px = 7 + k * 2.6, h = 2 + k * 1.5;
+      waves += `<path d="M${px} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px} ${h}" fill="none" stroke="${accent}" stroke-width="1.1" stroke-linecap="round"/>`;
+    }
+    return `<g class="nfc-badge" transform="translate(${anchorX} ${anchorY})${scaleAttr} translate(-18 0)"><circle r="5.6" fill="${theme.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${theme.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${theme.np || "#fff"}"/>${waves}</g>`;
+  }
+  for (let k = 1; k <= 3; k++) {
+    const px = -11.5 + k * 2.8, h = 2 + k * 1.5;
+    waves += `<path d="M${px.toFixed(1)} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px.toFixed(1)} ${h}" fill="none" stroke="${accent}" stroke-width="1.2" stroke-linecap="round"/>`;
+  }
+  return `<g class="nfc-badge nfc-only" transform="translate(${anchorX} ${anchorY})${scaleAttr}"><circle cx="-11.5" cy="0" r="1.4" fill="${accent}"/>${waves}</g>`;
 }
 
 /**
@@ -371,12 +433,18 @@ export function renderCard(c0, i, cfg) {
   const accLum = (T.fixed || customAccent) ? lum(T.fixed || customAccent) : hslLum(c.h ?? 35, effS, effL);
   const bt = T.bt || (accLum > 0.52 ? "#111" : "#fff");
 
-  const odd = i % 2, PX = 17, PY = 16, PS = 136, PH = 136 + D, PB = PY + PH, PM = PX + PS / 2, PMY = PY + PH / 2;
+  const isPolaroid = Boolean(T.polaroid) && cfg.minimalLayout !== true;
+  const odd = i % 2;
+  const PX = isPolaroid ? 12 : 17;
+  const PY = isPolaroid ? 13 : 16;
+  const PS = isPolaroid ? 146 : 136;
+  const PH = PS + D;
+  const PB = PY + PH, PM = PX + PS / 2, PMY = PY + PH / 2;
 
-  const b = c.img && fitBox(c, CH);
+  const b = c.img && fitBox(c, CH, PS, PH);
   const ph = c.img
     ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="xMidYMid slice"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${design.photoFilter ? ` filter="url(#np${i})"` : ""}/></g>`
-    : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${A}" font-size="9" ${FT}>Add photo</text>`;
+    : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${isPolaroid ? (T.hi || "#ffffff") : A}"${isPolaroid ? ' opacity=".65"' : ""} font-size="9" ${FT}>Add photo</text>`;
 
   const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
   const ss = (resolved.stampSize || 100) / 100;
@@ -403,7 +471,7 @@ export function renderCard(c0, i, cfg) {
     color: sco,
     wear: resolved.stampWear,
     filterId: `ink${i}`,
-    idAttr: cfg.moveStamps && !cfg.one ? `st0-${i}` : "",
+    idAttr: cfg.moveStamps && (!cfg.one || cfg.interactive) ? `st0-${i}` : "",
     style: resolvedStampStyle,
     themeBg: T.bg
   });
@@ -418,7 +486,7 @@ export function renderCard(c0, i, cfg) {
     color: sco,
     wear: resolved.stampWear,
     filterId: `ink${i}`,
-    idAttr: cfg.moveStamps && !cfg.one ? `st1-${i}` : "",
+    idAttr: cfg.moveStamps && (!cfg.one || cfg.interactive) ? `st1-${i}` : "",
     style: resolvedStampStyle,
     themeBg: T.bg
   }) : "";
@@ -434,7 +502,7 @@ export function renderCard(c0, i, cfg) {
     const vText = `${Math.round(st.nx * 100)}% across, ${Math.round(st.ny * 100)}% down, ${Math.round(st.r)} degrees`;
     return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${rotY.toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${rotY.toFixed(1)}" r="56" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${rotY.toFixed(1)}" r="4.8"/></g>`;
   };
-  const stampUi = cfg.moveStamps && !cfg.one
+  const stampUi = cfg.moveStamps && (!cfg.one || cfg.interactive)
     ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
     : "";
 
@@ -465,15 +533,16 @@ export function renderCard(c0, i, cfg) {
     ? `<g clip-path="url(#ck${i})" pointer-events="none">${texDefs ? `<defs>${texDefs}</defs>` : ""}${grVal ? `<rect width="${CW}" height="${CH}" fill="#000" filter="url(#gr${i})" opacity="${(grVal / 100 * 0.55).toFixed(2)}"/>` : ""}${ewVal ? `<rect width="${CW}" height="${CH}" fill="none" stroke="${tcol}" stroke-width="12" filter="url(#ew${i})" opacity="${(ewVal / 100 * 0.55).toFixed(2)}"/>` : ""}${scVal ? `<g transform="rotate(${Math.round(rn(5) * 60 - 30)} ${CW / 2} ${CH / 2})"><rect x="-60" y="-60" width="${CW + 120}" height="${CH + 120}" fill="#000" filter="url(#sc${i})" opacity="${(scVal / 100 * 0.7).toFixed(2)}"/></g>` : ""}${cre}</g>`
     : "";
 
-  let nfc = "";
-  if (cfg.nfc) {
-    let ar = "";
-    for (let k = 1; k <= 3; k++) {
-      const px = 7 + k * 2.6, h = 2 + k * 1.5;
-      ar += `<path d="M${px} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px} ${h}" fill="none" stroke="${A}" stroke-width="1.1" stroke-linecap="round"/>`;
-    }
-    nfc = `<g transform="translate(${CW - 38} ${209 + D})"><circle r="5.6" fill="${T.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${T.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${T.np || "#fff"}"/>${ar}</g>`;
-  }
+  let nfc = cfg.nfc
+    ? renderNfcBadge({
+        CW,
+        D,
+        accent: A,
+        theme: T,
+        withYt: cfg.nfcWithYt !== false,
+        scale: (Number(cfg.nfcScale ?? 100) || 100) / 100
+      })
+    : "";
   if (cfg.punchHole) {
     nfc += `<g aria-label="NFC punch hole" transform="translate(${CW / 2} ${PMY})"><circle r="3.4" fill="#fff" stroke="${T.frame}" stroke-width=".6"/><circle r="1.7" fill="#e7e4dc" stroke="${A}" stroke-width=".35"/></g>`;
   }
@@ -486,20 +555,20 @@ export function renderCard(c0, i, cfg) {
     });
   }
 
-  const gl = `${c.genre} // ${c.loc}`;
-  const no = `NO. ${c0.year || "0000"}-${c0.code || abbr(c0.title) || "XXXX"}`;
+  const isAlbum = c0.kind === "album";
+  const gl = isAlbum
+    ? (String(c0.loc || "").trim() || String(c0.genre || "").trim() || "Artist")
+    : `${c.genre} // ${c.loc}`;
+  const no = `NO. ${c0.year || "0000"}-${c0.code || abbr(isAlbum ? (c0.loc || c0.title) : c0.title) || "XXXX"}`;
 
-  let sc = "";
-  [[9, 9], [CW - 9, 9], [9, CH - 9], [CW - 9, CH - 9]].forEach(([bx, by], k) => {
-    const ang = (i * 47 + k * 61) % 180, mt = T.mt, hi = T.hi, dk = T.dk, ph = (i + k) % 2;
-    sc += `<g transform="translate(${bx} ${by})"><circle cx=".35" cy=".5" r="2.5" fill="#000" opacity=".3"/><circle r="2.5" fill="${mt}" stroke="${dk}" stroke-width=".35"/><circle r="1.9" fill="none" stroke="${hi}" stroke-width=".3" opacity=".7"/><circle cx="-.7" cy="-.8" r=".7" fill="${hi}" opacity=".55"/><g transform="rotate(${ang})" stroke="${dk}" stroke-width=".42" stroke-linecap="round"><path d="M-1.5 0H1.5"/>${ph ? '<path d="M0 -1.5V1.5"/>' : ''}</g></g>`;
-  });
+  const sc = renderCornerHardware({ style: resolved.cornerHardware, index: i, CW, CH, accent: A, theme: T });
+  const surfaceFxMarkup = renderSurfaceFx({ index: i, CW, CH, theme: T, fx: resolved.surfaceFx });
 
   const bw = `EST. ${c.year}`.length * 4.5, bdg = design.yearBadge, pf = design.tearStyle, tcn = design.centerTitle ? 1 : 0;
   const tx = tcn ? CW / 2 : 17, ta = tcn ? ' text-anchor="middle"' : "";
   const badge = `<rect x="17" y="168" width="${(bw + 9).toFixed(1)}" height="10" rx="${bdg === 1 ? 5 : 0}" fill="${bdg === 2 ? "none" : A}"${bdg === 2 ? ` stroke="${A}" stroke-width=".8"` : ""}/><text x="21.5" y="175.2" fill="${bdg === 2 ? A : bt}" font-size="6" font-weight="800" textLength="${bw.toFixed(1)}" lengthAdjust="spacingAndGlyphs" ${FT}>EST. ${esc(c.year)}</text>`;
   const perf = `<path d="M9 161H${CW - 9}" stroke="${mute}" stroke-width="${pf === 1 ? 1.3 : 0.6}"${pf === 0 ? ' stroke-dasharray="2 2"' : pf === 1 ? ' stroke-dasharray="0.1 3" stroke-linecap="round"' : ""}/>` + (pf === 2 ? "" : `<circle cx="0" cy="161" r="3.6" fill="#fff"/><circle cx="${CW}" cy="161" r="3.6" fill="#fff"/>`);
-  const drag = cfg.drag && !cfg.one ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
+  const drag = cfg.drag && (!cfg.one || cfg.interactive) ? `<rect class="pp" data-ci="${i}" x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="transparent"/>` : "";
 
   const cleanTitle = String(c.title || "Add name");
   const titleLayoutResult = titleLayout(cleanTitle, tf, 136, resolved.titleScale);
@@ -523,22 +592,59 @@ export function renderCard(c0, i, cfg) {
     seed: i + 21
   });
 
-  if (cfg.minimalLayout === true) {
-    const useCustomMinimalBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
-    const minimalBorderDefs = useCustomMinimalBorder ? borderRendered.defs : "";
-    const minimalBorderMarkup = useCustomMinimalBorder
-      ? borderRendered.markup
-      : `<rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>`;
-    const minimalTitleMarkup = titleLayoutResult.wrapped
-      ? titleLines.map((line, lineIndex) => `<text x="17" y="${(188 + lineIndex * 11 + D).toFixed(1)}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
-      : `<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
-    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${minimalBorderDefs}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
-  }
-
   const gradDef = renderGradDef(T, i, CH, resolved.gradientAngle, resolved.gradientSpread, c.h ?? 35, c.s ?? 0.75, resolved.gradEnd, Boolean(customAccent));
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
   const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, resolved.borderWear) : borderRendered.defs;
+
+  const isMinimal = cfg.minimalLayout === true || Boolean(T.min);
+  if (isMinimal) {
+    const useCustomMinimalBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
+    const minimalBorderDefs = useCustomMinimalBorder ? borderDefs : "";
+    const minimalBorderMarkup = useCustomMinimalBorder
+      ? borderRendered.markup
+      : `<rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>`;
+    const minimalTitleMarkup = titleLayoutResult.wrapped
+      ? titleLines.map((line, lineIndex) => `<text x="${tx}" y="${(185 + lineIndex * 12 + D).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
+      : `<text x="${tx}" y="${187 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
+    const minimalSubY = titleLayoutResult.wrapped ? 210 + D : 200 + D;
+    const minSubLayout = subtitleLayout(gl, 5.4, tcn ? 120 : 136);
+    const minimalSubMarkup = minSubLayout.wrapped
+      ? minSubLayout.lines.map((line, li) => `<text x="${tx}" y="${(minimalSubY + li * 7.5).toFixed(1)}"${ta} fill="${mute}" font-size="${minSubLayout.size.toFixed(1)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(line)}</text>`).join("")
+      : `<text x="${tx}" y="${minimalSubY}"${ta} fill="${mute}" font-size="${fit(gl, 5.4, tcn ? 120 : 136)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text>`;
+    const minimalAccentLine = `<path d="M${tcn ? CW / 2 - 10 : 17} ${169 + D}h20" stroke="${ink}" stroke-opacity=".28" stroke-width=".6" fill="none"/>`;
+    const minimalCornerHw = c0.cornerHardware ? renderCornerHardware({ style: c0.cornerHardware, index: i, CW, CH, accent: A, theme: T }) : "";
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${minimalBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${minimalCornerHw}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}${minimalAccentLine}${minimalTitleMarkup}${minimalSubMarkup}<text x="${tx}" y="${CH - 14}"${ta} fill="${mute}" font-size="5" font-weight="500" letter-spacing=".6" ${FT}>${esc(c.year)}</text>${nfc}${tex}${surfaceFxMarkup}${drag}${mk}</g>`;
+  }
+
+  if (isPolaroid) {
+    const useCustomPolaroidBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
+    const polaroidBorderDefs = useCustomPolaroidBorder ? borderDefs : "";
+    const polaroidBorderMarkup = useCustomPolaroidBorder
+      ? borderRendered.markup
+      : `<rect x=".3" y=".3" width="${CW - 0.6}" height="${CH - 0.6}" fill="none" stroke="${T.frame}" stroke-width=".6"/>`;
+    const polaroidTitleLayout = titleLayout(cleanTitle, tf, 138, resolved.titleScale);
+    const polaroidLines = polaroidTitleLayout.lines;
+    const polaroidSize = polaroidTitleLayout.size;
+    const polaroidTitleMarkup = polaroidTitleLayout.wrapped
+      ? polaroidLines.map((line, lineIndex) =>
+          `<text x="${CW / 2}" y="${(188 + lineIndex * 14 + D).toFixed(1)}" text-anchor="middle" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${polaroidSize.toFixed(1)}" letter-spacing=".4">${esc(line)}</text>`
+        ).join("")
+      : `<text x="${CW / 2}" y="${(195 + D).toFixed(1)}" text-anchor="middle" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${polaroidSize.toFixed(1)}" letter-spacing=".4">${esc(polaroidLines[0])}</text>`;
+    const yearY = (polaroidTitleLayout.wrapped ? 219 + D : 214 + D).toFixed(1);
+    const albumArtist = isAlbum ? String(c0.loc || "").trim() : "";
+    const polaroidBottomText = isAlbum && albumArtist
+      ? `${albumArtist}${c0.year === "" ? "" : ` · ${c.year}`}`
+      : (c0.year === "" ? "" : String(c.year));
+    const yearMarkup = polaroidBottomText ? `<text x="${CW / 2}" y="${yearY}" text-anchor="middle" fill="${mute}" opacity=".85" font-family="${tf.f}" font-weight="${tf.w}" font-size="${tf.ys || 8}" letter-spacing="1.2">${esc(polaroidBottomText)}</text>` : "";
+    const polaroidCornerHw = c0.cornerHardware ? renderCornerHardware({ style: c0.cornerHardware, index: i, CW, CH, accent: A, theme: T }) : "";
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${polaroidBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${polaroidBorderMarkup}${polaroidCornerHw}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width=".7"/><path d="M${PX + 0.5} ${PB - 0.5}V${PY + 0.5}H${PX + PS - 0.5}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>${polaroidTitleMarkup}${yearMarkup}${nfc}${tex}${surfaceFxMarkup}${drag}${mk}</g>`;
+  }
+
+  const subLayout = subtitleLayout(gl, 5.8, tcn ? 72 : 96);
+  const subMarkup = subLayout.wrapped
+    ? subLayout.lines.map((line, li) => `<text x="${tx}" y="${(213 + li * 8).toFixed(1)}"${ta} fill="${mute}" font-size="${subLayout.size.toFixed(1)}" font-weight="700" letter-spacing=".4" ${FT}>${U(line)}</text>`).join("")
+    : `<text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>`;
 
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
    <defs>${gradDef}${inkFilter("ink" + i, i + 3, resolved.stampWear)}${borderDefs}${grayDef}${halftoneDef}
@@ -553,10 +659,10 @@ export function renderCard(c0, i, cfg) {
    ${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width="1"/>${tp}
    <g transform="translate(0 ${D})">${perf}
    ${badge}
-   <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
+   <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>${isAlbum ? "ALBUM PASS" : "AUDIO PASS"}</text>
    ${titleMarkup}
-   <text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>
-   </g>${nfc}${serial}${tex}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
+   ${subMarkup}
+   </g>${nfc}${serial}${tex}${surfaceFxMarkup}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
 }
 
 export function regMarksSvg(W, H, enabled) {

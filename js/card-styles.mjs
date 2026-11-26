@@ -1,6 +1,6 @@
 // Per-card optional style override schema, sanitization & WCAG contrast helpers
-import { sanitizeBorderPatch } from "./borders.mjs?v=phase8.1";
-import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase8.1";
+import { sanitizeBorderPatch } from "./borders.mjs?v=phase9d";
+import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase9d";
 
 export const MAX_CARDS_LIMIT = 300;
 
@@ -30,7 +30,12 @@ export const CARD_STYLE_OVERRIDE_KEYS = Object.freeze([
   "photoFilter",
   "halftone",
   "gradientAngle",
-  "gradientSpread"
+  "gradientSpread",
+  "cornerHardware",
+  "fxClaw",
+  "fxTear",
+  "fxBullet",
+  "fxBlood"
 ]);
 
 export const SURPRISE_MANAGED_STYLE_KEYS = Object.freeze([
@@ -59,11 +64,16 @@ export const SURPRISE_MANAGED_STYLE_KEYS = Object.freeze([
   "photoFilter",
   "halftone",
   "gradientAngle",
-  "gradientSpread"
+  "gradientSpread",
+  "cornerHardware",
+  "fxClaw",
+  "fxTear",
+  "fxBullet",
+  "fxBlood"
 ]);
 
 const HEX_RE = /^#[\da-f]{6}$/i;
-const FONT_KEYS = ["pirata", "playfair", "mont", "bebas", "type", "courier"];
+const FONT_KEYS = ["pirata", "playfair", "georgia", "mont", "trebuchet", "bebas", "impact", "script", "scrawl", "rough", "calligraphy", "brush", "marker", "type", "courier", "consolas"];
 
 export function normalizeHex(hex, fallback = "") {
   let clean = String(hex || "").trim();
@@ -244,6 +254,12 @@ export function sanitizeCardStyleOverrides(raw, validThemes = null, validStamps 
   }
   if (raw.gradientSpread !== undefined && Number.isFinite(Number(raw.gradientSpread))) {
     out.gradientSpread = clampInt(raw.gradientSpread, 10, 100, 32);
+  }
+  if (typeof raw.cornerHardware === "string" && ["bolts", "pins", "staples", "rivets", "none"].includes(raw.cornerHardware.trim().toLowerCase())) {
+    out.cornerHardware = raw.cornerHardware.trim().toLowerCase();
+  }
+  for (const fxKey of ["fxClaw", "fxTear", "fxBullet", "fxBlood"]) {
+    if (raw[fxKey] !== undefined) out[fxKey] = Boolean(raw[fxKey]);
   }
   if (raw.locked) out.locked = true;
   return out;

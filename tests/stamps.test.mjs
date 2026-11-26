@@ -80,15 +80,44 @@ import {
 
 // 6. Stamp shapes (owner catalog + mixed + none) & swatch rendering
 {
-  assert.equal(SKINDS.length, 31);
-  assert.equal(STAMP_OPTIONS.length, 33);
-  for (const key of ["vinyl", "pick", "octagon", "banner", "badge", "bolt"]) {
-    assert.ok(STAMPS[key], `missing new stamp shape ${key}`);
+  assert.equal(SKINDS.length, 34);
+  assert.equal(STAMP_OPTIONS.length, 36);
+  for (const key of ["vinyl", "pick", "octagon", "banner", "badge", "bolt", "spotify", "ytmusic", "clef"]) {
+    assert.ok(STAMPS[key], `missing stamp shape ${key}`);
   }
+  const vinylSvg = renderStampMarkup({ shapeKey: "vinyl", text: "LIVE", year: "2026" });
+  assert.ok(vinylSvg.includes('<circle r="10.8"'), "vinyl should include center record label ring");
+  assert.ok(vinylSvg.includes('<circle r="2"'), "vinyl should include center spindle hole");
+  for (const standaloneKey of ["spotify", "ytmusic", "clef"]) {
+    const standaloneSvg = renderStampMarkup({ shapeKey: standaloneKey, text: "LIVE", year: "2026" });
+    assert.equal(standaloneSvg.includes('<circle r="18"'), false, `${standaloneKey} must be standalone without outer ring`);
+  }
+  const solidSpotify = renderStampMarkup({
+    shapeKey: "spotify",
+    text: "LIVE",
+    year: "2026",
+    color: "#1db954",
+    style: resolveStampStyle({ stampStyle: { fillMode: "solid" } }),
+    themeBg: "#141211"
+  });
+  assert.ok(solidSpotify.includes('fill="#1db954" stroke="none"'), "open-emblem solid stamp keeps label ink color");
   for (const opt of STAMP_OPTIONS) {
     const svg = renderStampSwatchSvg(opt.id, "#ff5a36", { bg: "#141211", ink: "#ffffff" });
     assert.ok(svg.startsWith("<svg ") && svg.endsWith("</svg>"));
     assert.equal(svg.includes("NaN"), false);
+  }
+  for (const key of ["vinyl", "spotify", "ytmusic", "clef"]) {
+    for (const fillMode of ["outline", "tinted", "solid"]) {
+      const m = renderStampMarkup({
+        shapeKey: key,
+        text: "LIVE",
+        year: "2026",
+        color: "#112233",
+        style: resolveStampStyle({ stampStyle: { fillMode } }),
+        themeBg: "#f2eadb"
+      });
+      assert.equal(m.includes("NaN"), false);
+    }
   }
 }
 
