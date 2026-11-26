@@ -1,8 +1,8 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8.3";
-import { hsl } from "./image-utils.js?v=phase8.3";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8.3";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8.3";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase8.4";
+import { hsl } from "./image-utils.js?v=phase8.4";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase8.4";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase8.4";
 
 export { SKINDS, STAMPS };
 
@@ -313,7 +313,7 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
   };
 
   const titleFontKey = c0.titleFont || cfg.titleFont;
-  const defaultFont = theme.polaroid ? TF.script : TF.pirata;
+  const defaultFont = theme.polaroid ? TF.scrawl : (theme.min ? TF.mont : TF.pirata);
   return {
     theme,
     resolvedBorder,
@@ -529,22 +529,25 @@ export function renderCard(c0, i, cfg) {
     seed: i + 21
   });
 
-  if (cfg.minimalLayout === true) {
-    const useCustomMinimalBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
-    const minimalBorderDefs = useCustomMinimalBorder ? borderRendered.defs : "";
-    const minimalBorderMarkup = useCustomMinimalBorder
-      ? borderRendered.markup
-      : `<rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>`;
-    const minimalTitleMarkup = titleLayoutResult.wrapped
-      ? titleLines.map((line, lineIndex) => `<text x="17" y="${(188 + lineIndex * 11 + D).toFixed(1)}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
-      : `<text x="17" y="${188 + D}" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
-    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${minimalBorderDefs}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${minimalTitleMarkup}<text x="17" y="${201 + D}" fill="${mute}" font-size="${fit(gl, 5.6, 96)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="17" y="${CH - 13}" fill="${mute}" font-size="5" font-weight="500" letter-spacing=".5" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
-  }
-
   const gradDef = renderGradDef(T, i, CH, resolved.gradientAngle, resolved.gradientSpread, c.h ?? 35, c.s ?? 0.75, resolved.gradEnd, Boolean(customAccent));
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
   const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, resolved.borderWear) : borderRendered.defs;
+
+  const isMinimal = cfg.minimalLayout === true || Boolean(T.min);
+  if (isMinimal) {
+    const useCustomMinimalBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
+    const minimalBorderDefs = useCustomMinimalBorder ? borderDefs : "";
+    const minimalBorderMarkup = useCustomMinimalBorder
+      ? borderRendered.markup
+      : `<rect x=".25" y=".25" width="${CW - 0.5}" height="${CH - 0.5}" fill="none" stroke="${T.frame}" stroke-width=".5"/>`;
+    const minimalTitleMarkup = titleLayoutResult.wrapped
+      ? titleLines.map((line, lineIndex) => `<text x="${tx}" y="${(185 + lineIndex * 12 + D).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
+      : `<text x="${tx}" y="${187 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
+    const minimalSubY = (titleLayoutResult.wrapped ? 210 + D : 200 + D).toFixed(1);
+    const minimalAccentLine = `<path d="M${tcn ? CW / 2 - 10 : 17} ${169 + D}h20" stroke="${ink}" stroke-opacity=".28" stroke-width=".6" fill="none"/>`;
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${minimalBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}${minimalAccentLine}${minimalTitleMarkup}<text x="${tx}" y="${minimalSubY}"${ta} fill="${mute}" font-size="${fit(gl, 5.4, tcn ? 120 : 136)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="${tx}" y="${CH - 14}"${ta} fill="${mute}" font-size="5" font-weight="500" letter-spacing=".6" ${FT}>${esc(c.year)}</text>${nfc}${tex}${drag}${mk}</g>`;
+  }
 
   if (isPolaroid) {
     const useCustomPolaroidBorder = resolvedBorder.style !== 0 || hasBorderOverrides(resolvedBorder);
@@ -561,7 +564,7 @@ export function renderCard(c0, i, cfg) {
         ).join("")
       : `<text x="${CW / 2}" y="${(195 + D).toFixed(1)}" text-anchor="middle" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${polaroidSize.toFixed(1)}" letter-spacing=".4">${esc(polaroidLines[0])}</text>`;
     const yearY = (polaroidTitleLayout.wrapped ? 219 + D : 214 + D).toFixed(1);
-    const yearMarkup = c0.year === "" ? "" : `<text x="${CW / 2}" y="${yearY}" text-anchor="middle" fill="${mute}" opacity=".85" font-family="${tf.f}" font-weight="${tf.w}" font-size="8" letter-spacing="1.2">${esc(c.year)}</text>`;
+    const yearMarkup = c0.year === "" ? "" : `<text x="${CW / 2}" y="${yearY}" text-anchor="middle" fill="${mute}" opacity=".85" font-family="${tf.f}" font-weight="${tf.w}" font-size="${tf.ys || 8}" letter-spacing="1.2">${esc(c.year)}</text>`;
     return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${polaroidBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${polaroidBorderMarkup}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width=".7"/><path d="M${PX + 0.5} ${PB - 0.5}V${PY + 0.5}H${PX + PS - 0.5}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>${polaroidTitleMarkup}${yearMarkup}${nfc}${tex}${drag}${mk}</g>`;
   }
 

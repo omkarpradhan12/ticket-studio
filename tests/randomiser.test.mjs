@@ -270,7 +270,7 @@ const SAMPLE = [
 
 // 9. New handwriting, calligraphy & poster fonts accepted by sanitizer
 {
-  for (const fontKey of ["script", "calligraphy", "brush", "marker", "impact", "georgia", "trebuchet", "consolas"]) {
+  for (const fontKey of ["scrawl", "rough", "script", "calligraphy", "brush", "marker", "impact", "georgia", "trebuchet", "consolas"]) {
     const clean = sanitizeCardStyleOverrides({ titleFont: fontKey });
     assert.equal(clean.titleFont, fontKey, `font key ${fontKey} should survive sanitization`);
   }
