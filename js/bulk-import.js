@@ -1,11 +1,12 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase7.1";
-import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase7.1";
-import { abbr } from "./svg-engine.js?v=phase7.1";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase7.1";
-import { attachColorHexFields } from "./color-controls.mjs?v=phase7.1";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase8.1";
+import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase8.1";
+import { abbr } from "./svg-engine.js?v=phase8.1";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase8.1";
+import { attachColorHexFields } from "./color-controls.mjs?v=phase8.1";
+import { sanitizeCardStyleOverrides } from "./card-styles.mjs?v=phase8.1";
 
 const $ = id => document.getElementById(id);
-const MAX_CARDS = 72;
+const MAX_CARDS = 300;
 let staged = [];
 let draggedIndex = -1;
 let lastTransfer = null;
@@ -196,11 +197,13 @@ async function importStructuredFile(file) {
         corsLimited: true
       });
     }
+    const styleOverrides = sanitizeCardStyleOverrides(item);
+    Object.assign(card, styleOverrides);
     if (addStaged(card)) added++;
   }
   renderStaged();
   const omitted = entries.length - selected.length;
-  message(`${added} card${added === 1 ? "" : "s"} imported${omitted ? `; ${omitted} skipped because the 72-card limit was reached` : ""}${errors.length ? `. ${errors.length} failed: ${errors.slice(0, 3).join("; ")}` : "."}`);
+  message(`${added} card${added === 1 ? "" : "s"} imported${omitted ? `; ${omitted} skipped because the ${MAX_CARDS}-card limit was reached` : ""}${errors.length ? `. ${errors.length} failed: ${errors.slice(0, 3).join("; ")}` : "."}`);
 }
 
 async function loadUrlBatch() {
@@ -233,7 +236,7 @@ async function loadUrlBatch() {
   }
   renderStaged();
   const omitted = lines.length - selected.length;
-  message(`${added} URL${added === 1 ? "" : "s"} staged${omitted ? `; ${omitted} skipped because the 72-card limit was reached` : ""}${errors.length ? `. ${errors.length} failed: ${errors.slice(0, 3).join("; ")}` : "."}`);
+  message(`${added} URL${added === 1 ? "" : "s"} staged${omitted ? `; ${omitted} skipped because the ${MAX_CARDS}-card limit was reached` : ""}${errors.length ? `. ${errors.length} failed: ${errors.slice(0, 3).join("; ")}` : "."}`);
 }
 
 async function parsePastedCardData() {

@@ -78,10 +78,10 @@ import {
   );
 }
 
-// 6. Stamp shapes (15 legacy + 6 new + mixed + none) & swatch rendering
+// 6. Stamp shapes (owner catalog + mixed + none) & swatch rendering
 {
-  assert.equal(SKINDS.length, 21);
-  assert.equal(STAMP_OPTIONS.length, 23);
+  assert.equal(SKINDS.length, 31);
+  assert.equal(STAMP_OPTIONS.length, 33);
   for (const key of ["vinyl", "pick", "octagon", "banner", "badge", "bolt"]) {
     assert.ok(STAMPS[key], `missing new stamp shape ${key}`);
   }

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase7.1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase8.1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase7.1">
-<link rel="stylesheet" href="css/app.css?v=phase7.1">
+<link rel="stylesheet" href="css/tokens.css?v=phase8.1">
+<link rel="stylesheet" href="css/app.css?v=phase8.1">
 </head>
 <body>
 <header class="topbar">
@@ -76,7 +76,7 @@
       <div class="ctrl-grid">
         <label class="fld">
           <span class="lbl-row"><span>Total cards</span><span id="pg" class="hint"></span></span>
-          <input type="number" id="count" min="1" max="72" value="9">
+          <input type="number" id="count" min="1" max="300" value="9">
         </label>
         <label class="fld">
           <span>Paper size</span>
@@ -116,35 +116,108 @@
     </details>
 
     <details class="sec">
-      <summary><span>Look</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
+      <summary><span>Paper &amp; wear</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
-        <label class="fld full">
+        <label class="fld">
+          <span>Paper grain</span>
+          <input type="range" id="tgr" min="0" max="100" value="15" data-live>
+        </label>
+        <label class="fld">
+          <span>Edge vignette wear</span>
+          <input type="range" id="tew" min="0" max="100" value="0" data-live>
+        </label>
+        <label class="fld">
+          <span>Paper creases</span>
+          <input type="range" id="tcr" min="0" max="100" value="0" data-live>
+        </label>
+        <label class="fld">
+          <span>Surface scuffs</span>
+          <input type="range" id="tsc" min="0" max="100" value="0" data-live>
+        </label>
+        <label class="fld">
+          <span>Border ink wear</span>
+          <input type="range" id="bwear" min="0" max="100" value="35">
+        </label>
+        <label class="fld">
+          <span>Stamp ink wear</span>
+          <input type="range" id="wear" min="0" max="100" value="35">
+        </label>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary><span>Theme &amp; colours</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
+      <div class="ctrl-grid">
+        <div class="fld full">
           <span class="lbl-row">
-            <span>Theme</span>
+            <label for="theme-trigger">Theme</label>
             <a class="manage-themes" href="theme-studio.html">Manage themes</a>
           </span>
           <div class="theme-nav">
             <button class="g" type="button" id="prev-style" aria-label="Previous theme" data-tooltip="Previous theme"><span data-icon="previous"></span></button>
-            <select id="style"></select>
+            <select id="style" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+            <div class="theme-dropdown" id="theme-dropdown">
+              <button class="theme-trigger" id="theme-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="theme-menu">
+                <span class="theme-thumb" id="theme-trigger-thumb" aria-hidden="true"></span>
+                <span class="theme-trigger-text">
+                  <span class="theme-trigger-label" id="theme-trigger-label">Cream</span>
+                  <span class="theme-trigger-cat" id="theme-trigger-cat">Light · Classic &amp; Paper</span>
+                </span>
+                <span class="disclosure-icon" data-icon="chevron"></span>
+              </button>
+              <div class="theme-menu" id="theme-menu" role="listbox" aria-label="Choose theme" hidden>
+                <div class="theme-menu-search">
+                  <input type="search" id="theme-filter" placeholder="Filter themes…" aria-label="Filter themes">
+                </div>
+                <div class="theme-menu-list" id="theme-menu-list"></div>
+              </div>
+            </div>
             <button class="g" type="button" id="next-style" aria-label="Next theme" data-tooltip="Next theme"><span data-icon="next"></span></button>
           </div>
-        </label>
-        <label class="fld">
-          <span>Title font</span>
-          <select id="tfont" data-live>
-            <option value="theme">Default (Pirata One)</option>
-            <option value="pirata">Pirata One</option>
-            <option value="playfair">Playfair Display</option>
-            <option value="mont">Montserrat</option>
-            <option value="bebas">Bebas Neue</option>
-            <option value="type">Special Elite</option>
-            <option value="courier">Courier</option>
-          </select>
-        </label>
-        <label class="fld">
-          <span class="lbl-row"><span>Card title size</span><output id="title-size-value" for="title-size">85%</output></span>
-          <input type="range" id="title-size" min="70" max="100" step="1" value="85" data-live aria-valuetext="85%">
-        </label>
+        </div>
+        <fieldset class="quick-colours full">
+          <legend id="quick-colours-legend">Quick colours</legend>
+          <div class="swatch-row">
+            <label class="swatch-control"><span>Paper</span><input type="color" id="ct_bg" aria-label="Paper colour" data-ct></label>
+            <label class="swatch-control"><span>Text</span><input type="color" id="ct_ink" aria-label="Text colour" data-ct></label>
+            <label class="swatch-control"><span>Accent</span><input type="color" id="ct_acc" aria-label="Accent colour" data-ct></label>
+            <label class="swatch-control"><span>Tape</span><input type="color" id="ct_tape" aria-label="Tape colour" data-ct></label>
+          </div>
+          <div class="quick-colours-footer">
+            <label class="chk photo-accent"><input type="checkbox" id="ct_pa" data-ct> Use photo accent</label>
+            <button class="g sm" type="button" id="ct_reset" disabled>Reset colours</button>
+          </div>
+          <p class="hint colour-map">Edits the active theme live · Paper = background · Text = lettering · Accent = borders and badges · Tape = mounts</p>
+        </fieldset>
+        <div class="gctl full" id="gctl">
+          <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
+            <i id="needle"></i><b></b>
+          </div>
+          <div class="gtxt">
+            <div class="lbl-row"><span>Gradient angle <output id="gav">180°</output></span><button class="g sm" type="button" id="grad-angle-reset" aria-label="Reset gradient angle to 180 degrees" disabled>Reset 180°</button></div>
+            <label class="fld">
+              <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
+              <input type="range" id="gspread" min="10" max="100" value="32">
+            </label>
+            <div class="hint" id="gradient-hint">Only available with gradient themes.</div>
+          </div>
+          <div class="grad-stops-block" id="grad-stops-block" hidden>
+            <div class="lbl-row">
+              <span>Gradient colours</span>
+              <div class="grad-stops-actions">
+                <button class="g sm" type="button" id="grad-stop-add" title="Add gradient colour">+ Colour</button>
+                <button class="g sm" type="button" id="grad-stop-remove" title="Remove last gradient colour">− Remove</button>
+              </div>
+            </div>
+            <div class="swatch-row grad-stops-row" id="grad-stops-row"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary><span>Borders</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
+      <div class="ctrl-grid">
         <div class="border-picker-block full">
           <div class="lbl-row">
             <span>Border style</span>
@@ -295,6 +368,28 @@
             </div>
           </details>
         </div>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary><span>Card &amp; photo</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
+      <div class="ctrl-grid">
+        <label class="fld">
+          <span>Title font</span>
+          <select id="tfont" data-live>
+            <option value="theme">Default (Pirata One)</option>
+            <option value="pirata">Pirata One</option>
+            <option value="playfair">Playfair Display</option>
+            <option value="mont">Montserrat</option>
+            <option value="bebas">Bebas Neue</option>
+            <option value="type">Special Elite</option>
+            <option value="courier">Courier</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span class="lbl-row"><span>Card title size</span><output id="title-size-value" for="title-size">85%</output></span>
+          <input type="range" id="title-size" min="70" max="100" step="1" value="85" data-live aria-valuetext="85%">
+        </label>
         <label class="fld">
           <span>Year badge</span>
           <select id="design-badge">
@@ -313,6 +408,10 @@
             <option value="0">Full colour</option><option value="1">Black &amp; white</option><option value="2">Sepia</option>
           </select>
         </label>
+        <div class="look-options full">
+          <label class="chk"><input type="checkbox" id="design-center"> Centre title and genre</label>
+          <label class="chk"><input type="checkbox" id="design-halftone"> Halftone photo</label>
+        </div>
         <fieldset class="mount-fields full">
           <legend>Photo mounts — choose up to 2</legend>
           <label class="chk"><input type="checkbox" data-quick-mount value="0" checked> Tape</label>
@@ -326,21 +425,14 @@
           <label class="chk"><input type="checkbox" data-quick-mount value="3"> None</label>
           <span class="hint full" id="quick-mount-status">Active mounts: Tape</span>
         </fieldset>
-        <div class="look-options full">
-          <label class="chk"><input type="checkbox" id="design-center"> Centre title and genre</label>
-          <label class="chk"><input type="checkbox" id="design-halftone"> Halftone photo</label>
-        </div>
-        <fieldset class="quick-colours full">
-          <legend>Quick colours</legend>
-          <div class="swatch-row">
-            <label class="swatch-control"><span>Paper</span><input type="color" id="ct_bg" aria-label="Paper colour" data-ct></label>
-            <label class="swatch-control"><span>Text</span><input type="color" id="ct_ink" aria-label="Text colour" data-ct></label>
-            <label class="swatch-control"><span>Accent</span><input type="color" id="ct_acc" aria-label="Accent colour" data-ct></label>
-            <label class="swatch-control"><span>Tape</span><input type="color" id="ct_tape" aria-label="Tape colour" data-ct></label>
-          </div>
-          <label class="chk photo-accent"><input type="checkbox" id="ct_pa" data-ct> Use photo accent</label>
-          <p class="hint colour-map">Paper = background · Text = lettering · Accent = borders and badges · Tape = mounts</p>
-        </fieldset>
+        <label class="fld">
+          <span>Doors text</span>
+          <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
+        </label>
+        <label class="fld">
+          <span>Side text</span>
+          <input type="text" id="gside" placeholder="Side text" value="Dope-Amine">
+        </label>
         <fieldset class="hardware-fields full">
           <legend>Ticket details</legend>
           <div class="hardware-toggle-row">
@@ -350,33 +442,12 @@
           </div>
           <span class="hint">Punch hole is a printed guide; use a 4 mm punch.</span>
         </fieldset>
-        <div class="gctl full" id="gctl">
-          <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
-            <i id="needle"></i><b></b>
-          </div>
-          <div class="gtxt">
-            <div>Gradient angle <output id="gav">180°</output></div>
-            <label class="fld">
-              <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
-              <input type="range" id="gspread" min="10" max="100" value="32">
-            </label>
-            <div class="hint" id="gradient-hint">Only available with gradient themes.</div>
-          </div>
-        </div>
       </div>
     </details>
 
     <details class="sec">
-      <summary><span>Content</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
+      <summary><span>Stamps</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
       <div class="ctrl-grid">
-        <label class="fld">
-          <span>Doors text</span>
-          <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
-        </label>
-        <label class="fld">
-          <span>Side text</span>
-          <input type="text" id="gside" placeholder="Side text" value="Dope-Amine">
-        </label>
         <label class="fld">
           <span>Primary stamp text</span>
           <input type="text" id="gstamp" placeholder="Stamp text" value="Soul Fuel">
@@ -385,16 +456,10 @@
           <span>Stamp year</span>
           <input type="text" id="gsyear" placeholder="Stamp year" value="2026">
         </label>
-        <label class="fld">
+        <label class="fld full">
           <span>Second stamp (optional)</span>
           <input type="text" id="gs2" placeholder="e.g. VIP" data-live>
         </label>
-      </div>
-    </details>
-
-    <details class="sec">
-      <summary><span>Effects</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
-      <div class="ctrl-grid">
         <div class="border-picker-block stamp-picker-block full">
           <div class="lbl-row">
             <span>Stamp shape</span>
@@ -473,35 +538,6 @@
         </label>
         <label class="swatch-control effect-ink"><span>Stamp ink</span><input type="color" id="scol" value="#d9322f" data-live></label>
         <label class="chk effect-accent"><input type="checkbox" id="sauto" checked data-live> Use accent colour</label>
-        <details class="advanced full">
-          <summary><span>Advanced</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
-          <div class="ctrl-grid">
-            <label class="fld">
-              <span>Stamp ink wear</span>
-              <input type="range" id="wear" min="0" max="100" value="35">
-            </label>
-            <label class="fld">
-              <span>Border ink wear</span>
-              <input type="range" id="bwear" min="0" max="100" value="35">
-            </label>
-            <label class="fld">
-              <span>Paper grain</span>
-              <input type="range" id="tgr" min="0" max="100" value="15" data-live>
-            </label>
-            <label class="fld">
-              <span>Edge vignette wear</span>
-              <input type="range" id="tew" min="0" max="100" value="0" data-live>
-            </label>
-            <label class="fld">
-              <span>Paper creases</span>
-              <input type="range" id="tcr" min="0" max="100" value="0" data-live>
-            </label>
-            <label class="fld">
-              <span>Surface scuffs</span>
-              <input type="range" id="tsc" min="0" max="100" value="0" data-live>
-            </label>
-          </div>
-        </details>
       </div>
     </details>
 
@@ -514,7 +550,10 @@
     <div class="cards-header">
       <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
       <div class="cards-header-actions">
-        <button class="g" id="surprise-all" type="button" disabled aria-label="Surprise me (available in Phase 8)"><span data-icon="surprise"></span> Surprise me</button>
+        <div class="surprise-group">
+          <button class="g" id="surprise-all" type="button"><span data-icon="surprise"></span> Surprise me</button>
+          <button class="g icon-only" id="surprise-tune" type="button" aria-label="Surprise me options" aria-expanded="false" aria-controls="surprise-dialog" data-tooltip="Surprise me options"><span data-icon="sliders"></span></button>
+        </div>
         <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
       </div>
     </div>
@@ -537,6 +576,7 @@
         <select id="page-theme"><option value="">Use global</option></select>
       </label>
       <button class="g" type="button" id="duplicate-page"><span data-icon="duplicate"></span> Duplicate</button>
+      <button class="danger sm" type="button" id="delete-page" disabled aria-label="Delete active page"><span data-icon="delete"></span> Delete page</button>
       <button class="g" type="button" id="move-stamps" aria-pressed="false"><span data-icon="move"></span> Move stamps</button>
       <label class="chk snap-toggle" id="stamp-snap-wrap" hidden><input type="checkbox" id="stamp-snap" checked> Snap</label>
       <button class="g sm" type="button" id="reset-all-stamps" hidden>Reset all stamps</button>
@@ -580,9 +620,44 @@
     "photo": "https://example.com/band.jpg"
   }
 ]</pre>
-    Only <b>name</b> is required. <b>photo</b> accepts <code>data:image/...</code> and <code>https://...</code> URLs. Optional fields include <b>accent</b>, <b>photoZoom</b>, <b>photoX</b>/<b>photoY</b>, <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or a full <b>settings</b> + <b>cards</b> payload. Maximum 72 cards.
+    Only <b>name</b> is required. <b>photo</b> accepts <code>data:image/...</code> and <code>https://...</code> URLs. Optional fields include <b>accent</b>, <b>photoZoom</b>, <b>photoX</b>/<b>photoY</b>, <b>theme</b>, <b>stampShape</b>, <b>stampText</b>, or a full <b>settings</b> + <b>cards</b> payload. Maximum 300 cards.
     </div>
   </details>
+</dialog>
+
+<dialog id="surprise-dialog" class="surprise-dialog" aria-labelledby="surprise-dialog-title">
+  <form method="dialog" class="dialog-header">
+    <h2 id="surprise-dialog-title">Surprise me</h2>
+    <button class="g" type="submit" aria-label="Close Surprise me options"><span data-icon="close"></span> Close</button>
+  </form>
+  <p class="surprise-intro">Give every unlocked card its own style while keeping text contrast readable and stamps safely inside the card.</p>
+  <fieldset class="surprise-scope">
+    <legend>What to randomise</legend>
+    <div class="surprise-scope-list">
+      <label class="chk"><input type="checkbox" id="sp-colors" checked> Colours &amp; theme</label>
+      <label class="chk surprise-sub"><input type="checkbox" id="sp-keep-theme"> Keep my theme, only vary the details</label>
+      <label class="chk"><input type="checkbox" id="sp-border" checked> Border style &amp; frame</label>
+      <label class="chk"><input type="checkbox" id="sp-stamps"> Stamps (shape, ink &amp; safe position)</label>
+      <label class="chk surprise-sub"><input type="checkbox" id="sp-keep-moved"> Keep manually moved stamp positions</label>
+      <label class="chk"><input type="checkbox" id="sp-wear" checked> Wear, texture &amp; photo mounts</label>
+      <label class="chk"><input type="checkbox" id="sp-font"> Title font &amp; alignment</label>
+    </div>
+  </fieldset>
+  <div class="surprise-strength">
+    <div class="lbl-row">
+      <label for="sp-strength">Strength</label>
+      <output id="sp-strength-val" for="sp-strength">Normal</output>
+    </div>
+    <input type="range" id="sp-strength" min="0" max="2" step="1" value="1" list="sp-strength-stops">
+    <datalist id="sp-strength-stops"><option value="0" label="Subtle"></option><option value="1" label="Normal"></option><option value="2" label="Wild"></option></datalist>
+    <div class="surprise-strength-labels" aria-hidden="true"><span>Subtle</span><span>Normal</span><span>Wild</span></div>
+  </div>
+  <div class="surprise-actions">
+    <button class="accent" id="sp-apply-all" type="button"><span data-icon="surprise"></span> Surprise unlocked cards</button>
+    <button class="g" id="sp-reshuffle" type="button"><span data-icon="randomise"></span> Shuffle again</button>
+    <button class="g" id="sp-clear-all" type="button"><span data-icon="reset"></span> Clear all random styling</button>
+  </div>
+  <p class="hint surprise-seed" id="sp-seed-info"></p>
 </dialog>
 
 <div class="mobile-actionbar" aria-label="Sheet actions">
@@ -612,6 +687,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase7.1"></script>
+<script type="module" src="js/app.js?v=phase8.1"></script>
 </body>
 </html>

@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 7 implemented (`ced4597`); Visual Stamp Shape Picker & Customise proposal written — awaiting owner approval
-- Next approval: owner approval of the Visual Stamp Shape Picker & Customise proposal below (and re-verification of `ced4597` touch/second-stamp fixes) before proceeding.
+- Current phase: Phase 8 ("Surprise me" per-card randomisation) complete (`7ce1da6`); ready for Phase 9 (Band search) upon owner go-ahead
+- Next approval: owner confirmation before starting Phase 9.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -68,9 +68,9 @@
 | P6-01 | Customisable borders | L | high | done | 97892bb, 2c83c13, 14b8add | 16 styles (0..4 legacy + 5..15 new), visual picker, Customise fold, presets, per-card overrides, `#rnd` border randomisation |
 | P6-02 | Preserve old border render values | L | high | done | 97892bb | Exact legacy SVG fast-path verified for 0..4; legacy v1 sheet round-trip verified |
 | P7-01 | Per-card stamp position | L | high | done | 696cf73, 7b341db | Optional `stampPos`/`stamp2Pos` fractions, rotary angle dial, scale, copy/reset actions, 5 extra photo mounts, Tarot title fix |
-| P7-02 | Stamp drag hit-test/touch/export/undo | L | high | done | 7b341db, ced4597 | `Move stamps` mode, 1-step undo, `.st-ui` export stripping; `ced4597` fixed second-stamp hit-test & `>=44px` touch boxes (browser re-check paused for Stamp Picker design) |
-| P8-01 | Per-card Surprise me style overrides | L | high | todo | - | |
-| P8-02 | Surprise every card / one undo step | M | high | todo | - | |
+| P7-02 | Stamp drag hit-test/touch/export/undo | L | high | done | 7b341db, ced4597, 276f6bd, d0d93b6 | `Move stamps` mode, 1-step undo, `.st-ui` export stripping, strict card-boundary clamping (`276f6bd`), visual 23+ stamp picker & `Customise` fold (`a6b67ca`, `d0d93b6`); stamps customized in `0c7e278`, `155b2a0` |
+| P8-01 | Per-card Surprise me style overrides | L | high | done | 1b07075, 07af698 | Optional per-card style schema (`js/card-styles.mjs`), unified `resolveCardRenderOptions` in `svg-engine.js` (Card > Page > Sheet priority), JSON/Bulk Import support, `MAX_CARDS = 300` |
+| P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
 | P9-01 | Band search and match count | M | medium | todo | - | |
 | P10-01 | Visiting card layout | L | high | todo | - | |
 
@@ -116,6 +116,25 @@
 - 696cf73 Add stamp placement math, extra photo mounts, and Tarot title fix
 - 7b341db Wire Move stamps UI, rotation dials, touch drag, and phase7 cache
 - ced4597 Fix second-stamp pointer hit-testing and 44px touch targets
+- 20e674f Document Phase 7 progress and propose visual stamp picker
+- a6b67ca Add visual stamp shapes, custom style renderer, and tests
+- d0d93b6 Add visual stamp picker, customise fold, presets, and phase7.1 cache
+- 276f6bd Keep dragged stamps strictly inside card boundaries
+- 0c7e278 more stamps
+- 155b2a0 minor changes to stamps
+- 23140e5 Design Phase 8 Surprise me per-card randomisation
+- 1b07075 Add per-card style override resolution and renderer support
+- cb79133 Add seeded per-card Surprise randomiser with guard rails and tests
+- 07af698 Add export, bulk-import, and 300-card support for style overrides
+- f15637c Wire Surprise me UI, lock toggles, 200-card row optimization, and phase8 cache
+- 7ce1da6 Enlarge mobile stamp hit targets to 44px+ and wrap selected card row actions
+- 20ecc13 Document Phase 8 Surprise me implementation and verification
+- 809d7e8 Preserve grey and white card accent colors and bump phase8.1 cache
+- d56aade Add triple, radial, and curated gradient themes with contrast checks
+- 9a3b3dd Add Reset 180 button for gradient angle
+- 1c2035e Make Quick colours live across all themes and add multi-stop gradient pickers
+- 1c0f4e2 Organise themes into sub-groups and add visual thumbnail dropdown
+- e5dea0b Reorganise sidebar into 6 drawers, add Delete page, and add page-end dividers
 
 ## Phase 1 verification
 - Browser console: no page or console errors found in the Sheet Editor, Theme Studio, and Bulk Import passes.
@@ -524,3 +543,145 @@ Give **Stamp shape** in the **Effects** accordion the same visual, tactile UX as
 3. **`#rnd` ("Randomise all")**:
    - **Option A (Recommended)**: Include any newly added stamp shapes in `#rnd` (`Mixed` / random shape selection).
    - **Option B**: Keep `#rnd` picking from the original 15 + `mixed` only.
+
+
+---
+
+## Phase 8 design: "Surprise me" per-card randomisation (awaiting approval)
+
+### Audit baseline (`docs/AUDIT.md` Section 10–11 & current Phases 5–7)
+- **Already per-card (optional fields)**: `theme`, `sk`, `stx`, `stampStyle` (Phase 7 visual stamp picker), `border` (Phase 6), `stampPos`, `stamp2Pos` (Phase 7), plus user content (`title`, `genre`, `loc`, `year`, `code`, `img`, `imgUrl`, `corsLimited`, `iw`, `ih`, `zm`, `px`, `py`, `h`, `s`).
+- **Currently sheet/page-only**: palette overrides (bg/ink/mute/accent/frame/tape), border wear on legacy `0..4` frames, stamp colour/auto/wear/size, tape/mount types & colour, title font/scale/centering, surface grain/edge wear/creases/scuffs, gradient angle/spread, year badge style, tear style, halftone, and photo filter (`design-filter`).
+- **Card cap today**: `MAX_CARDS = 72` in `js/app.js` and `js/bulk-import.js` (`#count` `max="72"` in `index.html`). To support the Phase 8 200-card performance/verification test natively in the Sheet Editor and Bulk Upload, we propose raising `MAX_CARDS` (see Owner Decision #1).
+
+---
+
+### 1. Per-card style overrides (optional fields only, backward compatible)
+
+Every new style override lives as an **optional** property on each card object inside `studioState.cards`. A card without these fields renders using the exact sheet/page defaults and produces byte-for-byte identical output to today.
+
+| Group | Optional card field(s) | Schema / range | Notes |
+|---|---|---|---|
+| **Theme & palette** | `card.theme`, `card.palette` | `theme`: string (`THEMES` key incl. `saved_*`); `palette`: `{ bg?, ink?, mute?, ph?, frame?, acc?, bt?, grad?, gs?, gl? }` | `card.palette` overrides individual colours on top of `card.theme` / page theme / sheet theme without mutating `THEMES[key]` or overwriting the photo-sampled `card.h`/`card.s`. |
+| **Border** | `card.border` | Existing Phase 6 object (`style`, `width`, `inset`, `colorMode`, `color`, `opacity`, `pattern`, `dash`, `gap`, `corner`, `cornerSize`, `lineGap`, `inner`, `innerWidth`, `innerGap`, `innerColorMode`, `innerColor`, `ornament`, `ornamentSize`, `wear`, `glow`) | Already implemented in `js/borders.mjs`; update `svg-engine.js` legacy fast-path (`inkFilter("bd"+i, ...)`) to also honour `resolvedBorder.wear` when `card.border.wear` is set. |
+| **Stamps** | `card.sk`, `card.stampStyle`, `card.stampColor`, `card.stampAuto`, `card.stampSize`, `card.stampWear`, `card.stampPos`, `card.stamp2Pos` | Existing `sk`, `stampStyle`, `stampPos`, `stamp2Pos` + optional `stampColor` (`#RRGGBB`), `stampAuto` (`boolean`), `stampSize` (`50..250`), `stampWear` (`0..100`) | Reuses Phase 7 clamping/transform math (`resolveStampTransform`) and visual stamp customisation (`resolveStampStyle`). |
+| **Mounts & tape colour** | `card.photoMounts`, `card.tape` | `photoMounts`: `[0..8]` (up to 2); `tape`: `#RRGGBB` | Sets card-level mount types and derives `te = mix(tape, "#000000", 0.25)` when `card.tape` is provided. |
+| **Title font & badges** | `card.titleFont`, `card.titleScale`, `card.centerTitle`, `card.yearBadge`, `card.tearStyle` | `titleFont`: key in `TF`; `titleScale`: `0.7..1`; `centerTitle`: boolean; `yearBadge`: `0..2`; `tearStyle`: `0..2` | Allows font pairing & badge/tear variety without breaking `year` / `EST.` text rules. |
+| **Wear, texture & effects** | `card.grain`, `card.edgeWear`, `card.creases`, `card.scuffs`, `card.photoFilter`, `card.halftone` | `grain/edgeWear/creases/scuffs`: `0..100`; `photoFilter`: `0..2`; `halftone`: boolean | Photo filter (`Original` / `B&W contrast` / `Warm sepia`) and print-wear layers become individually variable. |
+| **Gradient** | `card.gradientAngle`, `card.gradientSpread` | `gradientAngle`: `0..359`; `gradientSpread`: `10..100` | Applies when the resolved theme uses `grad: 1`. |
+| **Lock** | `card.locked` | `boolean` (omitted when `false`) | Prevents **Surprise me** / **Shuffle again** from altering this card ("Keep this one"). |
+
+**Renderer precedence (single extended path in `renderCard`, no fork)**:
+1. Introduce a small pure helper `resolveCardRenderOptions(c0, cfg)` inside `js/svg-engine.js` so `renderCard(c0, i, cfg)` keeps one unified code path.
+2. **Theme precedence fix**: Today `js/svg-engine.js:200` evaluates `THEMES[cfg.themeForce || c0.theme || cfg.style]`, where `app.js:1032` passes `pageTheme` as `themeForce` — causing a page theme to override `card.theme`! Fix this to:
+   `cfg.themeObj || THEMES[c0.theme || cfg.themeForce || cfg.style] || THEMES.cream`
+   so **card override (`c0.theme`) > page theme (`cfg.themeForce`) > sheet theme (`cfg.style`)**, while unmodified cards (`!c0.theme`) behave identically to today.
+3. Whenever `c0.palette` or `c0.tape` is present, build a shallow clone `const T = { ...baseTheme, ...c0.palette, ...tapePatch }` — never mutate `THEMES` or `CUSTOM`.
+
+**Exports, Bulk Upload, JSON & Undo snapshots**:
+- **SVG / PNG / PDF / Print / Card Preview Modal (`js/export.js`, `#pvi`)**: All serialize the SVG produced by `renderCard()`, so every per-card override exports identically with zero extra export branches.
+- **JSON Export / Import (`exportProjectJson`, `importJson`)**: `exportProjectJson` serializes new optional fields only when set on a card; `importJson` validates/restores them cleanly (`sanitizeCardStyling`). Old JSON files remain 100% compatible.
+- **Bulk Upload (`js/bulk-import.js`)**: Passes through any optional style fields on imported JSON cards and keeps existing sheet/card styling intact when appending.
+- **Undo snapshots (`js/history.mjs`)**: Already stores full shallow-copied `cards` arrays with copy-on-write card objects, retaining all optional style fields automatically while sharing unchanged photo data URLs.
+
+---
+
+### 2. Existing renderer assumptions fixed for heterogeneous cards
+
+1. **`themeForce` overriding `c0.theme`**: Fixed as above so card theme overrides win over page themes (`pageThemes[page]`).
+2. **Global `cfg.*` fields in `renderCard()`**: `cfg.stampWear`, `cfg.borderWear`, `cfg.stampColor`, `cfg.stampAuto`, `cfg.stampSize`, `cfg.titleFont`, `cfg.titleScale`, `cfg.centerTitle`, `cfg.gradientAngle`, `cfg.gradientSpread`, `cfg.grain`, `cfg.edgeWear`, `cfg.creases`, `cfg.scuffs`, `cfg.photoMounts`, `cfg.yearBadge`, `cfg.tearStyle`, `cfg.photoFilter`, `cfg.halftone` are read once into resolved local values `(c0.X ?? cfg.X)`. Legacy `0..4` border `inkFilter("bd"+i, ...)` reads `resolvedBorder.wear` instead of `cfg.borderWear`.
+3. **SVG `<defs>` ID uniqueness**: Every card on a sheet already uses its unique card index `i` (`bgg${i}`, `ink${i}`, `bd${i}`, `np${i}`, `ht${i}`, `gr${i}`, `sc${i}`, `ew${i}`, `cc${i}`, `ck${i}`, plus border `bd-${scope}-${i}`/`bgl-${scope}-${i}`/`bgd-${scope}-${i}`/`bm-${scope}-${i}`). Ensure `previewSvg(index)` and `#pvi` (`scopePreviewSvgIds`) scope every `<defs>` ID (`pv-` prefix) so per-card filters, gradients, and halftone patterns never collide with the sheet DOM.
+4. **Row DOM rebuild bottleneck (`buildRows()` at 200+ cards)**: Currently `buildRows()` builds full `<select>` theme (`~26+`) and stamp (`~24`) `<option>` strings inside every row's innerHTML on every render/batch update (`200 × 50 ≈ 10,000` option nodes). Cache shared option markup **and** lazily populate heavy `<details class="adj">` selects only on first expand (`toggle`), rendering only the active `<option>` when collapsed.
+
+---
+
+### 3. Seeded randomiser, scope picker, locks & guard rails (`js/randomiser.mjs`)
+
+- **Seeded PRNG (`mulberry32`)**:
+  - Each run creates or accepts an integer `seed` (randomised on **Surprise me** and re-rolled on **Shuffle again**). Per-card RNG derives deterministically from `(seed, cardIndex)` so identical seed + scope + strength always reproduces identical card styles.
+  - UI exposes **"Shuffle again"** (re-rolls with a new seed) inside the Surprise controls/toast status and **"Keep this one"** per card (`card.locked = true` skips that card in future shuffles).
+- **Scope picker & Strength (`ticketgen.surprisePrefs.v1` in `localStorage`)**:
+  - Compact popover/panel opened from the secondary **Options** button next to **Surprise me** (remembering last choices):
+    - **What to randomise**:
+      - `[x]` **Colours & theme** (plus sub-checkbox: `[ ] Keep my theme, only vary the details`)
+      - `[x]` **Border** (curated border styles & compatible customisations)
+      - `[ ]` **Stamps (incl. position)** (shape, ink style/weight/pattern, safe placement/angle/scale)
+      - `[x]` **Wear & texture** (subtle paper grain, vignette, border/stamp wear, mounts, badges, optional Subtle/Wild photo filters)
+      - `[ ]` **Title font** (title font family & alignment)
+    - **Strength slider**: `0` **Subtle** · `1` **Normal** (default) · `2` **Wild**
+      - *Subtle*: stays close to sheet/page theme (accent/tape shifts ±15–25°, light wear `0–25`, clean borders `0/1/2/4/5/6/7`, mild stamp tilt `±12°`).
+      - *Normal*: draws from curated built-in + saved themes weighted harmoniously, all print-safe borders, moderate wear (`0–45`), varied stamps/mounts (`±25°`).
+      - *Wild*: spans full theme pool (Dark/Light/Gradient/`saved_*`), all 16 borders (matched cleanly to card dark/light polarity), bold typography (`TF`), stronger wear/scuffs/creases/filters, `Solid badge` / `Tinted` stamps & wider tilts (`±42°`), still bounded by all guard rails below.
+- **Guard rails (enforced mathematically inside `js/randomiser.mjs`)**:
+  1. **WCAG AA contrast (`>= 4.5:1`)**: Exact sRGB relative-luminance check verifies `ink` and `mute` against `bg` (and for gradient themes, against **both** `gs` and gradient end stop `hsl(h, s, gl)`). If below `4.5:1`, adjusts lightness/mix toward `#111111` or `#ffffff` until `>= 4.5:1`.
+  2. **Print-safe accents & strokes**: Avoids near-white accents (`lum > 0.82`) on light themes (`bgLum > 0.55`) and near-black accents (`lum < 0.08`) on dark themes (`bgLum < 0.2`); constrains generated border `width >= 0.75`, `opacity >= 55%`, and suppresses heavy `neon` blur on light paper backgrounds.
+  3. **Safe stamp bounds & anti-occlusion**: Uses `stampNormBounds` (`0.04..0.96` strict inside card) and picks from curated safe anchor zones (tear-line left/right margins near `PB`, top-right/bottom-right photo corners, bottom-right stub beside `EST.`) avoiding both the photo focal core (`[PX+34..PX+102, PY+30..PY+106+D]`) and the title/genre text zone (`y >= 182 + D` on `Ticket`/`Tarot`). Never overwrites manual `stampPos`/`stamp2Pos` unless the **Stamps** checkbox is enabled.
+  4. **Strict data isolation**: Randomiser accepts `(cards, sheetCfg, prefs)` and touches ONLY the allowlisted optional style keys. **Never** modifies `title`, `genre`, `loc`, `year`, `code`, `img`, `imgUrl`, `corsLimited`, `iw`, `ih`, `zm`, `px`, `py`, photo-sampled `h`/`s`, card order, `count`, or page layout.
+
+---
+
+### 4. Buttons, custom indicators, Undo & 200-card performance
+
+- **Cards header**:
+  - Enable `#surprise-all` (**Surprise me**) and add adjacent `#surprise-tune` (**Options** icon button opening the Scope/Strength/Shuffle-again/Clear-all popover). Keep header compact so 390px mobile fits with zero overflow.
+- **Card row UI & `...` menu**:
+  - Small custom-styling indicator dot/badge on cards with any style override (`hasCustomCardStyling(card)`) + Lock toggle (`data-action="toggle-lock"`, Lock icon, `"Keep this one"`).
+  - Row `...` menu enables **`Surprise this card`** (`data-action="surprise"`) and adds **`Reset this card's styling`** (`data-action="reset-styling"`, enabled when overrides exist).
+  - Scope popover + Cards actions also provide **`Clear all random styling`** (restores sheet defaults across cards in one undo step).
+- **Undo / Redo**:
+  - `Surprise me`, `Shuffle again`, `Surprise this card`, `Clear all random styling`, and `Reset this card's styling` each push **1 discrete undo step** via `recordDiscrete(...)` with an Undo toast.
+  - Lock toggle (`Keep this one`) records a discrete step (`toggle card lock`) cleanly without rebuilding previews unnecessarily (`render` only when visual state changes or row DOM sync only).
+- **Performance (hundreds of cards)**:
+  - Compute all unlocked cards in a single synchronous array pass, commit one snapshot, run `buildRows()` (with cached/lazy `<select>` options) and `render()` **once** (`svgPages.join("")`), targeting fast response on 200-card (`~23` A4 page) sheets.
+
+---
+
+### 5. Effort & risk estimate
+- **Effort**: **L** (`js/svg-engine.js` override/precedence unification, `js/randomiser.mjs` PRNG + WCAG contrast + stamp zone guard rails, `js/app.js` / `index.html` / `css/app.css` Surprise UI + row lock/custom badges + lazy 200-card row optimization, `js/export.js` JSON round-trip, `tests/randomiser.test.mjs`, and 18-card + 200-card browser/export verification).
+- **Risks & mitigations**:
+  - *Overwriting user-placed Phase 7 stamps*: Guessed mutations would frustrate users who carefully dragged stamps; guarded by keeping `Stamps` unchecked or explicitly reporting replaced manual stamps in the Undo toast with instant one-tap Undo.
+  - *DOM lag at 200+ cards*: Eliminated by rendering previews **once** per batch action and lazily populating row `<details class="adj">` dropdowns.
+  - *Browser PNG/PDF memory on 23-page 200-card PDF*: Raster exports remain sequential page-by-page (`exportPdf`); verify SVG/print/Surprise timing cleanly on 200 cards.
+
+---
+
+### Owner decisions needed before Step 2 implementation
+
+1. **Card count limit (`MAX_CARDS`) for the 200-card sheet test**:
+   - **Option A (Recommended)**: Raise `MAX_CARDS` from `72` to `300` across `#count`, `js/app.js`, JSON import, and `js/bulk-import.js` so 200-card sheets work everywhere cleanly.
+   - **Option B**: Raise `MAX_CARDS` to `500`.
+   - **Option C**: Keep `MAX_CARDS` at `72` in the sidebar UI and only allow up to 200+ via a separate test/JSON path.
+
+2. **When `Surprise me` runs with `Stamps (incl. position)` ticked and an unlocked card already has a manually dragged stamp (`stampPos` / `stamp2Pos`)**:
+   - **Option A (Recommended)**: Randomise stamps on unlocked cards too, include an optional `"Keep manually moved stamps"` toggle in the Surprise options popover (default off when Stamps is explicitly ticked), and tell the user in the Undo toast (e.g. `"Surprised 9 cards (updated 2 moved stamps) — Undo"`).
+   - **Option B**: Always pop up a confirmation prompt before overwriting manually dragged stamp positions.
+   - **Option C**: Never overwrite manually dragged stamp positions even when `Stamps` is ticked; require `"Reset all stamps"` first.
+
+3. **Clicking `"Surprise me"` directly**:
+   - **Option A (Recommended)**: Clicking `"Surprise me"` runs immediately with your last saved choices (sensible defaults on first click: Colours, Border, Wear on; Stamps & Font off; Normal strength), while the compact gear button right beside it opens the Scope picker + Strength + Shuffle again + Clear all popover.
+   - **Option B**: Clicking `"Surprise me"` always opens the Scope picker popover first before rolling.
+
+## Phase 8 implementation and verification
+- **Owner choices applied**: Option A (raise `MAX_CARDS` to `300` across `#count`, `js/app.js`, JSON import, and `js/bulk-import.js`); Option A (when `Stamps` is ticked, replace unlocked cards' stamps unless optional `"Keep manually moved stamp positions"` is checked, and report the replaced count in the Undo toast with one-tap Undo); Option A (clicking `"Surprise me"` runs immediately with remembered preferences, while `#surprise-tune` opens the Scope / Strength / Shuffle again / Clear all dialog).
+- **Implemented (`js/card-styles.mjs`, `js/randomiser.mjs`, `js/svg-engine.js`, `js/app.js`, `js/export.js`, `js/bulk-import.js`, `js/icons.mjs`, `index.html`, `bulk-import.html`, `css/app.css`)**:
+  - Added optional per-card style fields (`palette`, `tape`, `stampColor`, `stampAuto`, `stampSize`, `stampWear`, `photoMounts`, `titleFont`, `titleScale`, `centerTitle`, `yearBadge`, `tearStyle`, `grain`, `edgeWear`, `creases`, `scuffs`, `photoFilter`, `halftone`, `gradientAngle`, `gradientSpread`, `locked`) alongside existing `theme`, `sk`, `stx`, `stampStyle`, `border`, `stampPos`, `stamp2Pos`.
+  - Unified `resolveCardRenderOptions(c0, cfg)` in `js/svg-engine.js` so **card override > page theme > sheet theme**, legacy `0..4` borders read `resolvedBorder.wear` cleanly, shared `THEMES` objects are cloned instead of mutated, and un-overridden cards keep identical output.
+  - Built seeded Mulberry32 `js/randomiser.mjs` with persisted scope/strength (`ticketgen.surprisePrefs.v1`), WCAG `>= 4.5:1` luminance/contrast checking across both solid fills and linear-gradient stops, print-safe accent & border minimums (`width >= 0.75`, `opacity >= 55%`), and anti-title/photo-focal stamp anchor placement inside `stampNormBounds`.
+  - Wired `#surprise-all`, `#surprise-tune`, `#surprise-dialog` (`Subtle`/`Normal`/`Wild`, scope checkboxes, `Shuffle again`, `Clear all random styling`), per-card `Keep this one` lock icon button + `.card-custom-badge`, row `...` `Surprise this card` / `Reset this card's styling`, `DocumentFragment` + lazy `<details class="adj">` dropdown population, `44px+` enlarged stamp touch targets (`.st-hit` min `116×116`, `.st-rot-hit` `r=56`), and uniform `?v=phase8` cache query.
+- **Verification**:
+  - **Node unit tests**: `node tests/randomiser.test.mjs` (36.3 ms for 200-card generation), `stamps.test.mjs` (updated `SKINDS` 31 / `STAMP_OPTIONS` 33 for owner-added stamps), `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, and `color-controls.test.mjs` all passed; `index.html` has `201` unique IDs (`0` duplicates).
+  - **Browser QA (`http://127.0.0.1:8090/`)**:
+    - `index.html`, `theme-studio.html`, `bulk-import.html`, and `tests/title-layout.test.html` (`4` passed, `0` failed) all loaded with `0` console/page errors.
+    - Legacy v1 `Brackets` JSON import/export round-trip (`1389` bytes) and unmodified baseline check passed.
+    - 18-card Surprise me verified Card #1 lock preservation, 17 individually styled cards (`14` distinct fills), `Card > Page > Sheet` theme precedence, non-style text/photo preservation, 1-step Undo/Redo, scope dependency toggles, `Surprise this card`, `Reset this card's styling`, `Clear all random styling`, manually moved stamp protection when `Stamps` unchecked + toast notification when replaced, `0` duplicate SVG IDs (`130` checked across `#pv` + `#sheets`), `#png` (2 pages) & `#pdf` (`5,352,271` bytes) downloads, and `@media print` A4 rules.
+    - 200-card scaling verified `200 cards across 23 A4 pages` (`24` SVGs w/ template) rendered cleanly (`#count = 200` in `2171` ms, `#surprise-all` in `1948` ms, `#undo` in `1587` ms) and lazy select population (`1` -> `27` options on open).
+    - `390×844` mobile verified `0` horizontal overflow, `.st-hit` `59.06 × 59.06` CSS px, `.st-rot-hit` `57.03 × 57.03` CSS px, and `0px` `#stage` scroll delta during stamp drag.
+    - Note: automated `.svg` download is blocked by the browser sandbox policy (`DOWNLOAD_BLOCKED`), `page.emulateMedia()` was unavailable in sandbox (`@media print` rules verified in CSS/DOM instead), and `"Formats"` label padding on `390px` header remains a minor pre-existing tight fit.
+- **Post-Phase 8 follow-ups (`809d7e8`, `d56aade`, `9a3b3dd`, `1c2035e`)**:
+  - Preserved exact grey/white/low-saturation hex accents (`hexToHS` / `hslToHex` + explicit `card.accent` override in `renderCard()` with readable `bt` contrast and neutral gradient stops), while keeping unmodified legacy cards byte-for-byte identical.
+  - Added `19` new built-in **Gradient Themes** (`21` total in `grp: "Gradient"`): `gradd3` / `gradl3` (triple dark/light reactive gradients), `raddark` / `radlight` / `radhalo` / `radpearl` (radial spotlights/halos), and curated 3-/4-stop presets (`tridusk`, `tridawn`, `aurora`, `cyber`, `ember`, `midnight`, `synth`, `prismatic`, `peach`, `matcha`, `lavender`, `sunsetl`, `hologram`), plus multi-stop WCAG contrast checks in `js/randomiser.mjs`.
+  - Added `#grad-angle-reset` (**Reset 180°**) next to the gradient angle readout in Look (1-step undoable, disabled at `180°` or on non-gradient themes).
+  - Made **Quick colours** (`Paper`, `Text`, `Accent`, `Tape`, `Use photo accent`) reflect and live-override any active sheet theme via optional `settings.quickColors` with `#ct_reset` (**Reset colours**), and added `#grad-stops-block` (**Gradient colours**: 2–4 stop pickers + hex inputs + `+ Colour` / `− Remove`) whenever a Gradient theme is selected (`1c2035e`).
+  - Organised all `44` built-in themes + Saved Custom/Custom into `8` clear built-in categories (`Light · Classic & Paper`, `Light · Pastel & Pop`, `Dark · Moody & Ink`, `Dark · Neon & Retro`, `Gradient · Dual & Triple`, `Gradient · Radial`, `Gradient · Dark Presets`, `Gradient · Light Presets`) via `getGroupedThemes()` and replaced the plain `#style` `<select>` UI with a custom visual dropdown (`#theme-trigger` + `#theme-menu`, live miniature card SVG thumbnails via `renderThemeThumbSvg()`, type badges, and quick filter input `#theme-filter`) synced 2-way with `#style` (`1c0f4e2`).
+  - Split the overloaded sidebar drawers into `6` focused accordions (`Page`, `Paper & wear`, `Theme & colours`, `Borders`, `Card & photo`, `Stamps` — moving grain/vignette/creases/scuffs next to `Page` and removing the nested `Effects -> Advanced` drawer), added `#delete-page` (`deleteActivePage`, 1-step undoable, disabled at 1 page) beside `#duplicate-page`, and added `.rows-page-break` dividers (`End of page N · Cards X–Y`) inside `#rows` (`getCardRowEl` replaces child-index assumptions) (`e5dea0b`).
+  - Re-ran all 6 Node unit test suites (`randomiser.test.mjs` — `24.2 ms` for 200 cards, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `217` unique HTML ID check, and `git diff --check` after `e5dea0b`; `?v=phase8.1` is live on `http://127.0.0.1:8090/` for interactive user verification.

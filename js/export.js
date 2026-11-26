@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase7.1";
-import { hslToHex } from "./image-utils.js?v=phase7.1";
-import { abbr } from "./svg-engine.js?v=phase7.1";
+import { FONTCSS } from "./fonts.js?v=phase8.1";
+import { hslToHex } from "./image-utils.js?v=phase8.1";
+import { abbr } from "./svg-engine.js?v=phase8.1";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -119,12 +119,33 @@ export function exportProjectJson(settings, cards, count) {
         if (c.py) r.photoY = Math.round(c.py);
       }
       if (c.theme) r.theme = c.theme;
+      if (c.palette && typeof c.palette === "object") r.palette = c.palette;
+      if (c.tape) r.tape = c.tape;
       if (c.sk) r.stampShape = c.sk;
       if (c.stx) r.stampText = c.stx;
       if (c.stampStyle && typeof c.stampStyle === "object") r.stampStyle = c.stampStyle;
+      if (c.stampColor) r.stampColor = c.stampColor;
+      if (c.stampAuto !== undefined) r.stampAuto = Boolean(c.stampAuto);
+      if (c.stampSize !== undefined) r.stampSize = c.stampSize;
+      if (c.stampWear !== undefined) r.stampWear = c.stampWear;
       if (c.border && typeof c.border === "object") r.border = c.border;
       if (c.stampPos && typeof c.stampPos === "object") r.stampPos = c.stampPos;
       if (c.stamp2Pos && typeof c.stamp2Pos === "object") r.stamp2Pos = c.stamp2Pos;
+      if (Array.isArray(c.photoMounts) && c.photoMounts.length) r.photoMounts = c.photoMounts;
+      if (c.titleFont) r.titleFont = c.titleFont;
+      if (c.titleScale !== undefined) r.titleScale = c.titleScale;
+      if (c.centerTitle !== undefined) r.centerTitle = Boolean(c.centerTitle);
+      if (c.yearBadge !== undefined) r.yearBadge = c.yearBadge;
+      if (c.tearStyle !== undefined) r.tearStyle = c.tearStyle;
+      if (c.grain !== undefined) r.grain = c.grain;
+      if (c.edgeWear !== undefined) r.edgeWear = c.edgeWear;
+      if (c.creases !== undefined) r.creases = c.creases;
+      if (c.scuffs !== undefined) r.scuffs = c.scuffs;
+      if (c.photoFilter !== undefined) r.photoFilter = c.photoFilter;
+      if (c.halftone !== undefined) r.halftone = Boolean(c.halftone);
+      if (c.gradientAngle !== undefined) r.gradientAngle = c.gradientAngle;
+      if (c.gradientSpread !== undefined) r.gradientSpread = c.gradientSpread;
+      if (c.locked) r.locked = true;
       return r;
     })
   };

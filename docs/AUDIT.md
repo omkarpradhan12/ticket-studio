@@ -126,25 +126,24 @@ Photo area is X 17..153 and Y 16..`16 + 136 + D`, where `D = CH - 239`. `fitBox(
 
 ## 9. Stamps
 - Up to two stamps per card (`stamp` primary + optional `stamp2` rectangular stamp).
-- Controls: shape, size, primary text, year, second text, ink, accent-vs-fixed color, ink wear, mixed shape, plus Phase 7 `Move stamps` toolbar mode (mutually exclusive with `#drag`), snap toggle, and per-card rotary angle dial + scale controls.
-- Un-overridden stamps keep deterministic-random auto placement; per-card overrides live in optional `card.stampPos` / `card.stamp2Pos` (`{ x, y, r, scale }` in card-relative fractions of `CW`/`CH`), clamped to `[-0.04, 1.04]` with optional centre/margin snapping.
-- There are 15 named stamp shapes plus `mixed` and `none`.
-- Drag photos mode (`#drag`) adds transparent `.pp` rectangles on cards; `Move stamps` adds `.st-ui` outlines, `.st-hit` drag/keyboard handles, and `.st-rot-hit` rotation knobs (stripped in exports and hidden in `@media print`). Both use `getScreenCTM()` and Pointer Events with `setPointerCapture`.
+- Controls: 33-swatch visual stamp picker (`31` named shapes + `mixed` + `none`), `Customise` fold (`fillMode`, `weight`, `pattern`, `opacity`, `innerRing`, `showYear`, `wear` synced with `#wear`), `localStorage` presets (`ticketgen.stampPresets.v1`), size, primary text, year, second text, ink, accent-vs-fixed color, ink wear, plus Phase 7 `Move stamps` toolbar mode (mutually exclusive with `#drag`), snap toggle, and per-card rotary angle dial + scale controls.
+- Un-overridden stamps keep deterministic-random auto placement; per-card overrides live in optional `card.stampPos` / `card.stamp2Pos` (`{ x, y, r, scale }` in card-relative fractions of `CW`/`CH`), strictly clamped inside card bounds via `stampNormBounds` (`[0.04, 0.96]`) with optional centre/margin snapping.
+- Drag photos mode (`#drag`) adds transparent `.pp` rectangles on cards; `Move stamps` adds `.st-ui` outlines, `.st-hit` (`>=116×116` SVG units) drag/keyboard handles, and `.st-rot-hit` (`r=56` SVG units) rotation knobs (stripped in exports and hidden in `@media print`). Both use `getScreenCTM()` and Pointer Events with `setPointerCapture`.
 - Photo mounts (`photoMounts`, up to 2): `0` Tape, `1` Pins, `2` Corners, `3` None, plus `4` Washi tape, `5` Brads, `6` Paperclip, `7` Staples, `8` Wax seal.
 
 ## 10. Global vs per-card
-- Global: paper, card size, cutter radius, crop/bleed/template/reg marks, global theme, title font, global doors/side labels, gradient angle/spread, custom quick palette, border/year/tear/filter/mount settings, NFC/serial/punch, stamp settings, texture/wear.
-- Per-page: `pageThemes[]` overrides the global theme.
-- Per-card: title, genre, place, year, code, photo, sampled HSL accent, photo zoom/X/Y, optional theme, stamp shape, stamp text, optional `border` (`card.border`), and optional stamp placements (`card.stampPos`, `card.stamp2Pos`).
-- Not currently per-card: stamp color/year/wear, title font, global doors/side, most texture/effects.
+- Global: paper, card size, cutter radius, crop/bleed/template/reg marks, sheet theme, card count limit (`MAX_CARDS = 300`), global doors/side labels, stamp defaults, and surface defaults.
+- Per-page: `pageThemes[]` overrides the sheet theme; card-level `card.theme` wins over `pageThemes[]`, which wins over `settings.style`.
+- Per-card (all optional): `title`, `genre`, `loc`, `year`, `code`, `img`, `imgUrl`, sampled `h`/`s`, photo zoom/X/Y, `theme`, `palette`, `tape`, `border`, `sk`, `stx`, `stampStyle`, `stampColor`, `stampAuto`, `stampSize`, `stampWear`, `stampPos`, `stamp2Pos`, `photoMounts`, `titleFont`, `titleScale`, `centerTitle`, `yearBadge`, `tearStyle`, `grain`, `edgeWear`, `creases`, `scuffs`, `photoFilter`, `halftone`, `gradientAngle`, `gradientSpread`, and `locked`.
+- Still global-only: paper size, card size, cutter radius, bleed/crop/reg/template marks, global doors/side labels, stamp2 text/year, serials, NFC, punchHole.
 
 ## 11. Card data model
 `blankCard()` fields: `title`, `genre`, `loc`, `year`, `code`, `img`, `imgUrl`, `corsLimited`, `h`, `s`.
-Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, `theme`, `sk`, `stx`, `border`, `stampPos`, `stamp2Pos`.
+Optional/runtime fields: `iw`, `ih`, `zm`, `px`, `py`, plus optional styling fields (`theme`, `palette`, `tape`, `border`, `sk`, `stx`, `stampStyle`, `stampColor`, `stampAuto`, `stampSize`, `stampWear`, `stampPos`, `stamp2Pos`, `photoMounts`, `titleFont`, `titleScale`, `centerTitle`, `yearBadge`, `tearStyle`, `grain`, `edgeWear`, `creases`, `scuffs`, `photoFilter`, `halftone`, `gradientAngle`, `gradientSpread`, `locked`).
 - Saved in session payload `{v, count, settings, cards}` in IndexedDB/localStorage.
-- Bulk Import parses files, URLs, JSON, and CSV. JSON/CSV maps name/title/artist, genre, place/location/loc, year, abbreviation/abbr/code, and photo/photoUrl/image/url.
+- Bulk Import parses files, URLs, JSON, and CSV (`MAX_CARDS = 300`). JSON/CSV maps name/title/artist, genre, place/location/loc, year, abbreviation/abbr/code, photo/photoUrl/image/url, and optional card style fields via `sanitizeCardStyleOverrides`.
 - Bulk staged cards use the same shape and are appended/replaced in the session.
-- Card list is rebuilt for every mutation and has one row per card. Every row includes photo thumbnail, title/header/actions and details.
+- Card list (`buildRows()`) uses lazy `<details class="adj">` dropdown population and a shared photo file input so 200-card sheets stay responsive.
 
 ## 12. State and history readiness
 - Phase 2 refactored Sheet Editor state into `studioState`: cards, count, selected card, active page, page themes, gradient angle and settings/custom palette. `previewIndex` and `dragState` remain transient view/gesture state.
@@ -258,4 +257,9 @@ Browser checks used the existing browser harness; no Playwright dependency was a
 ## Phase 7 draggable stamps & extra mounts disposition
 - Implemented `js/stamps.mjs` (`resolveStampTransform`, `clampStampNorm`, `snapStampNorm`, `sanitizeStampOverride`) with optional `card.stampPos` and `card.stamp2Pos`, plus 5 extra photo mounts (`4` Washi tape, `5` Brads, `6` Paperclip, `7` Staples, `8` Wax seal) and the Tarot title `D` offset fix.
 - Wired `#move-stamps` (mutually exclusive with `#drag`), `#stamp-snap`, `#reset-all-stamps`, per-card rotary angle dial + scale controls, copy-to-page/all, keyboard arrow nudges, `.st-ui` export stripping, and `?v=phase7` cache bump.
-- Follow-up fix (`ced4597`) corrected `.closest("g[data-ci]:not(.st-ui)")` for second-stamp dragging and enlarged `.st-hit` (`92×92`) / `.st-rot-hit` (`r=44`) SVG hit regions for `>= 44 CSS px` touch targets at `390×844`. Browser re-verification of `ced4597` was paused at owner's request for the Stamp Shape Visual Picker proposal.
+- Follow-up fix (`ced4597`, `276f6bd`, `7ce1da6`) corrected `.closest("g[data-ci]:not(.st-ui)")` for second-stamp dragging, enforced strict card-boundary clamping (`stampNormBounds`), added the 33-swatch Visual Stamp Picker (`a6b67ca`, `d0d93b6`, `0c7e278`, `155b2a0`), and enlarged `.st-hit` (`>=116×116`) / `.st-rot-hit` (`r=56`) SVG hit regions so rendered `390×844` touch targets exceed `44 CSS px` (`59.06` / `57.03` CSS px).
+
+## Phase 8 Surprise me disposition
+- Added `js/card-styles.mjs` and `js/randomiser.mjs` supporting optional per-card style overrides, Mulberry32 seeded PRNG, scope/strength preferences (`ticketgen.surprisePrefs.v1`), WCAG `>= 4.5:1` contrast checks across solid & multi-stop gradient stops, print-safe accents/borders, anti-occlusion stamp bounds, per-card locks (`Keep this one`), `Custom` row badges, `Surprise this card`, `Reset this card's styling`, `Clear all random styling`, 1-step Undo/Redo, and `MAX_CARDS = 300` with lazy row select population (`?v=phase8`).
+- Follow-up UI & workflow enhancements (`809d7e8`, `d56aade`, `9a3b3dd`, `1c2035e`, `1c0f4e2`, `e5dea0b`, `?v=phase8.1`): preserved grey/white card `accent` overrides without orange saturation clamping, added `19` new built-in Gradient themes (`21` total: triple reactive light/dark, radial light/dark, and curated 3-/4-stop presets), added `#grad-angle-reset` (`Reset 180°`), made **Quick colours** live-override the active sheet theme via `settings.quickColors` with `#ct_reset`, added 2–4 multi-stop **Gradient colours** pickers inside `#gctl`, organised themes into `8` scannable built-in categories with `#theme-dropdown` thumbnails + `#theme-filter`, segregated the sidebar into `6` focused accordions (`Page`, `Paper & wear`, `Theme & colours`, `Borders`, `Card & photo`, `Stamps`), added `#delete-page` (`deleteActivePage`, 1-step undoable) beside `#duplicate-page`, and added `.rows-page-break` end-of-page dividers inside `#rows`.
+- Browser verification (`1440×900` & `390×844`) passed across all 4 entry points (`0` console errors), 18-card & 200-card sheets (`1948 ms` `#surprise-all` & `1587 ms` `#undo` on 200 cards), Card > Page > Sheet theme precedence, `#png`/`#pdf` exports, `0` duplicate SVG IDs (`130` checked), and `390×844` touch targets (`59.06 × 59.06` / `57.03 × 57.03` CSS px). Latest post-Phase-8 edits (`e5dea0b`) passed all 6 Node unit test suites (`24.2 ms` 200-card generation) and `217` unique DOM ID checks; pre-change `.baseline/` exports remain absent and browser UI re-check awaits user's tab completion.

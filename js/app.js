@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase7.1";
-import { BUILTIN_THEMES, CUSTOM, THEMES, buildCustom, populateThemeSelect } from "./themes.js?v=phase7.1";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase7.1";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase7.1";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase7.1";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase7.1";
-import { History } from "./history.mjs?v=phase7.1";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase7.1";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase7.1";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.1";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase8.1";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.1";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.1";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.1";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase8.1";
+import { History } from "./history.mjs?v=phase8.1";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase8.1";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase8.1";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase7.1";
+} from "./borders.mjs?v=phase8.1";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,22 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase7.1";
+} from "./stamps.mjs?v=phase8.1";
+import {
+  MAX_CARDS_LIMIT,
+  blendHex,
+  clearCardStylingRecord,
+  hasCustomCardStyling,
+  hslObjectToHex,
+  normalizeHex,
+  sanitizeCardStyleOverrides
+} from "./card-styles.mjs?v=phase8.1";
+import {
+  generateSeed,
+  getSurprisePrefs,
+  saveSurprisePrefs,
+  surpriseCardsBatch
+} from "./randomiser.mjs?v=phase8.1";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -52,7 +67,8 @@ const MOUNT_NAMES = {
 };
 
 const $ = id => document.getElementById(id);
-const MAX_CARDS = 72;
+const MAX_CARDS = MAX_CARDS_LIMIT;
+const SURPRISE_STRENGTH_LABELS = ["Subtle", "Normal", "Wild"];
 const HISTORY_LIMIT = 100;
 const SETTINGS_FIELDS = {
   sheetTitle: "sheet-title",
@@ -82,10 +98,12 @@ const studioState = {
   borderConfig: undefined,
   stampShape: SET0.stampShape,
   stampStyle: undefined,
+  quickColors: undefined,
   settings: { customTheme: { ...CUSTOM } }
 };
 let lastSwatchThemeKey = "";
 let lastStampSwatchKey = "";
+let lastBuiltRowsPerPage = 0;
 const cardIds = new WeakMap();
 let nextCardId = 0;
 let currentLayout;
@@ -101,6 +119,9 @@ let historyReady = false;
 let batchImportInProgress = false;
 let undoToastTimer;
 let previewZoom = 1;
+let lastSurpriseSeed = generateSeed();
+let pendingPhotoUploadIndex = -1;
+let sharedPhotoFileInput = null;
 const coalescingTimers = new Map();
 const history = new History({ limit: HISTORY_LIMIT, onChange: updateHistoryControls });
 
@@ -142,6 +163,12 @@ function readSettings() {
   settings.stampShape = studioState.stampShape;
   if (studioState.stampStyle) settings.stampStyle = { ...studioState.stampStyle };
   settings.customTheme = { ...studioState.settings.customTheme };
+  if (studioState.quickColors) {
+    settings.quickColors = {
+      ...studioState.quickColors,
+      ...(Array.isArray(studioState.quickColors.gradStops) ? { gradStops: studioState.quickColors.gradStops.slice() } : {})
+    };
+  }
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
   $("title-size-value").textContent = `${settings.titleScale}%`;
@@ -201,6 +228,12 @@ function applySettings(settings = {}) {
     ? compactStampStyle(settings.stampStyle)
     : undefined;
   if (Array.isArray(settings.pageThemes)) studioState.pageThemes = settings.pageThemes.map(theme => String(theme || ""));
+  studioState.quickColors = settings.quickColors && typeof settings.quickColors === "object"
+    ? {
+      ...settings.quickColors,
+      ...(Array.isArray(settings.quickColors.gradStops) ? { gradStops: settings.quickColors.gradStops.slice() } : {})
+    }
+    : undefined;
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
   $("gav").textContent = studioState.gradientAngle + "°";
@@ -210,6 +243,8 @@ function applySettings(settings = {}) {
   }
   syncBorderControls();
   syncStampControls();
+  syncQuickColorsControls();
+  syncThemeDropdown();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -247,6 +282,7 @@ function renderConfig(one = false) {
     borderStyle: settings.borderStyle,
     border: settings.border,
     borderScope: one ? "pv" : "",
+    quickColors: settings.quickColors,
     yearBadge: settings.yearBadge,
     tearStyle: settings.tearStyle,
     photoFilter: settings.photoFilter,
@@ -391,9 +427,13 @@ function focusedRowControl() {
   };
 }
 
+function getCardRowEl(index) {
+  return $("rows")?.querySelector(`.row[data-index="${index}"]`) || null;
+}
+
 function restoreRowFocus(focus) {
   if (!focus) return;
-  const row = $("rows").children[focus.index];
+  const row = getCardRowEl(focus.index);
   const control = [...(row?.querySelectorAll(`[${focus.attribute}]`) || [])]
     .find(element => element.getAttribute(focus.attribute) === focus.value);
   if (!control) return;
@@ -466,6 +506,182 @@ const STAMP_CONTROL_IDS = [
   "st-fill-mode", "st-pattern", "st-weight", "st-opacity",
   "st-wear", "st-inner-ring", "st-show-year"
 ];
+
+function toHex6(color, fallback = "#111111") {
+  return normalizeHex(color, "") || fallback;
+}
+
+function resolveActiveThemeStops(theme, overrides = null) {
+  if (Array.isArray(overrides?.gradStops) && overrides.gradStops.length >= 2) {
+    return overrides.gradStops.map(col => toHex6(col, "#111111")).slice(0, 4);
+  }
+  if (Array.isArray(theme?.gradStops) && theme.gradStops.length >= 2) {
+    return theme.gradStops.map(col => toHex6(col, "#111111")).slice(0, 4);
+  }
+  const refCard = studioState.cards[studioState.selectedCard] || studioState.cards[0] || { h: 35, s: 0.75 };
+  const gsHex = toHex6(overrides?.bg || theme?.gs || theme?.bg, "#0b0b10");
+  const endSat = theme?.fixed ? 0.7 : Math.max(theme?.sm || 0, refCard.s ?? 0.75);
+  const endHex = toHex6(
+    overrides?.acc || theme?.fixed,
+    hslObjectToHex({ h: refCard.h ?? 35, s: endSat, l: Number(theme?.gl) || 0.45 })
+  );
+  if (theme?.gradType === "triple" || theme?.gradType === "radial") {
+    return [gsHex, blendHex(gsHex, endHex, 0.52), endHex];
+  }
+  return [gsHex, endHex];
+}
+
+function syncQuickColorsControls({ rebuildStops = true } = {}) {
+  const themeKey = $("style")?.value || "cream";
+  const theme = THEMES[themeKey] || THEMES.cream;
+  const isCustomTheme = themeKey === "custom";
+  const qc = isCustomTheme ? studioState.settings.customTheme : (studioState.quickColors || {});
+  const refCard = studioState.cards[studioState.selectedCard] || studioState.cards[0] || { h: 35, s: 0.75 };
+
+  const bgVal = toHex6(qc.bg || theme.bg, "#1f2430");
+  const inkVal = toHex6(qc.ink || theme.ink, "#ffffff");
+  const accFallback = toHex6(theme.fixed, refCard.accent || hslToHex(refCard));
+  const accVal = toHex6(qc.acc, accFallback);
+  const tapeVal = toHex6(qc.tape || theme.tape, "#d8b46b");
+  const paVal = qc.pa !== undefined ? Boolean(qc.pa) : !theme.fixed;
+
+  if ($("ct_bg")) $("ct_bg").value = bgVal;
+  if ($("ct_ink")) $("ct_ink").value = inkVal;
+  if ($("ct_acc")) $("ct_acc").value = accVal;
+  if ($("ct_tape")) $("ct_tape").value = tapeVal;
+  if ($("ct_pa")) $("ct_pa").checked = paVal;
+
+  const legend = $("quick-colours-legend");
+  if (legend) {
+    legend.textContent = isCustomTheme
+      ? "Quick colours · My theme"
+      : (studioState.quickColors ? `Quick colours · ${theme.n} (customised)` : `Quick colours · ${theme.n}`);
+  }
+  if ($("ct_reset")) {
+    const customDirty = isCustomTheme && JSON.stringify(studioState.settings.customTheme) !== JSON.stringify(DEFAULT_CUSTOM);
+    $("ct_reset").disabled = !(isCustomTheme ? customDirty : Boolean(studioState.quickColors));
+  }
+
+  const gradBlock = $("grad-stops-block");
+  const gradRow = $("grad-stops-row");
+  if (gradBlock && gradRow) {
+    const showGradStops = Boolean(theme.grad);
+    gradBlock.hidden = !showGradStops;
+    if (showGradStops) {
+      const stops = resolveActiveThemeStops(theme, isCustomTheme ? CUSTOM : studioState.quickColors);
+      const existingInputs = [...gradRow.querySelectorAll("input[data-grad-stop]")];
+      if (rebuildStops || existingInputs.length !== stops.length) {
+        gradRow.innerHTML = stops.map((hex, idx) =>
+          `<label class="swatch-control"><span>Stop ${idx + 1}</span><input type="color" data-grad-stop="${idx}" aria-label="Gradient colour ${idx + 1}" value="${hex}"></label>`
+        ).join("");
+        attachColorHexFields(gradRow);
+      } else {
+        stops.forEach((hex, idx) => {
+          if (existingInputs[idx] && existingInputs[idx].value !== hex) existingInputs[idx].value = hex;
+        });
+      }
+      if ($("grad-stop-add")) $("grad-stop-add").disabled = stops.length >= 4;
+      if ($("grad-stop-remove")) $("grad-stop-remove").disabled = stops.length <= 2;
+    } else if (gradRow.children.length) {
+      gradRow.replaceChildren();
+    }
+  }
+
+  const quickScope = $("ct_bg")?.closest(".sec");
+  if (quickScope) syncColorHexFields(quickScope);
+}
+
+function themeTagLabel(theme) {
+  if (!theme.grad) return "";
+  if (theme.gradType === "radial") return "Radial";
+  if (theme.gradType === "triple" || (Array.isArray(theme.gradStops) && theme.gradStops.length === 3)) return "3-colour";
+  if (theme.gradType === "multi" || (Array.isArray(theme.gradStops) && theme.gradStops.length >= 4)) return "4-colour";
+  return "Gradient";
+}
+
+function effectivePreviewThemeForThumb(key, theme) {
+  if (key !== ($("style")?.value || "cream") || !studioState.quickColors || key === "custom") return theme;
+  const qc = studioState.quickColors;
+  return {
+    ...theme,
+    ...(qc.bg ? { bg: qc.bg } : {}),
+    ...(qc.ink ? { ink: qc.ink } : {}),
+    ...(qc.acc && qc.pa !== true ? { fixed: qc.acc } : {}),
+    ...(Array.isArray(qc.gradStops) && qc.gradStops.length >= 2 ? { gradStops: qc.gradStops, gs: qc.gradStops[0] } : {})
+  };
+}
+
+function buildThemeDropdown(filterText = "") {
+  const listEl = $("theme-menu-list");
+  if (!listEl) return;
+  const q = String(filterText || "").trim().toLowerCase();
+  const activeKey = $("style")?.value || "cream";
+  const groups = getGroupedThemes();
+  const html = groups.map(([groupLabel, entries]) => {
+    const filtered = q
+      ? entries.filter(([, theme]) =>
+        theme.n.toLowerCase().includes(q) || groupLabel.toLowerCase().includes(q) || themeTagLabel(theme).toLowerCase().includes(q)
+      )
+      : entries;
+    if (!filtered.length) return "";
+    const optionsHtml = filtered.map(([key, theme]) => {
+      const tag = themeTagLabel(theme);
+      const selected = key === activeKey;
+      return `<button class="theme-option" type="button" role="option" data-theme-key="${escapeHtml(key)}" aria-selected="${selected}">
+        <span class="theme-thumb">${renderThemeThumbSvg(key, theme, "th-mnu")}</span>
+        <span class="theme-option-name">${escapeHtml(theme.n)}</span>
+        ${tag ? `<span class="theme-option-tag">${tag}</span>` : ""}
+      </button>`;
+    }).join("");
+    return `<div class="theme-group-label">${escapeHtml(groupLabel)}</div>${optionsHtml}`;
+  }).join("");
+  listEl.innerHTML = html || `<p class="hint" style="padding:10px">No matching themes.</p>`;
+}
+
+function syncThemeDropdown() {
+  const key = $("style")?.value || "cream";
+  const theme = THEMES[key] || THEMES.cream;
+  const previewTheme = effectivePreviewThemeForThumb(key, theme);
+  if ($("theme-trigger-thumb")) $("theme-trigger-thumb").innerHTML = renderThemeThumbSvg(key, previewTheme, "th-trg");
+  if ($("theme-trigger-label")) $("theme-trigger-label").textContent = theme.n || "Cream";
+  if ($("theme-trigger-cat")) $("theme-trigger-cat").textContent = theme.cat || theme.grp || "Theme";
+  $("theme-menu-list")?.querySelectorAll(".theme-option").forEach(btn => {
+    btn.setAttribute("aria-selected", String(btn.dataset.themeKey === key));
+  });
+}
+
+function closeThemeMenu(restoreFocus = false) {
+  const menu = $("theme-menu");
+  const trigger = $("theme-trigger");
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  trigger?.setAttribute("aria-expanded", "false");
+  if (restoreFocus) trigger?.focus();
+}
+
+function openThemeMenu() {
+  const menu = $("theme-menu");
+  const trigger = $("theme-trigger");
+  if (!menu) return;
+  if ($("theme-filter")) $("theme-filter").value = "";
+  buildThemeDropdown("");
+  menu.hidden = false;
+  trigger?.setAttribute("aria-expanded", "true");
+  const activeOption = menu.querySelector('.theme-option[aria-selected="true"]');
+  activeOption?.scrollIntoView({ block: "nearest" });
+  ($("theme-filter") || activeOption)?.focus();
+}
+
+function selectThemeKey(key) {
+  if (!key || !THEMES[key] || !$("style")) return;
+  $("style").value = key;
+  studioState.quickColors = undefined;
+  syncQuickColorsControls({ rebuildStops: true });
+  syncThemeDropdown();
+  closeThemeMenu(true);
+  recordDiscrete("change theme");
+  render();
+}
 
 function bindHistoryControlEvents() {
   const labels = {
@@ -899,7 +1115,7 @@ function resolveCardStamp(index, stampIndex = 0) {
 }
 
 function syncCardStampRow(index) {
-  const row = $("rows").children[index];
+  const row = getCardRowEl(index);
   if (!row) return;
   const box = row.querySelector(".card-stamp-pos");
   if (!box) return;
@@ -1004,6 +1220,7 @@ function copyStampPlacement(sourceIndex, targetIndices, label) {
     return next;
   });
   recordDiscrete(label);
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
 }
@@ -1020,6 +1237,9 @@ function render() {
   studioState.settings = readSettings();
   const active = THEMES[$("style").value] || THEMES.cream;
   currentLayout = computeLayout($("paper").value, $("csize").value);
+  if (lastBuiltRowsPerPage && currentLayout.PER !== lastBuiltRowsPerPage) {
+    buildRows();
+  }
   const cfg = renderConfig();
   const activeCards = studioState.cards.slice(0, studioState.count);
   studioState.selectedCard = Math.max(0, Math.min(studioState.count - 1, studioState.selectedCard));
@@ -1057,12 +1277,16 @@ function render() {
   $("dial").setAttribute("aria-disabled", String(!gradientEnabled));
   $("dial").tabIndex = gradientEnabled ? 0 : -1;
   $("dial").classList.toggle("disabled", !gradientEnabled);
+  if ($("grad-angle-reset")) {
+    $("grad-angle-reset").disabled = !gradientEnabled || studioState.gradientAngle === 180;
+  }
   $("gradient-hint").textContent = gradientEnabled
-    ? "Drag the dial or use arrow keys to set the angle."
+    ? (active.gradType === "radial" ? "Drag dial to shift spotlight; edit stops below." : "Drag the dial or edit gradient colours below.")
     : "Choose a gradient theme to enable the angle control.";
   syncPageTools(pages);
   refreshBorderSwatches();
   refreshStampSwatches();
+  syncThemeDropdown();
   const moveBtn = $("move-stamps");
   if (moveBtn) moveBtn.setAttribute("aria-pressed", String(moveStampsMode));
   const snapWrap = $("stamp-snap-wrap");
@@ -1081,8 +1305,8 @@ function render() {
     row.setAttribute("aria-expanded", String(i === studioState.selectedCard));
     if (i === studioState.selectedCard) row.setAttribute("aria-current", "true");
     else row.removeAttribute("aria-current");
-    syncCardStampRow(i);
   });
+  syncCardStampRow(studioState.selectedCard);
   if (!$("pv").hidden) refreshPreview();
   if (historyReady) history.refresh(captureSnapshot());
   saveSoon();
@@ -1109,12 +1333,49 @@ function selectCard(index, scroll = false) {
     });
   }
   syncCardStampRow(index);
-  if (scroll) $("rows").children[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (scroll) getCardRowEl(index)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function ensureSharedPhotoInput() {
+  if (sharedPhotoFileInput) return sharedPhotoFileInput;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.hidden = true;
+  input.addEventListener("change", async () => {
+    const targetIdx = pendingPhotoUploadIndex;
+    const fileObj = input.files?.[0];
+    input.value = "";
+    pendingPhotoUploadIndex = -1;
+    if (fileObj && targetIdx >= 0 && targetIdx < studioState.count) {
+      await setImage(targetIdx, () => processImageFile(fileObj));
+    }
+  });
+  document.body.append(input);
+  sharedPhotoFileInput = input;
+  return input;
 }
 
 function buildRows() {
-  $("rows").replaceChildren();
-  studioState.cards.slice(0, studioState.count).forEach((card, index) => {
+  const activeCards = studioState.cards.slice(0, studioState.count);
+  const per = currentLayout?.PER || computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket").PER || 9;
+  lastBuiltRowsPerPage = per;
+  const fullThemeOptions = `<option value="">Same as sheet</option>${getGroupedThemes().map(([lbl, entries]) => `<optgroup label="${escapeHtml(lbl)}">${entries.map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}</optgroup>`).join("")}`;
+  const fullStampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
+    .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
+
+  const hydrateLazySelects = row => {
+    row.querySelectorAll("select[data-lazy-kind]").forEach(selectEl => {
+      if (selectEl.dataset.populated === "1") return;
+      const curVal = selectEl.value;
+      selectEl.innerHTML = selectEl.dataset.lazyKind === "theme" ? fullThemeOptions : fullStampOptions;
+      selectEl.value = curVal;
+      selectEl.dataset.populated = "1";
+    });
+  };
+
+  const frag = document.createDocumentFragment();
+  activeCards.forEach((card, index) => {
     const row = document.createElement("article");
     row.className = "row" + (index === studioState.selectedCard ? " selected" : "");
     row.dataset.index = index;
@@ -1122,15 +1383,25 @@ function buildRows() {
     const imgSrc = card.img || card.imgUrl;
     const imageUrl = card.imgUrl || (String(card.img || "").startsWith("http") ? card.img : "");
     const genre = String(card.genre || "");
-    const themeOptions = `<option value="">Same as sheet</option>${Object.entries(THEMES).map(([key, theme]) => `<option value="${key}"${card.theme === key ? " selected" : ""}>${escapeHtml(theme.n)}</option>`).join("")}`;
-    const stampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
-      .map(([value, name]) => `<option value="${value}"${(card.sk || "") === value ? " selected" : ""}>${name}</option>`).join("");
+    const isCustomStyled = hasCustomCardStyling(card);
+    const isLocked = Boolean(card.locked);
+    const curThemeLabel = card.theme ? (THEMES[card.theme]?.n || card.theme) : "Same as sheet";
+    const curStampLabel = !card.sk
+      ? "Same as sheet"
+      : (card.sk === "none" ? "No stamp" : (card.sk === "mixed" ? "Mixed" : (STAMPS[card.sk]?.name || card.sk)));
+    const compactThemeOpt = `<option value="${escapeHtml(card.theme || "")}" selected>${escapeHtml(curThemeLabel)}</option>`;
+    const compactStampOpt = `<option value="${escapeHtml(card.sk || "")}" selected>${escapeHtml(curStampLabel)}</option>`;
     row.innerHTML = `
       <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
       <div class="row-content">
         <div class="row-heading">
           <button class="card-name" type="button" data-action="select-card" aria-label="Select card ${index + 1}">Card ${index + 1} · ${escapeHtml(card.title || "Untitled card")}</button>
+          <span class="card-badges">
+            ${isCustomStyled ? `<span class="card-custom-badge" title="Card has custom styling">Custom</span>` : ""}
+            ${isLocked ? `<span class="card-lock-badge" title="Kept locked when shuffling" aria-label="Locked">${iconMarkup("lock")}</span>` : ""}
+          </span>
           <div class="row-actions">
+            <button class="g sm card-lock-btn${isLocked ? " is-locked" : ""}" type="button" data-action="toggle-lock" aria-pressed="${isLocked}" aria-label="${isLocked ? `Unlock styling for card ${index + 1}` : `Keep card ${index + 1} styling when shuffling`}" data-tooltip="${isLocked ? "Locked (Keep this one)" : "Keep this one"}">${iconMarkup("lock")}</button>
             <button class="g sm" type="button" data-action="view">${iconMarkup("view")} View</button>
             <button class="danger sm" type="button" data-action="delete"${studioState.count <= 1 ? " disabled" : ""}>${iconMarkup("delete")} Delete</button>
             <details class="card-menu">
@@ -1139,8 +1410,10 @@ function buildRows() {
                 <button class="g" type="button" data-action="up"${index === 0 ? " disabled" : ""}>${iconMarkup("moveUp")} Move up</button>
                 <button class="g" type="button" data-action="down"${index === studioState.count - 1 ? " disabled" : ""}>${iconMarkup("moveDown")} Move down</button>
                 <button class="g" type="button" data-action="duplicate"${studioState.count >= MAX_CARDS ? " disabled" : ""}>${iconMarkup("duplicate")} Duplicate card</button>
+                <button class="g" type="button" data-action="surprise">${iconMarkup("surprise")} Surprise this card</button>
+                <button class="g" type="button" data-action="toggle-lock">${iconMarkup("lock")} ${isLocked ? "Unlock styling" : "Keep this one"}</button>
+                <button class="g" type="button" data-action="reset-styling"${isCustomStyled ? "" : " disabled"}>${iconMarkup("reset")} Reset this card's styling</button>
                 <button class="g" type="button" data-action="clear">${iconMarkup("reset")} Reset card</button>
-                <button class="g" type="button" data-action="surprise" disabled aria-label="Surprise this card (available in Phase 8)">${iconMarkup("surprise")} Surprise this card</button>
               </div>
             </details>
           </div>
@@ -1159,14 +1432,15 @@ function buildRows() {
             <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
             <label><span>Vertical</span><input type="range" min="-100" max="100" value="${card.py || 0}" data-adjust="py"></label>
             <button class="g sm" type="button" data-action="reset-photo">Reset photo crop</button>
-            <label><span>Theme</span><select data-option="theme">${themeOptions}</select></label>
-            <label><span>Stamp</span><select data-option="sk">${stampOptions}</select></label>
+            <label><span>Theme</span><select data-option="theme" data-lazy-kind="theme" data-populated="0">${compactThemeOpt}</select></label>
+            <label><span>Stamp</span><select data-option="sk" data-lazy-kind="stamp" data-populated="0">${compactStampOpt}</select></label>
             <label><span>Stamp text</span><input type="text" data-option="stx" placeholder="Same as sheet" value="${escapeHtml(card.stx || "")}"></label>
             <div class="card-border-row">
               <span>${card.border ? `Border: Custom (${escapeHtml(getBorderStyleMeta(card.border.style ?? studioState.borderStyle).name)})` : "Border: Same as sheet"}</span>
               ${card.border ? `<button class="g sm" type="button" data-action="reset-border">Use sheet border</button>` : ""}
             </div>
             ${card.sk || card.stampStyle ? `<div class="card-border-row"><span>Stamp look: Custom (${escapeHtml(getStampShapeName(card.sk || studioState.stampShape))})</span><button class="g sm" type="button" data-action="reset-stamp-style">Use sheet stamp</button></div>` : ""}
+            ${isCustomStyled ? `<div class="card-border-row"><span>Card styling: Custom overrides active</span><button class="g sm" type="button" data-action="reset-styling">Reset this card's styling</button></div>` : ""}
             <div class="card-stamp-pos">
               <div class="card-stamp-header">
                 <span>Stamp placement</span>
@@ -1201,20 +1475,23 @@ function buildRows() {
       </div>`;
     hydrateIcons(row);
     attachColorHexFields(row);
-    const file = document.createElement("input");
-    file.type = "file";
-    file.accept = "image/*";
-    file.hidden = true;
-    file.addEventListener("change", async () => {
-      if (file.files?.[0]) await setImage(index, () => processImageFile(file.files[0]));
-      file.value = "";
+    row.querySelector("details.adj")?.addEventListener("toggle", event => {
+      if (event.currentTarget.open) hydrateLazySelects(row);
     });
-    row.append(file);
     const thumb = row.querySelector(".cv");
     if (imgSrc) thumb.style.backgroundImage = `url(${JSON.stringify(String(imgSrc))})`;
-    thumb.addEventListener("click", () => { selectCard(index); file.click(); });
+    thumb.addEventListener("click", () => {
+      selectCard(index);
+      pendingPhotoUploadIndex = index;
+      ensureSharedPhotoInput().click();
+    });
     thumb.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); file.click(); }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectCard(index);
+        pendingPhotoUploadIndex = index;
+        ensureSharedPhotoInput().click();
+      }
     });
     row.addEventListener("focusin", () => selectCard(index));
     row.addEventListener("dragover", event => { event.preventDefault(); row.classList.add("drag-over"); });
@@ -1259,7 +1536,7 @@ function buildRows() {
       bindContinuousHistory(input, labels[input.dataset.option], `card:${index}:${input.dataset.option}`);
     });
     row.querySelector("[data-accent]").addEventListener("input", event => {
-      updateCard(index, hexToHS(event.target.value));
+      updateCard(index, { ...hexToHS(event.target.value), autoAccent: false });
       scheduleRender();
     });
     bindContinuousHistory(row.querySelector("[data-accent]"), "change card accent colour", `card:${index}:accent`);
@@ -1364,8 +1641,15 @@ function buildRows() {
       event.stopPropagation();
       const action = button.dataset.action;
       selectCard(index);
-      if (action === "select-card" || action === "surprise" || action === "load-url") return;
+      if (action === "select-card" || action === "load-url") return;
       if (action === "view") { selectCard(index); openPreview(index); }
+      else if (action === "surprise") {
+        surpriseCards({ seed: generateSeed(), onlyIndex: index, actionLabel: "surprise card styling" });
+      } else if (action === "toggle-lock") {
+        toggleCardLock(index);
+      } else if (action === "reset-styling") {
+        resetSingleCardStyling(index);
+      }
       else if (action === "up" && index > 0) moveCard(index, index - 1);
       else if (action === "down" && index < studioState.count - 1) moveCard(index, index + 1);
       else if (action === "duplicate" && studioState.count < MAX_CARDS) {
@@ -1447,9 +1731,20 @@ function buildRows() {
       }
       button.closest(".card-menu")?.removeAttribute("open");
     }));
-    $("rows").append(row);
-    syncCardStampRow(index);
+    frag.append(row);
+    if ((index + 1) % per === 0 || index === activeCards.length - 1) {
+      const pageNum = Math.floor(index / per) + 1;
+      const pageStart = (pageNum - 1) * per;
+      const divider = document.createElement("div");
+      divider.className = "rows-page-break";
+      divider.setAttribute("role", "separator");
+      divider.setAttribute("aria-label", `End of page ${pageNum}`);
+      divider.innerHTML = `<span>End of page ${pageNum}</span><span class="rows-page-range">Cards ${pageStart + 1}–${index + 1}</span>`;
+      frag.append(divider);
+    }
   });
+  $("rows").replaceChildren(frag);
+  syncCardStampRow(studioState.selectedCard);
 }
 
 function escapeHtml(text) {
@@ -1465,7 +1760,8 @@ async function setImage(index, loader) {
       message("That card changed before its image finished loading.");
       return;
     }
-    const updatedCard = updateCard(currentIndex, image);
+    const keepImportedAccent = batchImportInProgress && studioState.cards[currentIndex]?.autoAccent === false;
+    const updatedCard = updateCard(currentIndex, keepImportedAccent ? image : { accent: undefined, autoAccent: true, ...image });
     buildRows();
     if (!batchImportInProgress) recordDiscrete("change card image");
     render();
@@ -1481,17 +1777,24 @@ function moveCard(from, to) {
   studioState.cards = cards;
   studioState.selectedCard = to;
   recordDiscrete("move card");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
 }
 
 function setCount(value) {
   studioState.count = Math.max(1, Math.min(MAX_CARDS, Number.parseInt(value, 10) || 1));
-  while (studioState.cards.length < studioState.count) studioState.cards = [...studioState.cards, blankCard()];
-  if (studioState.cards.length > studioState.count) studioState.cards = studioState.cards.slice(0, studioState.count);
+  if (studioState.cards.length < studioState.count) {
+    const padded = studioState.cards.slice();
+    while (padded.length < studioState.count) padded.push(blankCard());
+    studioState.cards = padded;
+  } else if (studioState.cards.length > studioState.count) {
+    studioState.cards = studioState.cards.slice(0, studioState.count);
+  }
   studioState.selectedCard = Math.min(studioState.selectedCard, studioState.count - 1);
   $("count").value = studioState.count;
   recordDiscrete("change card count");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
 }
@@ -1521,6 +1824,7 @@ async function importJson(text) {
     const title = String(item.name || item.title || "");
     const accent = /^#[\da-f]{6}$/i.test(item.accent || "") ? hexToHS(item.accent) : null;
     const photo = photoForJson(item);
+    const styleOverrides = sanitizeCardStyleOverrides(item, THEMES, STAMPS);
     return {
       ...blankCard(),
       title,
@@ -1535,13 +1839,10 @@ async function importJson(text) {
       zm: Math.max(1, Math.min(3, Number(item.photoZoom) || 1)),
       px: Math.max(-100, Math.min(100, Number(item.photoX) || 0)),
       py: Math.max(-100, Math.min(100, Number(item.photoY) || 0)),
-      theme: String(item.theme || ""),
-      sk: String(item.stampShape || ""),
+      ...styleOverrides,
+      theme: styleOverrides.theme || String(item.theme || ""),
+      sk: styleOverrides.sk || String(item.stampShape || ""),
       stx: String(item.stampText || ""),
-      ...(item.border && typeof item.border === "object" ? { border: sanitizeBorderPatch(item.border) } : {}),
-      ...(item.stampStyle && typeof item.stampStyle === "object" ? { stampStyle: sanitizeStampStyle(item.stampStyle) } : {}),
-      ...(item.stampPos && typeof item.stampPos === "object" ? { stampPos: sanitizeStampOverride(item.stampPos) } : {}),
-      ...(item.stamp2Pos && typeof item.stamp2Pos === "object" ? { stamp2Pos: sanitizeStampOverride(item.stamp2Pos) } : {}),
       autoAccent: !accent,
       ...(accent || {})
     };
@@ -1569,7 +1870,7 @@ async function importJson(text) {
     batchImportInProgress = false;
     if (historyReady) history.refresh(captureSnapshot());
   }
-  message(`Loaded ${imported.length} card${imported.length === 1 ? "" : "s"}${entries.length > MAX_CARDS ? " (first 72 only)" : ""}.`);
+  message(`Loaded ${imported.length} card${imported.length === 1 ? "" : "s"}${entries.length > MAX_CARDS ? ` (first ${MAX_CARDS} only)` : ""}.`);
   showUndoToast("Card data imported.");
 }
 
@@ -1617,6 +1918,10 @@ function setGradientAngle(angle, snap = true) {
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
   $("gav").textContent = studioState.gradientAngle + "°";
+  if ($("grad-angle-reset")) {
+    const gradientActive = Boolean((THEMES[$("style").value] || THEMES.cream)?.grad);
+    $("grad-angle-reset").disabled = !gradientActive || studioState.gradientAngle === 180;
+  }
   scheduleRender();
 }
 
@@ -1635,6 +1940,7 @@ function syncCustomControls() {
     if (el.type === "checkbox") el.checked = Boolean(studioState.settings.customTheme[key]);
     else el.value = studioState.settings.customTheme[key];
   }
+  syncQuickColorsControls();
   syncColorHexFields();
   updateMountStatus();
 }
@@ -1643,6 +1949,7 @@ function resetDefaults() {
   studioState.cards = DEFAULT_CARDS.map(card => ({ ...card }));
   studioState.count = studioState.cards.length;
   studioState.selectedCard = 0;
+  studioState.quickColors = undefined;
   $("count").value = studioState.count;
   applySettings(SET0);
   syncCustomControls();
@@ -1674,6 +1981,165 @@ function loadSamples() {
   render();
   message("Sample cards loaded.");
   showUndoToast("Sample cards loaded.");
+}
+
+function updateSurpriseDialogMeta() {
+  const lockedCount = studioState.cards.slice(0, studioState.count).filter(c => c.locked).length;
+  const info = $("sp-seed-info");
+  if (info) {
+    info.textContent = `Seed #${lastSurpriseSeed} · ${lockedCount} locked card${lockedCount === 1 ? "" : "s"}`;
+  }
+}
+
+function syncSurpriseDialog() {
+  const prefs = getSurprisePrefs();
+  if ($("sp-colors")) $("sp-colors").checked = prefs.scope.colors;
+  if ($("sp-keep-theme")) {
+    $("sp-keep-theme").checked = prefs.keepTheme;
+    $("sp-keep-theme").disabled = !prefs.scope.colors;
+  }
+  if ($("sp-border")) $("sp-border").checked = prefs.scope.border;
+  if ($("sp-stamps")) $("sp-stamps").checked = prefs.scope.stamps;
+  if ($("sp-keep-moved")) {
+    $("sp-keep-moved").checked = prefs.keepMovedStamps;
+    $("sp-keep-moved").disabled = !prefs.scope.stamps;
+  }
+  if ($("sp-wear")) $("sp-wear").checked = prefs.scope.wear;
+  if ($("sp-font")) $("sp-font").checked = prefs.scope.font;
+  if ($("sp-strength")) $("sp-strength").value = String(prefs.strength);
+  if ($("sp-strength-val")) $("sp-strength-val").textContent = SURPRISE_STRENGTH_LABELS[prefs.strength] || "Normal";
+  updateSurpriseDialogMeta();
+}
+
+function readSurpriseDialogIntoPrefs() {
+  const prefs = saveSurprisePrefs({
+    scope: {
+      colors: Boolean($("sp-colors")?.checked),
+      border: Boolean($("sp-border")?.checked),
+      stamps: Boolean($("sp-stamps")?.checked),
+      wear: Boolean($("sp-wear")?.checked),
+      font: Boolean($("sp-font")?.checked)
+    },
+    strength: Number($("sp-strength")?.value ?? 1),
+    keepTheme: Boolean($("sp-keep-theme")?.checked),
+    keepMovedStamps: Boolean($("sp-keep-moved")?.checked)
+  });
+  syncSurpriseDialog();
+  return prefs;
+}
+
+function surpriseCards({ seed = generateSeed(), onlyIndex = null, actionLabel = "surprise styling" } = {}) {
+  const prefs = getSurprisePrefs();
+  if (!Object.values(prefs.scope).some(Boolean)) {
+    message("Tick at least one Surprise option first.");
+    if (!$("surprise-dialog")?.open) $("surprise-dialog")?.showModal();
+    return;
+  }
+  lastSurpriseSeed = seed;
+  studioState.settings = readSettings();
+  const cfg = renderConfig();
+  const lay = currentLayout || computeLayout($("paper").value, $("csize").value);
+  const previousCards = studioState.cards;
+  const res = surpriseCardsBatch({
+    cards: previousCards,
+    count: studioState.count,
+    seed: lastSurpriseSeed,
+    cfg,
+    prefs,
+    themes: THEMES,
+    CH: lay.CH,
+    CW,
+    perPage: lay.PER,
+    onlyIndices: onlyIndex !== null ? [onlyIndex] : null
+  });
+  if (onlyIndex === null && res.surprisedCount === 0) {
+    message("All cards are locked. Unlock a card or use 'Surprise this card' in its menu.");
+    updateSurpriseDialogMeta();
+    return;
+  }
+  res.cards.forEach((nextCard, idx) => {
+    if (previousCards[idx] && nextCard !== previousCards[idx]) {
+      cardIds.set(nextCard, cardIdentity(previousCards[idx]));
+    }
+  });
+  studioState.cards = res.cards;
+  recordDiscrete(actionLabel);
+  currentLayout = computeLayout($("paper").value, $("csize").value);
+  buildRows();
+  render();
+  updateSurpriseDialogMeta();
+
+  if (onlyIndex !== null) {
+    const movedNote = res.replacedStampCount > 0 ? " (replaced moved stamp)" : "";
+    message(`Surprised card #${onlyIndex + 1}${movedNote} (seed #${lastSurpriseSeed}).`);
+    showUndoToast(`Card #${onlyIndex + 1} styling randomised.`);
+  } else {
+    const parts = [`Surprised ${res.surprisedCount} card${res.surprisedCount === 1 ? "" : "s"}`];
+    if (res.skippedLocked > 0) parts.push(`${res.skippedLocked} locked`);
+    if (res.replacedStampCount > 0) parts.push(`updated ${res.replacedStampCount} moved stamp${res.replacedStampCount === 1 ? "" : "s"}`);
+    const summary = parts.join(" · ");
+    message(`${summary} (seed #${lastSurpriseSeed}).`);
+    showUndoToast(`${summary}.`);
+  }
+}
+
+function toggleCardLock(index) {
+  const current = studioState.cards[index];
+  if (!current) return;
+  const nextLocked = !current.locked;
+  if (nextLocked) {
+    updateCard(index, { locked: true });
+  } else {
+    const { locked: _removed, ...rest } = current;
+    const next = { ...rest };
+    cardIds.set(next, cardIdentity(current));
+    studioState.cards = studioState.cards.map((card, i) => i === index ? next : card);
+  }
+  recordDiscrete(nextLocked ? "lock card styling" : "unlock card styling");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
+  buildRows();
+  render();
+  updateSurpriseDialogMeta();
+  message(nextLocked ? `Card #${index + 1} locked ("Keep this one").` : `Card #${index + 1} unlocked.`);
+}
+
+function resetSingleCardStyling(index) {
+  const current = studioState.cards[index];
+  if (!current || !hasCustomCardStyling(current)) {
+    message(`Card #${index + 1} already uses sheet defaults.`);
+    return;
+  }
+  const cleared = clearCardStylingRecord(current);
+  cardIds.set(cleared, cardIdentity(current));
+  studioState.cards = studioState.cards.map((card, i) => i === index ? cleared : card);
+  recordDiscrete("reset card styling");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
+  buildRows();
+  render();
+  message(`Reset card #${index + 1} styling to sheet defaults.`);
+  showUndoToast(`Card #${index + 1} styling reset.`);
+}
+
+function clearAllRandomStyling() {
+  let changed = 0;
+  studioState.cards = studioState.cards.map((card, idx) => {
+    if (idx >= studioState.count || !hasCustomCardStyling(card)) return card;
+    changed++;
+    const cleared = clearCardStylingRecord(card);
+    cardIds.set(cleared, cardIdentity(card));
+    return cleared;
+  });
+  if (!changed) {
+    message("All cards already match sheet defaults.");
+    return;
+  }
+  recordDiscrete("clear random styling");
+  currentLayout = computeLayout($("paper").value, $("csize").value);
+  buildRows();
+  render();
+  updateSurpriseDialogMeta();
+  message(`Cleared custom styling on ${changed} card${changed === 1 ? "" : "s"}.`);
+  showUndoToast("Cleared random card styling.");
 }
 
 function randomise() {
@@ -1809,12 +2275,52 @@ function bindEvents() {
     scheduleRender();
   });
   $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
+  $("delete-page")?.addEventListener("click", () => deleteActivePage(currentLayout.PER));
   $("rows").addEventListener("click", event => {
     const row = event.target.closest(".row");
     if (row) selectCard(+row.dataset.index);
   });
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "style", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  $("style").addEventListener("change", () => {
+    studioState.quickColors = undefined;
+    syncQuickColorsControls({ rebuildStops: true });
+    syncThemeDropdown();
+    scheduleRender();
+  });
+  $("theme-trigger")?.addEventListener("click", () => {
+    if ($("theme-menu")?.hidden) openThemeMenu();
+    else closeThemeMenu();
+  });
+  $("theme-filter")?.addEventListener("input", event => {
+    buildThemeDropdown(event.target.value);
+  });
+  $("theme-menu-list")?.addEventListener("click", event => {
+    const option = event.target.closest?.(".theme-option");
+    if (option?.dataset.themeKey) selectThemeKey(option.dataset.themeKey);
+  });
+  $("theme-menu")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeThemeMenu(true);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      const options = [...$("theme-menu-list").querySelectorAll(".theme-option")];
+      if (!options.length) return;
+      event.preventDefault();
+      const idx = options.indexOf(document.activeElement);
+      const next = idx < 0
+        ? (event.key === "ArrowDown" ? 0 : options.length - 1)
+        : (idx + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+      options[next].focus();
+    }
+  });
+  document.addEventListener("pointerdown", event => {
+    if (!$("theme-menu")?.hidden && !event.target.closest?.("#theme-dropdown")) {
+      closeThemeMenu();
+    }
+  });
   $("drag").addEventListener("change", () => {
     if ($("drag").checked && moveStampsMode) {
       moveStampsMode = false;
@@ -2132,19 +2638,114 @@ function bindEvents() {
   document.querySelectorAll("[data-ct]").forEach(input => {
     const update = () => {
       const key = input.id.slice(3);
-      studioState.settings = {
-        ...studioState.settings,
-        customTheme: {
-          ...studioState.settings.customTheme,
-          [key]: input.type === "checkbox" ? input.checked : input.value
-        }
-      };
-      Object.assign(CUSTOM, studioState.settings.customTheme);
-      buildCustom();
+      const val = input.type === "checkbox" ? input.checked : input.value;
+      if ($("style").value === "custom") {
+        studioState.settings = {
+          ...studioState.settings,
+          customTheme: {
+            ...studioState.settings.customTheme,
+            [key]: val
+          }
+        };
+        Object.assign(CUSTOM, studioState.settings.customTheme);
+        buildCustom();
+      } else {
+        studioState.quickColors = {
+          ...(studioState.quickColors || {}),
+          [key]: val,
+          ...(key === "acc" ? { pa: false } : {})
+        };
+        if (key === "acc" && $("ct_pa")) $("ct_pa").checked = false;
+      }
+      syncQuickColorsControls({ rebuildStops: false });
       scheduleRender();
     };
     input.addEventListener("input", update);
     input.addEventListener("change", update);
+  });
+
+  $("ct_reset")?.addEventListener("click", () => {
+    if ($("style").value === "custom") {
+      studioState.settings = { ...studioState.settings, customTheme: { ...DEFAULT_CUSTOM } };
+      Object.assign(CUSTOM, DEFAULT_CUSTOM);
+      buildCustom();
+    } else {
+      studioState.quickColors = undefined;
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("reset quick colours");
+    render();
+    message("Reset theme colours to preset defaults.");
+  });
+
+  const updateGradStop = (idx, hex) => {
+    const clean = toHex6(hex, "");
+    if (!clean) return;
+    const themeKey = $("style").value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const currentStops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    const nextStops = currentStops.slice();
+    nextStops[idx] = clean;
+    if (themeKey === "custom") {
+      studioState.settings = {
+        ...studioState.settings,
+        customTheme: { ...studioState.settings.customTheme, gradStops: nextStops, gs: nextStops[0] }
+      };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), gradStops: nextStops };
+    }
+    syncQuickColorsControls({ rebuildStops: false });
+    scheduleRender();
+  };
+
+  $("grad-stops-row")?.addEventListener("input", event => {
+    const input = event.target.closest?.("input[data-grad-stop]");
+    if (!input) return;
+    updateGradStop(Number(input.dataset.gradStop), input.value);
+    recordContinuous("change gradient colour", `setting:grad-stop:${input.dataset.gradStop}`);
+  });
+  $("grad-stops-row")?.addEventListener("change", event => {
+    const input = event.target.closest?.("input[data-grad-stop]");
+    if (!input) return;
+    updateGradStop(Number(input.dataset.gradStop), input.value);
+    finishContinuous("change gradient colour", `setting:grad-stop:${input.dataset.gradStop}`);
+  });
+  $("grad-stop-add")?.addEventListener("click", () => {
+    const themeKey = $("style").value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const stops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    if (stops.length >= 4) return;
+    const mid = blendHex(stops.at(-2) || stops[0], stops.at(-1), 0.5);
+    const nextStops = [...stops.slice(0, -1), mid, stops.at(-1)];
+    if (themeKey === "custom") {
+      studioState.settings = { ...studioState.settings, customTheme: { ...studioState.settings.customTheme, gradStops: nextStops } };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), gradStops: nextStops };
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("add gradient colour");
+    render();
+  });
+  $("grad-stop-remove")?.addEventListener("click", () => {
+    const themeKey = $("style").value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const stops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    if (stops.length <= 2) return;
+    const nextStops = [...stops.slice(0, -2), stops.at(-1)];
+    if (themeKey === "custom") {
+      studioState.settings = { ...studioState.settings, customTheme: { ...studioState.settings.customTheme, gradStops: nextStops } };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), gradStops: nextStops };
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("remove gradient colour");
+    render();
   });
 
   $("prev-style").addEventListener("click", () => cycleTheme(-1));
@@ -2162,6 +2763,36 @@ function bindEvents() {
     message("Cutter SVG downloaded (red = cut, blue = punch).");
   });
   $("rnd").addEventListener("click", randomise);
+  $("surprise-all")?.addEventListener("click", () => surpriseCards({ seed: generateSeed(), actionLabel: "surprise styling" }));
+  $("surprise-tune")?.addEventListener("click", () => {
+    syncSurpriseDialog();
+    $("surprise-dialog")?.showModal();
+    $("surprise-tune")?.setAttribute("aria-expanded", "true");
+  });
+  $("surprise-dialog")?.addEventListener("close", () => {
+    $("surprise-tune")?.setAttribute("aria-expanded", "false");
+  });
+  $("surprise-dialog")?.addEventListener("click", event => {
+    if (event.target === $("surprise-dialog")) $("surprise-dialog").close();
+  });
+  ["sp-colors", "sp-keep-theme", "sp-border", "sp-stamps", "sp-keep-moved", "sp-wear", "sp-font", "sp-strength"].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", readSurpriseDialogIntoPrefs);
+    el.addEventListener("change", readSurpriseDialogIntoPrefs);
+  });
+  $("sp-apply-all")?.addEventListener("click", () => {
+    readSurpriseDialogIntoPrefs();
+    surpriseCards({ seed: generateSeed(), actionLabel: "surprise styling" });
+    $("surprise-dialog")?.close();
+  });
+  $("sp-reshuffle")?.addEventListener("click", () => {
+    readSurpriseDialogIntoPrefs();
+    surpriseCards({ seed: generateSeed(), actionLabel: "shuffle card styling" });
+  });
+  $("sp-clear-all")?.addEventListener("click", () => {
+    clearAllRandomStyling();
+  });
   $("smp").addEventListener("click", loadSamples);
   $("rst").addEventListener("click", async () => { await clearSession(); resetDefaults(); });
   $("exp").addEventListener("click", () => exportProjectJson(readSettings(), studioState.cards, studioState.count));
@@ -2199,7 +2830,7 @@ function bindEvents() {
     const index = previewIndex;
     closePreview();
     selectCard(index, true);
-    $("rows").children[index]?.querySelector("[data-field='title']")?.focus({ preventScroll: true });
+    getCardRowEl(index)?.querySelector("[data-field='title']")?.focus({ preventScroll: true });
   });
   $("pvsvg").addEventListener("click", downloadCardSvg);
   $("pvpng").addEventListener("click", async () => {
@@ -2280,6 +2911,10 @@ function bindEvents() {
       setGradientAngle(180, false);
       recordContinuous("change gradient angle", "setting:gradient-angle");
     }
+  });
+  $("grad-angle-reset")?.addEventListener("click", () => {
+    setGradientAngle(180, false);
+    recordDiscrete("reset gradient angle");
   });
 
   $("sheets").addEventListener("pointerdown", event => {
@@ -2426,7 +3061,7 @@ function bindEvents() {
       image.setAttribute("x", (17 + 68 - box.w / 2 + px / 100 * box.mx).toFixed(2));
       image.setAttribute("y", (16 + photoHeight / 2 - box.h / 2 + py / 100 * box.my).toFixed(2));
     }
-    const row = $("rows").children[dragState.index];
+    const row = getCardRowEl(dragState.index);
     if (row) {
       row.querySelector("[data-adjust='px']").value = px;
       row.querySelector("[data-adjust='py']").value = py;
@@ -2489,6 +3124,9 @@ function cycleTheme(direction) {
   const options = [...select.options];
   const current = options.findIndex(option => option.value === select.value);
   select.value = options[(current + direction + options.length) % options.length].value;
+  studioState.quickColors = undefined;
+  syncQuickColorsControls({ rebuildStops: true });
+  syncThemeDropdown();
   recordDiscrete("change theme");
   render();
 }
@@ -2505,11 +3143,53 @@ function syncPageTools(pageCount) {
   ).join("");
   $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${pageCount}`;
   if (!themeSelect.options.length || themeSelect.options.length === 1) {
-    themeSelect.innerHTML = `<option value="">Use global</option>${Object.entries(THEMES).map(([key, theme]) =>
-      `<option value="${key}">${escapeHtml(theme.n)}</option>`
+    themeSelect.innerHTML = `<option value="">Use global</option>${getGroupedThemes().map(([lbl, entries]) =>
+      `<optgroup label="${escapeHtml(lbl)}">${entries.map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}</optgroup>`
     ).join("")}`;
   }
   themeSelect.value = studioState.pageThemes[studioState.activePage] || "";
+  const deletePageBtn = $("delete-page");
+  if (deletePageBtn) {
+    deletePageBtn.disabled = pageCount <= 1;
+    deletePageBtn.setAttribute(
+      "aria-label",
+      pageCount <= 1 ? "Need at least 2 pages to delete a page" : `Delete page ${studioState.activePage + 1}`
+    );
+  }
+}
+
+function deleteActivePage(perPage) {
+  const pageCount = Math.ceil(studioState.count / perPage);
+  if (pageCount <= 1) {
+    message("Need at least 2 pages to delete a page.");
+    return;
+  }
+  const targetPage = studioState.activePage;
+  const start = targetPage * perPage;
+  const end = Math.min(studioState.count, start + perPage);
+  const removedCount = end - start;
+  if (removedCount <= 0 || studioState.count - removedCount < 1) return;
+
+  const remainingActive = [
+    ...studioState.cards.slice(0, start),
+    ...studioState.cards.slice(end, studioState.count)
+  ];
+  const trailingBuffer = studioState.cards.slice(studioState.count);
+  studioState.cards = [...remainingActive, ...trailingBuffer];
+  studioState.count = remainingActive.length;
+  studioState.pageThemes = [
+    ...studioState.pageThemes.slice(0, targetPage),
+    ...studioState.pageThemes.slice(targetPage + 1)
+  ];
+  const nextPageCount = Math.ceil(studioState.count / perPage);
+  studioState.activePage = Math.max(0, Math.min(targetPage, nextPageCount - 1));
+  studioState.selectedCard = Math.max(0, Math.min(studioState.selectedCard, studioState.count - 1));
+  $("count").value = studioState.count;
+  buildRows();
+  recordDiscrete("delete page");
+  render();
+  message(`Deleted page ${targetPage + 1} (${removedCount} card${removedCount === 1 ? "" : "s"}).`);
+  showUndoToast(`Deleted page ${targetPage + 1}.`);
 }
 
 function duplicateActivePage(perPage) {
@@ -2549,6 +3229,8 @@ async function init() {
   bindTapTooltips();
   attachColorHexFields();
   populateThemeSelect($("style"));
+  buildThemeDropdown();
+  syncThemeDropdown();
   buildBorderPicker();
   populateBorderPresets();
   syncBorderControls();
@@ -2570,6 +3252,7 @@ async function init() {
     applySettings(saved.settings || {});
     message("Restored your saved sheet.");
   }
+  currentLayout = computeLayout($("paper").value, $("csize").value);
   buildRows();
   render();
   historyReady = true;

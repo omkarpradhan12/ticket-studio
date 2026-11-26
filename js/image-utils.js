@@ -3,19 +3,34 @@
 export const hsl = (h, s, l) => `hsl(${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`;
 
 export function hslToHex(p) {
+  if (p?.accent && /^#[\da-f]{6}$/i.test(String(p.accent).trim())) {
+    return String(p.accent).trim().toLowerCase();
+  }
   const c = document.createElement("canvas").getContext("2d");
   c.fillStyle = hsl(p.h ?? 35, p.s ?? 0.75, 0.52);
   return c.fillStyle;
 }
 
 export function hexToHS(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  let clean = String(hex || "").trim();
+  if (/^#[\da-f]{3}$/i.test(clean)) {
+    const [, rr, gg, bb] = clean;
+    clean = `#${rr}${rr}${gg}${gg}${bb}${bb}`;
+  }
+  if (!/^#[\da-f]{6}$/i.test(clean)) return { h: 35, s: 0.75 };
+  clean = clean.toLowerCase();
+  const r = parseInt(clean.slice(1, 3), 16) / 255;
+  const g = parseInt(clean.slice(3, 5), 16) / 255;
+  const b = parseInt(clean.slice(5, 7), 16) / 255;
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), df = mx - mn, l = (mx + mn) / 2;
-  if (!df) return { h: 35, s: 0.3 };
-  let h = mx === r ? ((g - b) / df) % 6 : mx === g ? (b - r) / df + 2 : (r - g) / df + 4;
-  return { h: (h * 60 + 360) % 360, s: Math.max(0.45, df / (1 - Math.abs(2 * l - 1))) };
+  if (!df) return { h: 0, s: 0, accent: clean };
+  const h = mx === r ? ((g - b) / df) % 6 : mx === g ? (b - r) / df + 2 : (r - g) / df + 4;
+  const denom = 1 - Math.abs(2 * l - 1) || 1;
+  return {
+    h: (h * 60 + 360) % 360,
+    s: Math.max(0, Math.min(1, df / denom)),
+    accent: clean
+  };
 }
 
 export function sampleImageColor(img) {
