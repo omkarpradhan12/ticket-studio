@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Photo wheel/pinch zoom (`31b8eb2`) complete; **Phase 10 Step 1 (Visiting Card Layout design proposal)** drafted below.
-- Next approval: owner confirmation of Phase 10 Step 1 design before starting Step 2 implementation.
+- Current phase: Phase 10 Step 1 design proposal + **Duplex Card Back** spec recorded (`docs/PROGRESS.md`); paused while owner stepped away.
+- Next approval / resume trigger: owner says to continue when back -> implement **Phase 10 Step 2 & Step 3** (Visiting Card sizes/layout + Optional Mirrored Duplex Card Back for all card sizes).
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -851,4 +851,13 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
   3. *Text collision at 50–51 mm width*: Strictly bound every contact row via `fit()` + `wrapToTwoLines()` and add automated layout assertions in `tests/title-layout.test.html` and a new `tests/visiting-layout.test.mjs`.
   4. *Legacy regression parity*: Add an explicit automated check verifying SVG output for all 5 legacy sizes (`ticket`, `poker`, `credit`, `mini`, `tarot`) remains 100% unchanged.
 
-*Stopping after Step 1 for owner approval before implementing Step 2.*
+### 5. Owner-Approved Addition — Optional Mirrored Card Back (All Card Sizes)
+- **Scope**: Applies to **all card sizes** (Ticket, Poker, Credit, Mini, Tarot, AND Visiting Cards), toggled cleanly via an optional Page setting (`settings.cardBack`, default `false` — no change to existing sheets/exports when off).
+- **Duplex Mirrored Interleaving**: When enabled, each front sheet page `P` is followed immediately by its mirrored back page (`Page 1 Front`, `Page 1 Back`, `Page 2 Front`, `Page 2 Back`, …) in `#sheets`, Print, SVG, PNG, and PDF exports:
+  - Physical column position mirrors horizontally (`x_back = W - x_front - CWp`, i.e., `col_back = (COLS - 1) - col`) so even partial final pages align slot-for-slot behind each front card on two-sided printing, with matching `3 mm` bleed and crop/reg marks.
+- **Trading-Card Uniform Back Design**:
+  - Consistent sheet-wide look for the active theme (or page theme) — **never uses per-card sampled `card.accent` or per-card random theme/border variations** so all card backs on a sheet/theme look identical from behind.
+  - Retains the sheet/page theme's paper background/gradient, surface grain/wear/creases/scuffs, and border style, rendered with consistent uniform theme colours (`theme.fixed || theme.frame || theme.ink`, never per-card accent bleed).
+  - Features the selected sheet **stamp** cleanly rendered as a centered centerpiece emblem (`(CW / 2, CH / 2)`), **slightly rotated**, with **no ink wear/bleed (`wear = 0`)** so it reads like a crisp trading-card logo.
+
+*Owner confirmed direction and stepped away — paused cleanly here until owner returns and gives the go-ahead to build.*
