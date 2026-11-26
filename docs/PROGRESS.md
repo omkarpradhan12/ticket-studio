@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 9 (Part A local search `ac5d0e9`, Preview quick editor `3430114`, Part B isolated `band-lookup.html` `19d3674`), Corner Hardware/Distress FX (`0c728b3`), 2-line subtitles (`561d0d2`), & standalone Album Lookup (`1b99442`, `?v=phase9d`) complete
-- Next approval: owner confirmation before starting Phase 10 (Visiting card layout).
+- Current phase: Photo wheel/pinch zoom (`31b8eb2`) complete; **Phase 10 Step 1 (Visiting Card Layout design proposal)** drafted below.
+- Next approval: owner confirmation of Phase 10 Step 1 design before starting Step 2 implementation.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -73,7 +73,7 @@
 | P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
 | P9-01 | Band search and match count (Part A: local) | M | medium | done | ac5d0e9 | Non-destructive accent/case-insensitive filter (`js/search.mjs`), `M of N`, Escape/Clear/Enter/ArrowDown, preview page scroll, `tests/search.test.mjs`, browser QA passed |
 | P9-02 | Online band lookup (Part B: isolated page + providers) | M | medium | done | 19d3674 | Standalone `band-lookup.html` + `js/band-lookup.js` + `js/band-lookup-providers.mjs` (MusicBrainz v2 + Wikipedia/Wikimedia photo, rate queue, cache, non-overwriting fill, undo transfer); `0c728b3` adds Corner Hardware & Fun Distress FX |
-| P10-01 | Visiting card layout | L | high | todo | - | |
+| P10-01 | Visiting card layout (Step 1 design proposal; await approval for Steps 2–3) | L | high | in_progress | - | Step 1 proposal written in `docs/PROGRESS.md` |
 
 ## Known issue disposition
 - Phase 3 verified and addressed B4, B5, B14, and U1-U8 at desktop and 390px. U6's Surprise me/search controls are intentionally disabled placeholders for Phases 8-9.
@@ -786,4 +786,69 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 - **Verification**:
   - Added `wrapToTwoLines()` and `subtitleLayout()` in `js/svg-engine.js` so long `Genre // Place` subtitles wrap cleanly onto 2 readable lines (`y=213.0` & `221.0` on standard tickets, `minimalSubY` & `+7.5` on Minimal cards, preferring clean breaks after `//` when both parts fit) while keeping short subtitles identical (`561d0d2`, `?v=phase9c`). Expanded `tests/title-layout.test.html` to `7` checks and verified in browser (`"Passed 7 card title layout checks."`, long subtitle rendered at `font-size="4.8"` across 2 lines, `#lookup-recovery` cleanly hidden on `band-lookup.html`, `0` console errors) alongside all `9` Node unit test suites.
   - Built standalone **Album Lookup** workspace (`album-lookup.html`, `js/album-lookup.js`, `js/album-lookup-providers.mjs`, `tests/album-lookup.test.mjs`, `1b99442`, `?v=phase9d`) per Option 2 (skipping any 3rd-studio-album ordinal lookup per owner instruction) and wired `kind: "album"` card rendering in `js/svg-engine.js` (Album Name headline, clean Artist Name subtitle without `"Genre //"` prefix, `EST. <Year>` & left-border `NO. <Year>-<Abbr>`, `"ALBUM PASS"` tag) + JSON export/import round-trip (`js/export.js`, `js/app.js`). Verified MusicBrainz `OK Computer` + `Radiohead` (`5` candidates), CORS-safe Cover Art Archive `thumb500.jpg` + sampled accent `#3b9bce`, live SVG preview & direct SVG/PNG export, Undo/sheet transfer onto `index.html`, all `10` Node test suites (`25.6 ms`), `git diff --check`, and 5-page desktop + `390×844` browser QA (`0` console errors, `0` horizontal overflow).
-  - **Follow-up UX polish (`?v=phase9e`)**: Updated album abbreviations everywhere to derive from the band/artist (`artistName` / `loc`) instead of album title (`"OK Computer"` by `"Radiohead"` -> `RADI`, typing `"Pink Floyd"` -> `PINK`); added `#nfc-yt` (`With YT Music logo` toggle -> `.nfc-only` mode) and `#nfc-scale` (`50%`–`200%` NFC logo size slider) via `renderNfcBadge()` + `SET0`; added 1-step undoable `removeCardPhoto()` in both sidebar card rows (`.row-remove-photo`) and Single Card View (`#pv-photo-remove`); and wired `#pv-drag-photo` and `#pv-move-stamps` directly into `#pv` via shared `bindCardStageInteractions()` so photo dragging and stamp moving/rotating/arrow-nudging work inside `#pvi` cleanly. Verified all `10` Node unit test suites, unique HTML IDs (`index.html` `259`, `album-lookup.html` `42`, `band-lookup.html` `38`, `0` dupes), `git diff --check`, plus live browser checks on `album-lookup.html` and `index.html` (`1440×900` & `390×844`, `0` horizontal overflow; stopped prior to sibling-page rechecks on user browser takeover).
+  - **Follow-up UX polish (`?v=phase9e`, `662bbae`, `31b8eb2`)**: Updated album abbreviations everywhere to derive from the band/artist (`artistName` / `loc`) instead of album title (`"OK Computer"` by `"Radiohead"` -> `RADI`, typing `"Pink Floyd"` -> `PINK`); added `#nfc-yt` (`With YT Music logo` toggle -> `.nfc-only` mode) and `#nfc-scale` (`50%`–`200%` NFC logo size slider) via `renderNfcBadge()` + `SET0`; added 1-step undoable `removeCardPhoto()` in both sidebar card rows (`.row-remove-photo`) and Single Card View (`#pv-photo-remove`); wired `#pv-drag-photo` and `#pv-move-stamps` directly into `#pv` via shared `bindCardStageInteractions()`; and (`31b8eb2`) added scroll-to-zoom (`wheel`), trackpad pinch (`ctrlKey` + `wheel`), and touchscreen two-finger pinch-to-zoom (`activePpPointers` / `pinchState`) over `.pp` whenever photo drag is active, syncing zoom live with `[data-adjust='zm']` / `#pv-zm` and 1-step coalesced undo.
+
+---
+
+## Phase 10 Step 1 — Visiting Card Layout Design Proposal (Awaiting Approval)
+
+### 1. Card Dimensions, Orientation Toggle & Real Sheet Packing Math
+- **Card Size Selector (`#csize`) + Orientation Toggle (`#corient`)**:
+  - Keep existing 5 legacy keys untouched at their current values (`ticket`, `poker`, `credit`, `mini`, `tarot`) so existing sheets and exports remain byte-for-byte identical.
+  - Append a `"Visiting Cards"` `<optgroup>` to `#csize` (`index.html` Page accordion + `SIZES` in `js/svg-engine.js`):
+    - `vc_eu`: **Visiting Card EU** — `85 × 55 mm` (`[85, 55]`)
+    - `vc_us`: **Visiting Card US** — `89 × 51 mm` (`[89, 51]`, `3.5 × 2 in`)
+    - `vc_90`: **Visiting Card Wide** — `90 × 50 mm` (`[90, 50]`)
+  - Pair `#csize` with an **Orientation** control (`#corient` -> optional `settings.cardOrientation`: `"landscape"` default | `"portrait"`, defaulting cleanly to `"landscape"` for older sheets or when first selecting any `vc_*` size; hidden/ignored when any legacy size is active).
+- **Layout Engine Fix (`computeLayout(paperVal, csizeVal, orientation)` in `js/svg-engine.js`)**:
+  - Legacy branch unchanged (`CH = Math.max(204, Math.min(309, Math.round(S[1] * 2.83465 / K * 10) / 10))`).
+  - Visiting branch (`isVisiting = /^vc_/.test(csizeVal)`): swap `[wMm, hMm]` when `orientation === "portrait"`, compute `K = wMm * 2.83465 / CW` (`CW = 170`), and compute proportional internal height **without** the `204` clamp (`CH = Math.round(hMm * 2.83465 / K * 10) / 10`).
+  - Real cards-per-page counts (`GX = 22 pt`, `GY = 20 pt`; adjacent `3 mm` bleed = `17.01 pt < 20 pt` so neighbouring bleeds never overlap):
+
+| Size | Orient. | `CW × CH` (SVG) | A4 (`210×297 mm`) Grid & Margins | US Letter (`8.5×11 in`) Grid & Margins |
+|---|---|---:|---|---|
+| `85 × 55 mm` (`vc_eu`) | Landscape | `170 × 110.0` | **2×4 = 8/page** (`MX=45.7pt, MY=79.1pt`) | **2×4 = 8/page** (`MX=54.1pt, MY=54.2pt`) |
+| `55 × 85 mm` (`vc_eu`) | Portrait | `170 × 262.7` | **3×3 = 9/page** (`MX=41.8pt, MY=39.5pt`) | **3×3 = 9/page** (`MX=50.1pt, MY=14.6pt`*) |
+| `89 × 51 mm` (`vc_us`) | Landscape | `170 × 97.4` | **2×5 = 10/page** (`MX=34.4pt, MY=19.5pt`) | **2×4 = 8/page** (`MX=42.7pt, MY=76.9pt`) |
+| `51 × 89 mm` (`vc_us`) | Portrait | `170 × 296.7` | **3×3 = 9/page** (`MX=58.8pt, MY=22.5pt`) | **3×2 = 6/page** (`MX=67.1pt, MY=133.7pt`) |
+| `90 × 50 mm` (`vc_90`) | Landscape | `170 × 94.4` | **2×5 = 10/page** (`MX=31.5pt, MY=26.6pt`) | **2×4 = 8/page** (`MX=39.9pt, MY=82.5pt`) |
+| `50 × 90 mm` (`vc_90`) | Portrait | `170 × 306.0` | **3×3 = 9/page** (`MX=63.0pt, MY=18.3pt`) | **3×2 = 6/page** (`MX=71.4pt, MY=130.9pt`) |
+
+  - *Crop/bleed margin note*: On US Letter `55 × 85 mm` Portrait (`MY = 14.6 pt`), tightening portrait vertical gutter `GY` slightly (from `20` to `16 pt` when `MY < 18 pt`, yielding `MY = 18.6 pt`, while keeping inter-card vertical bleed `17.01 pt` clear at `>= 17.5 pt` or trimming outer tick to `5 pt`) keeps every 3 mm bleed (`8.5 pt`) and outer crop mark (`7 pt`) cleanly inside physical paper edges.
+  - Also update `previewSvg()` (`app.js`), `tplSvg()`, and `cutSvg()` (`svg-engine.js`) to read `lay.CH` instead of clamping to `204` or assuming the `17×16×136` ticket photo cutout.
+
+### 2. Backward-Compatible Content Fields & Card Data Mapping
+- Add **optional fields only** on per-card records (omitted when blank so existing saved sheets, Theme Studio, Band/Album Lookup, and `DEFAULT_CARDS` are unaffected):
+  - **Name**: reuses `card.title` (preserves row labels `Card N · <Name>`, `#card-search`, `titleFont`, `titleScale`, `centerTitle`, and undo).
+  - **Job title**: optional `card.role` (when empty in visiting mode, gracefully falls back to `card.genre` so switching an existing concert deck to visiting preview shows non-empty preview text without mutating saved data).
+  - **Company**: optional `card.company` (falls back to `card.loc` if previewing a legacy card).
+  - **Phone / Email / Website / Address**: optional `card.phone`, `card.email`, `card.website`, `card.address`.
+  - **QR / NFC icon**: reuses existing `nfc` / `nfcWithYt` / `nfcScale` plus optional `settings.vcBadge` (`"qr-nfc"` | `"nfc"` | `"qr"` | `"none"`) and optional per-card `card.qrText` (defaulting cleanly to `website`, `email`, or minimal `BEGIN:VCARD` payload rendered as an inline zero-dependency pure-JS SVG QR matrix inside the card).
+  - **Logo or Photo**: reuses `card.img` / `card.imgUrl` / `zm` / `px` / `py` with `fitBox()` cover-style fitting (`xMidYMid slice`, zero stretching), optional rounded frame, drag + scroll/pinch zoom (`#drag`), and `Remove photo`.
+- Sidebar Card Row & `#pv` Quick Editor: show the visiting-card field set (`Full name`, `Job title`, `Company`, `Phone`, `Email`, `Website`, `Address`, `QR value`) cleanly when a `vc_*` card size is active (and show Band/Album fields when any non-visiting size is active), backed by the same copy-on-write `updateCard()` + coalesced `History` path.
+
+### 3. Shared Renderer & Full Feature Reuse (No Forked Copy)
+- Implement visiting layout inside the existing `renderCard(c0, i, cfg)` function (`js/svg-engine.js`) via a dedicated geometry branch triggered strictly when `cfg.lay?.isVisiting` is true:
+  - **Landscape (`CH ≈ 94.4–110.0`)**: Two-zone horizontal card — square/compact framed Logo or Photo slot (`PS ≈ 44–50`, cover-fitted via `fitBox()`, draggable `.pp`) + optional subtle mount, bold **Name** (`titleLayout()`), **Job title / Company** (`subtitleLayout()`), left-aligned auto-fitted contact lines (**Phone**, **Email**, **Website**, **Address** using `fit()` + 2-line wrap on long URLs/addresses), and bottom-right **NFC / QR badge**.
+  - **Portrait (`CH ≈ 262.7–306.0`)**: Clean two-tier vertical layout — upper centered/framed **Logo or Photo** (`PS ≈ 88`), **Name** + **Job title / Company**, lower contact stack, and bottom-right **NFC / QR badge**.
+- Automatically inherits the full Phase 4–9 stack because it runs inside `renderCard()`'s shared theme/border/stamp/wear pipeline:
+  - All Themes, `Quick colours`, and linear/radial/triple/4-stop Gradients (`renderGradDef`).
+  - All 16 `titleFont` choices + `titleScale` + `centerTitle`.
+  - All 16 Phase 6 Borders (`renderBorder`, customisation, presets, card overrides, `borderWear`).
+  - All 34+ Phase 7 Draggable Stamps (`resolveStampTransform` parameterized with dynamic `CH`, `.st-ui` handles, `Move stamps`, snap, arrow nudges, rotary dial, presets).
+  - Phase 8 per-card styling overrides, `Keep this one` locks, and seeded `Surprise me` (`randomiser.mjs` updated so `pickSafeStampNorm` respects visiting landscape `CH` bounds cleanly).
+  - Surface wear (`grain`, `edgeWear`, `creases`, `scuffs`), Corner Hardware (`renderCornerHardware`), Distress FX (`renderSurfaceFx`), `3 mm` bleed clip `ck${i}`, crop marks, `History` undo/redo, SVG/PNG/PDF exports, and `@media print`.
+- **Optional Back Side**: Propose as a **separate follow-up (`Phase 10B`)** after single-sided front layouts + exports pass verification, since double-sided duplex print pairing doubles pagination and alignment complexity.
+
+### 4. Bulk Import, Samples, Effort & Risk
+- **Bulk Import (`js/bulk-import.js`) & JSON Import/Export (`js/app.js`, `js/export.js`)**:
+  - Parse optional visiting columns case-insensitively in CSV and JSON (`role`/`jobTitle`, `company`/`org`, `phone`/`tel`, `email`, `website`/`web`, `address`/`addr`, `qrText`, `kind`), storing only non-empty optional values and safely ignoring missing columns for regular band/album sheets.
+- **Sample Visiting Cards (Step 3)**: Add 3 dedicated visiting-card samples accessible via a `"Load visiting samples"` button (or preset pack alongside `#smp`) without altering `SAMPLE_CARDS` / `.baseline/` band sheet defaults.
+- **Effort**: **L** (~2 increments: Step 2 core layout/renderer/QR/editor/stamps; Step 3 samples, Bulk Import, SVG/PDF physical measurement & cross-browser verification).
+- **Key Risks & Mitigations**:
+  1. *Dynamic `CH < 204` assumptions*: Several helpers (`stamps.mjs` `autoStampGeometry` / `snapStampNorm`, `randomiser.mjs` `pickSafeStampNorm`, `app.js` `previewSvg` / `getCardPhotoGeometry`) currently use `D = CH - 239` or clamp `CH >= 204`. Guard/parameterize these with `isVisiting` / `photoRect` so stamps and photos never jump out of landscape bounds.
+  2. *US Letter `55 × 85 mm` Portrait outer crop clearance (`MY = 14.6 pt`)*: Adjust outer crop mark tick or `GY` (`>= 17.5 pt` clearance) specifically for visiting portrait packing so `3 mm` bleed + crop marks never clip page margins.
+  3. *Text collision at 50–51 mm width*: Strictly bound every contact row via `fit()` + `wrapToTwoLines()` and add automated layout assertions in `tests/title-layout.test.html` and a new `tests/visiting-layout.test.mjs`.
+  4. *Legacy regression parity*: Add an explicit automated check verifying SVG output for all 5 legacy sizes (`ticket`, `poker`, `credit`, `mini`, `tarot`) remains 100% unchanged.
+
+*Stopping after Step 1 for owner approval before implementing Step 2.*
