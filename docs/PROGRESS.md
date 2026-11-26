@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 9 Part A (`ac5d0e9`) & Preview Quick Editor (`3430114`) complete; Option B (MusicBrainz + Wikipedia/Wikimedia) real-browser test report complete below
-- Next approval: owner green light to build Phase 9 Part B lookup dialog (MusicBrainz + serialized 503 backoff + Wikipedia/Wikimedia CORS-safe photo fallback vs Wikipedia-first lookup).
+- Current phase: Phase 9 (Part A local search `ac5d0e9`, Preview quick editor `3430114`, Part B isolated `band-lookup.html` `19d3674`) & Corner Hardware/Distress FX (`0c728b3`) complete (`?v=phase9b`)
+- Next approval: owner confirmation before starting Phase 10 (Visiting card layout).
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -72,7 +72,7 @@
 | P8-01 | Per-card Surprise me style overrides | L | high | done | 1b07075, 07af698 | Optional per-card style schema (`js/card-styles.mjs`), unified `resolveCardRenderOptions` in `svg-engine.js` (Card > Page > Sheet priority), JSON/Bulk Import support, `MAX_CARDS = 300` |
 | P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
 | P9-01 | Band search and match count (Part A: local) | M | medium | done | ac5d0e9 | Non-destructive accent/case-insensitive filter (`js/search.mjs`), `M of N`, Escape/Clear/Enter/ArrowDown, preview page scroll, `tests/search.test.mjs`, browser QA passed |
-| P9-02 | Online band lookup (Part B: API test + dialog) | M | medium | blocked | - | Pre-build browser API/CORS/terms test reported below; stopped for owner approval before building dialog |
+| P9-02 | Online band lookup (Part B: isolated page + providers) | M | medium | done | 19d3674 | Standalone `band-lookup.html` + `js/band-lookup.js` + `js/band-lookup-providers.mjs` (MusicBrainz v2 + Wikipedia/Wikimedia photo, rate queue, cache, non-overwriting fill, undo transfer); `0c728b3` adds Corner Hardware & Fun Distress FX |
 | P10-01 | Visiting card layout | L | high | todo | - | |
 
 ## Known issue disposition
@@ -772,3 +772,16 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 
 ### Ready to build Part B upon approval
 - **Proposed build (`Option B1 — Recommended`)**: Use **MusicBrainz v2** (primary metadata: multi-match pick list showing Name, Disambiguation, Origin, Formed year, Genres, CC0) + **on-demand Wikipedia/Wikimedia photo lookup** for the chosen artist (CORS-safe image preview with automatic accent sampling + copyright/license notice + PNG/PDF export compatibility), backed by a serialized `1.2s` request queue, `503` backoff/retry button, in-memory cache, and fallback to **Wikipedia search** if MusicBrainz returns `503` — filling only unedited fields (`Fill this card` / `Add as new card`, each 1 Undo step). Confirm to start building!
+
+---
+
+## Phase 9 Part B (`19d3674`) & Corner Hardware / Fun Distress FX (`0c728b3`) Implementation (`?v=phase9b`)
+
+- **Isolated Online Band Lookup (`band-lookup.html`, `js/band-lookup.js`, `js/band-lookup-providers.mjs`, `tests/band-lookup.test.mjs`, `19d3674`)**:
+  - Created standalone `band-lookup.html` linked via a single nav tab across `index.html`, `theme-studio.html`, and `bulk-import.html` so it can be cleanly disabled/hidden (`LOOKUP_FEATURE_CONFIG.enabled`) or have providers swapped without touching the core Sheet Editor.
+  - Wired MusicBrainz v2 serialized search (`>=1250ms` queue, session cache, `10s` timeout, `503`/offline recovery bar with **Retry** and **Try Wikipedia search instead**), HTML-entity decoding in Wikipedia fallback snippets, optional Wikimedia Commons thumbnail fetch + upload/URL fallbacks, explicit disclosure & copyright notices, `Add as new card to sheet`, non-overwriting `Fill selected card` (`mergeCardLookupFields`), and 1-step Undo transfer toast.
+- **Corner Hardware & Fun Surface Effects (`js/corners.mjs`, `js/storage.js`, `js/svg-engine.js`, `js/card-styles.mjs`, `js/export.js`, `index.html`, `css/app.css`, `js/app.js`, `tests/corners.test.mjs`, `0c728b3`)**:
+  - Replaced hardcoded 4-corner screw bolts in `renderCard()` with `renderCornerHardware()` (`bolts` preserving byte-for-byte legacy parity, `pins` Push pins, `staples` Corner staples, `rivets` Eyelet rivets, `none` Clean corners) + `#corner-hw` in **Paper & wear** and per-card `#pv-hardware` in `#pv`.
+  - Added optional fun surface distress toggles (`#fx-claw` Claw marks, `#fx-tear` Corner tear, `#fx-bullet` Bullet hole, `#fx-blood` Blood spatter) rendered cleanly across standard, minimal, and Polaroid cards with 1-step Undo/Redo and JSON export/import persistence.
+- **Verification**:
+  - `node tests/corners.test.mjs`, `node tests/band-lookup.test.mjs`, and all `7` prior Node suites (`search`, `stamps`, `borders`, `randomiser` `25.0 ms`, `history`, `theme-studio-utils`, `color-controls`), unique ID checks (`index.html` `251`, `band-lookup.html` `38`, `0` duplicates), `git diff --check`, and multi-page browser QA (`index.html`, `band-lookup.html`, `theme-studio.html`, `bulk-import.html`, `tests/title-layout.test.html` — `0` console errors, `0` horizontal overflow at `390×844`) all passed; `#lookup-recovery[hidden]`, `.btn-link`, `#lookup-query` dark input styling, and Wikipedia entity decoding polished cleanly before committing.
