@@ -1,13 +1,13 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase9c";
-import { processImageFile, processImageUrl, hexToHS, hslToHex } from "./image-utils.js?v=phase9c";
-import { abbr } from "./svg-engine.js?v=phase9c";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9c";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase9d";
+import { processImageFile, processImageUrl, hexToHS, hslToHex } from "./image-utils.js?v=phase9d";
+import { abbr } from "./svg-engine.js?v=phase9d";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9d";
 import {
   LOOKUP_FEATURE_CONFIG,
   fetchWikipediaPhotoForArtist,
   mergeCardLookupFields,
   searchOnlineBands
-} from "./band-lookup-providers.mjs?v=phase9c";
+} from "./band-lookup-providers.mjs?v=phase9d";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;

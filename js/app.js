@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9c";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9c";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9c";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9c";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9c";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase9c";
-import { History } from "./history.mjs?v=phase9c";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9c";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9c";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9d";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9d";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9d";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9d";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9d";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase9d";
+import { History } from "./history.mjs?v=phase9d";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9d";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9d";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase9c";
+} from "./borders.mjs?v=phase9d";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase9c";
+} from "./stamps.mjs?v=phase9d";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase9c";
+} from "./card-styles.mjs?v=phase9d";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase9c";
+} from "./randomiser.mjs?v=phase9d";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase9c";
+} from "./search.mjs?v=phase9d";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -1952,6 +1952,7 @@ async function importJson(text) {
       px: Math.max(-100, Math.min(100, Number(item.photoX) || 0)),
       py: Math.max(-100, Math.min(100, Number(item.photoY) || 0)),
       ...styleOverrides,
+      ...(item.kind === "album" ? { kind: "album" } : {}),
       theme: styleOverrides.theme || String(item.theme || ""),
       sk: styleOverrides.sk || String(item.stampShape || ""),
       stx: String(item.stampText || ""),

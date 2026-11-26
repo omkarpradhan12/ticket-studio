@@ -1,9 +1,9 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9c";
-import { hsl } from "./image-utils.js?v=phase9c";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9c";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9c";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9c";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9d";
+import { hsl } from "./image-utils.js?v=phase9d";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9d";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9d";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9d";
 
 export { SKINDS, STAMPS };
 
@@ -534,7 +534,10 @@ export function renderCard(c0, i, cfg) {
     });
   }
 
-  const gl = `${c.genre} // ${c.loc}`;
+  const isAlbum = c0.kind === "album";
+  const gl = isAlbum
+    ? (String(c0.loc || "").trim() || String(c0.genre || "").trim() || "Artist")
+    : `${c.genre} // ${c.loc}`;
   const no = `NO. ${c0.year || "0000"}-${c0.code || abbr(c0.title) || "XXXX"}`;
 
   const sc = renderCornerHardware({ style: resolved.cornerHardware, index: i, CW, CH, accent: A, theme: T });
@@ -608,7 +611,11 @@ export function renderCard(c0, i, cfg) {
         ).join("")
       : `<text x="${CW / 2}" y="${(195 + D).toFixed(1)}" text-anchor="middle" fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${polaroidSize.toFixed(1)}" letter-spacing=".4">${esc(polaroidLines[0])}</text>`;
     const yearY = (polaroidTitleLayout.wrapped ? 219 + D : 214 + D).toFixed(1);
-    const yearMarkup = c0.year === "" ? "" : `<text x="${CW / 2}" y="${yearY}" text-anchor="middle" fill="${mute}" opacity=".85" font-family="${tf.f}" font-weight="${tf.w}" font-size="${tf.ys || 8}" letter-spacing="1.2">${esc(c.year)}</text>`;
+    const albumArtist = isAlbum ? String(c0.loc || "").trim() : "";
+    const polaroidBottomText = isAlbum && albumArtist
+      ? `${albumArtist}${c0.year === "" ? "" : ` · ${c.year}`}`
+      : (c0.year === "" ? "" : String(c.year));
+    const yearMarkup = polaroidBottomText ? `<text x="${CW / 2}" y="${yearY}" text-anchor="middle" fill="${mute}" opacity=".85" font-family="${tf.f}" font-weight="${tf.w}" font-size="${tf.ys || 8}" letter-spacing="1.2">${esc(polaroidBottomText)}</text>` : "";
     const polaroidCornerHw = c0.cornerHardware ? renderCornerHardware({ style: c0.cornerHardware, index: i, CW, CH, accent: A, theme: T }) : "";
     return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${polaroidBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${polaroidBorderMarkup}${polaroidCornerHw}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width=".7"/><path d="M${PX + 0.5} ${PB - 0.5}V${PY + 0.5}H${PX + PS - 0.5}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>${polaroidTitleMarkup}${yearMarkup}${nfc}${tex}${surfaceFxMarkup}${drag}${mk}</g>`;
   }
@@ -631,7 +638,7 @@ export function renderCard(c0, i, cfg) {
    ${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width="1"/>${tp}
    <g transform="translate(0 ${D})">${perf}
    ${badge}
-   <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
+   <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>${isAlbum ? "ALBUM PASS" : "AUDIO PASS"}</text>
    ${titleMarkup}
    ${subMarkup}
    </g>${nfc}${serial}${tex}${surfaceFxMarkup}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;

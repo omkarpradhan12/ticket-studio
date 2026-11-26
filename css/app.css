@@ -3930,7 +3930,10 @@ details.sec > summary {
 
   #lookup-recovery[hidden],
   #lookup-disabled-banner[hidden],
-  #lookup-transfer-toast[hidden] {
+  #lookup-transfer-toast[hidden],
+  #alb-recovery[hidden],
+  #alb-disabled-banner[hidden],
+  #alb-transfer-toast[hidden] {
     display: none !important;
   }
 
@@ -3945,6 +3948,57 @@ details.sec > summary {
     min-height: 36px;
     width: 100%;
     min-width: 0;
+  }
+
+  .album-workspace {
+    grid-template-columns: minmax(250px, 0.9fr) minmax(360px, 1.6fr);
+  }
+
+  .album-editor-split {
+    display: grid;
+    grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 12px;
+  }
+
+  .album-preview-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .album-svg-preview {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px;
+    display: grid;
+    place-items: center;
+  }
+
+  .album-svg-preview svg {
+    display: block;
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+  }
+
+  .album-theme-fld {
+    flex: 1 1 130px;
+  }
+
+  .album-fields-pane {
+    min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    .album-editor-split {
+      grid-template-columns: 1fr;
+    }
+    .album-svg-preview svg {
+      max-width: 260px;
+    }
   }
 
   .lookup-disclosure,
