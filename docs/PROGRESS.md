@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 9 Part A (local card search) complete (`ac5d0e9`); Phase 9 Part B (TheAudioDB browser/API/terms test) complete and reported below
-- Next approval: owner confirmation on Phase 9 Part B approach (single-match TheAudioDB with plain-URL fallback vs MusicBrainz / Wikipedia-Wikimedia vs defer Part B).
+- Current phase: Phase 9 Part A (`ac5d0e9`) & Preview Quick Editor (`3430114`) complete; Option B (MusicBrainz + Wikipedia/Wikimedia) real-browser test report complete below
+- Next approval: owner green light to build Phase 9 Part B lookup dialog (MusicBrainz + serialized 503 backoff + Wikipedia/Wikimedia CORS-safe photo fallback vs Wikipedia-first lookup).
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -746,3 +746,29 @@ Before writing any Part B lookup UI, tested `https://www.theaudiodb.com/api/v1/j
    - **Option A (Recommended if single-match text lookup + optional CORS-limited photo is sufficient)**: Build Part B using **TheAudioDB v1 (key `123`)** with an explicit user-triggered lookup dialog (explicit disclosure that the typed query goes to `theaudiodb.com`, `30/min` session throttling + in-memory cache), **metadata fill first** (artist name, genre, origin, formed year), and an opt-in copyright-warned photo checkbox that sets `imgUrl` + `corsLimited: true` cleanly (falling back to default accent without canvas crash; keeping upload/URL fallback). Best if you use this app as a personal/static web tool.
    - **Option B (Multi-result pick list & appstore/public-safe metadata)**: Switch Part B's pre-build test & dialog to **MusicBrainz API** (`ws/2/artist/?query=...&fmt=json`, CC0 metadata, returns multiple ranked matches to disambiguate similar band names cleanly) + optional **Wikipedia/Wikimedia Commons** CORS-friendly images, tested the same way in-browser before building.
    - **Option C**: Skip Part B (keep Phase 9 strictly local search only) and move to **Phase 10 (Visiting card layout)**.
+
+---
+
+### 6. Single-Card Preview Quick Editor (`3430114`)
+- Replaced `#pv`'s read-only view with an inline live editor (`.pv-body` side-by-side on desktop `920px`, flex-column stacked on mobile `<= 780px`): `#pv-title`, `#pv-genre`, `#pv-loc`, `#pv-year`, `#pv-code`, `#pv-stx`, photo upload/crop sliders (`#pv-zm`, `#pv-px`, `#pv-py`), `#pv-accent`, card `#pv-theme`/`#pv-stamp`, stamp angle/scale sliders (`#pv-srot`, `#pv-sscale`), lock/surprise/reset actions, and `"Jump to sidebar"` (`#pve`).
+- Guarded `ArrowLeft`/`ArrowRight` card flipping while typing or scrubbing sliders inside `#pv`, synced `#rows` inputs cleanly, and verified live SVG updates + Undo + mobile `390×844` stacking (`#pvi` `115..486.36`, `.pv-editor` `500.36..1270.13`, `0` overflow, `0` console errors, `245` unique DOM IDs, all 7 Node tests passing in `23.8ms`).
+
+---
+
+## Option B — MusicBrainz & Wikipedia/Wikimedia Pre-Build Browser Test Report
+
+Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console errors):
+
+1. **MusicBrainz v2 JSON Search (`https://musicbrainz.org/ws/2/artist/?query=artist:...&fmt=json&limit=5`, spaced `1150ms` apart)**:
+   - **CORS**: `corsReadable: true` on all requests; returns rich multi-candidate disambiguation (`Nirvana`: `43` hits with `"1980s–1990s US grunge band"` vs `"60s band from the UK"`; `Muse`: `"UK rock band"` vs Japanese/French bands; `Oasis`: `"Noel & Liam Gallagher"` vs US duo/Mexican group) with `name`, `disambiguation`, `begin-area`, `area`, `country`, `life-span.begin`, top `tags[]`, and `score`.
+   - **Browser `User-Agent` & `HTTP 503` constraint**: Browsers cannot override `User-Agent` in `fetch()`, placing direct static-site calls in MusicBrainz's shared **anonymous throttle pool** — **`Black Sabbath` and `xyzzy_no_such_band_99999` returned `HTTP 503`** even at `1150ms` spacing (`Radiohead`, `Nirvana`, `Oasis`, `Muse` returned `HTTP 200`). Any client implementation using MusicBrainz directly must enforce `>= 1200ms` serialized queueing, session caching, explicit retry/backoff on `503`, and clear offline/throttle feedback (with no proxy per constraints).
+2. **Wikipedia REST v1 & MediaWiki Action API (`origin=*`)**:
+   - **CORS & Reliability**: Returned **`HTTP 200` and `corsReadable: true`** across all calls (`en.wikipedia.org/api/rest_v1/page/summary/...` & `w/api.php?action=query&prop=pageimages|extracts&pithumbsize=600&format=json&origin=*`), with `0` `503` errors and concise band descriptions + disambiguation links.
+3. **Wikimedia Commons Thumbnails (`https://thumb.wikimedia.org/...`) & Canvas Readback**:
+   - Plain `<img>`: Loaded cleanly (`330×120`).
+   - **`<img crossOrigin="anonymous">` + `<canvas>` `ctx.getImageData(0, 0, 1, 1)`**: **`loaded: true`, `canvasOk: true`, `pixel: [210, 179, 213, 255]`, `canvasErr: null`**. Unlike TheAudioDB (`r2.theaudiodb.com`), Wikimedia Commons allows full CORS canvas reads so automatic **accent sampling** AND **300-DPI PNG/PDF exports** work cleanly.
+4. **Licensing & Attribution**:
+   - MusicBrainz core metadata is **CC0** (public domain); Wikipedia/Wikimedia photos carry per-file free licenses (CC-BY-SA / Public Domain / fair-use, with attribution/right-to-use reminder shown to the user before loading).
+
+### Ready to build Part B upon approval
+- **Proposed build (`Option B1 — Recommended`)**: Use **MusicBrainz v2** (primary metadata: multi-match pick list showing Name, Disambiguation, Origin, Formed year, Genres, CC0) + **on-demand Wikipedia/Wikimedia photo lookup** for the chosen artist (CORS-safe image preview with automatic accent sampling + copyright/license notice + PNG/PDF export compatibility), backed by a serialized `1.2s` request queue, `503` backoff/retry button, in-memory cache, and fallback to **Wikipedia search** if MusicBrainz returns `503` — filling only unedited fields (`Fill this card` / `Add as new card`, each 1 Undo step). Confirm to start building!
