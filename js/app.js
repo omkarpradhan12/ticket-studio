@@ -118,7 +118,10 @@ let currentLayout;
 let renderFrame = 0;
 let saveTimer;
 let dragState = null;
+let pinchState = null;
 let stampDragState = null;
+const activePpPointers = new Map();
+const photoZoomWheelTimers = new Map();
 let moveStampsMode = false;
 let selectedStampIndex = 0;
 let previewIndex = -1;
@@ -1245,7 +1248,18 @@ function patchLiveStampDom(index, si, snapInfo = null) {
   syncCardStampRow(index);
 }
 
-function patchLivePhotoDom(index, px, py, box, isPolaroid = false) {
+function getCardPhotoGeometry(index) {
+  const card = studioState.cards[index];
+  const CH = currentLayout?.CH || 239;
+  const page = Math.floor(index / (currentLayout?.PER || 9));
+  const themeKey = card?.theme || studioState.pageThemes[page] || studioState.settings?.style || "cream";
+  const isPolaroid = Boolean((THEMES[themeKey] || THEMES.cream)?.polaroid) && !studioState.settings?.minimalLayout;
+  const PS = isPolaroid ? 146 : 136;
+  const PH = PS + (CH - 239);
+  return { CH, isPolaroid, PS, PH };
+}
+
+function patchLivePhotoDom(index, px, py, box, isPolaroid = false, updateSize = false) {
   const CH = currentLayout?.CH || 239;
   const PX = isPolaroid ? 12 : 17;
   const PY = isPolaroid ? 13 : 16;
@@ -1258,15 +1272,26 @@ function patchLivePhotoDom(index, px, py, box, isPolaroid = false) {
     if (!image) return;
     image.setAttribute("x", nextX);
     image.setAttribute("y", nextY);
+    if (updateSize) {
+      image.setAttribute("width", box.w.toFixed(2));
+      image.setAttribute("height", box.h.toFixed(2));
+    }
   });
+  const card = studioState.cards[index];
+  const zmPct = Math.round((card?.zm || 1) * 100);
   const row = getCardRowEl(index);
   if (row) {
+    if (updateSize) row.querySelector("[data-adjust='zm']").value = zmPct;
     row.querySelector("[data-adjust='px']").value = px;
     row.querySelector("[data-adjust='py']").value = py;
   }
   if (!$("pv")?.hidden && previewIndex === index) {
     const pxR = Math.round(px);
     const pyR = Math.round(py);
+    if (updateSize) {
+      if ($("pv-zm") && document.activeElement !== $("pv-zm")) $("pv-zm").value = String(zmPct);
+      if ($("pv-zm-val")) $("pv-zm-val").textContent = `${zmPct}%`;
+    }
     if ($("pv-px") && document.activeElement !== $("pv-px")) $("pv-px").value = String(pxR);
     if ($("pv-py") && document.activeElement !== $("pv-py")) $("pv-py").value = String(pyR);
     if ($("pv-px-val")) $("pv-px-val").textContent = String(pxR);
@@ -2637,7 +2662,7 @@ function bindEvents() {
       moveStampsMode = false;
       message("Drag photos on (turned off Move stamps).");
     } else {
-      message(checked ? "Drag photos on: drag inside a photo." : "Drag photos off.");
+      message(checked ? "Drag photos on: drag or scroll/pinch inside a photo to zoom." : "Drag photos off.");
     }
     render();
   };
@@ -3445,25 +3470,65 @@ function bindEvents() {
       const index = +target.dataset.ci, card = studioState.cards[index];
       if (!card?.img || !card.iw) return;
       event.preventDefault();
+      target.setPointerCapture?.(event.pointerId);
       const cardGroup = target.closest("g[data-ci]:not(.st-ui)");
-      const CH = currentLayout?.CH || 239;
-      const page = Math.floor(index / (currentLayout?.PER || 9));
-      const themeKey = card.theme || studioState.pageThemes[page] || studioState.settings?.style || "cream";
-      const isPolaroid = Boolean((THEMES[themeKey] || THEMES.cream)?.polaroid) && !studioState.settings?.minimalLayout;
-      const PS = isPolaroid ? 146 : 136;
-      const PH = PS + (CH - 239);
+      const cardScale = cardGroup?.getScreenCTM()?.a || target.ownerSVGElement.getScreenCTM().a;
+      const geom = getCardPhotoGeometry(index);
+      activePpPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, index });
+      const sameCard = [...activePpPointers.entries()].filter(([, p]) => p.index === index);
+      if (sameCard.length >= 2) {
+        dragState = null;
+        const [idA, pA] = sameCard[0];
+        const [idB, pB] = sameCard[1];
+        pinchState = {
+          index,
+          idA,
+          idB,
+          startDist: Math.max(10, Math.hypot(pB.x - pA.x, pB.y - pA.y)),
+          startZm: card.zm || 1,
+          startPx: card.px || 0,
+          startPy: card.py || 0,
+          midX: (pA.x + pB.x) / 2,
+          midY: (pA.y + pB.y) / 2,
+          scale: cardScale,
+          ...geom
+        };
+        return;
+      }
       dragState = {
         index,
         x: event.clientX,
         y: event.clientY,
         px: card.px || 0,
         py: card.py || 0,
-        scale: cardGroup?.getScreenCTM()?.a || target.ownerSVGElement.getScreenCTM().a,
-        isPolaroid,
-        PS,
-        PH
+        scale: cardScale,
+        ...geom
       };
     });
+    container.addEventListener("wheel", event => {
+      const target = event.target.closest(".pp");
+      if (!target || !$("drag")?.checked) return;
+      const index = +target.dataset.ci, card = studioState.cards[index];
+      if (!card?.img || !card.iw) return;
+      event.preventDefault();
+      const rawDelta = event.deltaMode === 1 ? event.deltaY * 16 : (event.deltaMode === 2 ? event.deltaY * 120 : event.deltaY);
+      if (!rawDelta) return;
+      const sensitivity = event.ctrlKey ? 0.008 : 0.0022;
+      const nextZm = Math.max(1, Math.min(3, Math.round((card.zm || 1) * Math.exp(-rawDelta * sensitivity) * 1000) / 1000));
+      const updated = updateCard(index, { zm: nextZm });
+      const geom = getCardPhotoGeometry(index);
+      const box = fitBox(updated, geom.CH, geom.PS, geom.PH);
+      if (box) patchLivePhotoDom(index, updated.px || 0, updated.py || 0, box, geom.isPolaroid, true);
+      const actionKey = `card:${index}:photo-zoom`;
+      recordContinuous("zoom card photo", actionKey);
+      const prevTimer = photoZoomWheelTimers.get(index);
+      if (prevTimer) clearTimeout(prevTimer);
+      photoZoomWheelTimers.set(index, setTimeout(() => {
+        photoZoomWheelTimers.delete(index);
+        finishContinuous("zoom card photo", actionKey);
+        saveSoon();
+      }, 180));
+    }, { passive: false });
     container.addEventListener("keydown", event => {
       const target = event.target.closest(".st-hit");
       if (!target || !moveStampsMode) return;
@@ -3505,6 +3570,33 @@ function bindEvents() {
   bindCardStageInteractions($("pvi"));
 
   window.addEventListener("pointermove", event => {
+    if (activePpPointers.has(event.pointerId)) {
+      const entry = activePpPointers.get(event.pointerId);
+      entry.x = event.clientX;
+      entry.y = event.clientY;
+    }
+
+    if (pinchState) {
+      const pA = activePpPointers.get(pinchState.idA);
+      const pB = activePpPointers.get(pinchState.idB);
+      if (!pA || !pB) return;
+      const curDist = Math.max(10, Math.hypot(pB.x - pA.x, pB.y - pA.y));
+      const curMidX = (pA.x + pB.x) / 2;
+      const curMidY = (pA.y + pB.y) / 2;
+      const nextZm = Math.max(1, Math.min(3, Math.round(pinchState.startZm * (curDist / pinchState.startDist) * 1000) / 1000));
+      const curCard = studioState.cards[pinchState.index];
+      const box = curCard ? fitBox({ ...curCard, zm: nextZm }, pinchState.CH, pinchState.PS, pinchState.PH) : null;
+      if (!box) return;
+      const dx = (curMidX - pinchState.midX) / pinchState.scale;
+      const dy = (curMidY - pinchState.midY) / pinchState.scale;
+      const px = box.mx > 0 ? Math.max(-100, Math.min(100, pinchState.startPx + dx / box.mx * 100)) : 0;
+      const py = box.my > 0 ? Math.max(-100, Math.min(100, pinchState.startPy + dy / box.my * 100)) : 0;
+      updateCard(pinchState.index, { zm: nextZm, px, py });
+      recordContinuous("zoom and pan card photo", `card:${pinchState.index}:photo-pinch`);
+      patchLivePhotoDom(pinchState.index, px, py, box, pinchState.isPolaroid, true);
+      return;
+    }
+
     if (stampDragState) {
       const { mode, index, stampIndex: si } = stampDragState;
       const st = resolveCardStamp(index, si);
@@ -3560,7 +3652,14 @@ function bindEvents() {
     recordContinuous("reposition card photo", `card:${dragState.index}:photo-position`);
     patchLivePhotoDom(dragState.index, px, py, box, dragState.isPolaroid);
   });
-  ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, () => {
+  ["pointerup", "pointercancel"].forEach(name => window.addEventListener(name, event => {
+    activePpPointers.delete(event.pointerId);
+    if (pinchState && (event.pointerId === pinchState.idA || event.pointerId === pinchState.idB || activePpPointers.size < 2)) {
+      finishContinuous("zoom and pan card photo", `card:${pinchState.index}:photo-pinch`);
+      pinchState = null;
+      render();
+      return;
+    }
     if (stampDragState) {
       const { mode, moved } = stampDragState;
       stampDragState = null;
