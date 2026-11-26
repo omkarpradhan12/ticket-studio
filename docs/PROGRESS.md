@@ -2,8 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 8 ("Surprise me" per-card randomisation) complete (`7ce1da6`); ready for Phase 9 (Band search) upon owner go-ahead
-- Next approval: owner confirmation before starting Phase 9.
+- Current phase: Phase 9 Part A (local card search) complete (`ac5d0e9`); Phase 9 Part B (TheAudioDB browser/API/terms test) complete and reported below
+- Next approval: owner confirmation on Phase 9 Part B approach (single-match TheAudioDB with plain-URL fallback vs MusicBrainz / Wikipedia-Wikimedia vs defer Part B).
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -71,7 +71,8 @@
 | P7-02 | Stamp drag hit-test/touch/export/undo | L | high | done | 7b341db, ced4597, 276f6bd, d0d93b6 | `Move stamps` mode, 1-step undo, `.st-ui` export stripping, strict card-boundary clamping (`276f6bd`), visual 23+ stamp picker & `Customise` fold (`a6b67ca`, `d0d93b6`); stamps customized in `0c7e278`, `155b2a0` |
 | P8-01 | Per-card Surprise me style overrides | L | high | done | 1b07075, 07af698 | Optional per-card style schema (`js/card-styles.mjs`), unified `resolveCardRenderOptions` in `svg-engine.js` (Card > Page > Sheet priority), JSON/Bulk Import support, `MAX_CARDS = 300` |
 | P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
-| P9-01 | Band search and match count | M | medium | todo | - | |
+| P9-01 | Band search and match count (Part A: local) | M | medium | done | ac5d0e9 | Non-destructive accent/case-insensitive filter (`js/search.mjs`), `M of N`, Escape/Clear/Enter/ArrowDown, preview page scroll, `tests/search.test.mjs`, browser QA passed |
+| P9-02 | Online band lookup (Part B: API test + dialog) | M | medium | blocked | - | Pre-build browser API/CORS/terms test reported below; stopped for owner approval before building dialog |
 | P10-01 | Visiting card layout | L | high | todo | - | |
 
 ## Known issue disposition
@@ -687,4 +688,61 @@ Every new style override lives as an **optional** property on each card object i
   - Re-ran all 6 Node unit test suites (`randomiser.test.mjs` — `24.2 ms` for 200 cards, `stamps.test.mjs`, `borders.test.mjs`, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `217` unique HTML ID check, and `git diff --check` after `e5dea0b`.
   - Overhauled the `vinyl` stamp (`r=18` outer disc, `r=15.9`/`13.8` vinyl micro-groove tracks + diagonal shimmer arcs, `r=10.8` center record label ring, `r=2` center spindle hole with flanking label ticks and `yr: -4.2` / `nm: 6.4` clearance) and appended `3` new music stamp variants (`spotify` "Spotify", `ytmusic` "YT Music", `clef` "Treble clef") bringing `SKINDS` to `34` and `STAMP_OPTIONS` to `36` (`560b07c`), bumped `?v=phase8.2` uniformly across local references, and re-verified all 6 Node test suites + `git diff --check`.
   - Updated `spotify`, `ytmusic` (concentric double-ring disc + play triangle emblem), and `clef` to standalone ringless stamp shapes (`openText: true` preserving stamp color below solid emblems), expanded `TF` + `#tfont` + `FONT_KEYS` + `FONT_POOLS` to `14` fonts (`script` Handwriting, `calligraphy`, `brush`, `marker`, `georgia`, `trebuchet`, `impact`, `consolas`, alongside `pirata`, `playfair`, `mont`, `bebas`, `type`, `courier` + Google Fonts links), and added the **Polaroid** built-in theme (`polaroid: 1`, recessed `146×146` film aperture + deep bottom white chin rendering only band name + year, custom Polaroid swatch thumbnail) (`b36f160`).
-  - Added scraggly handwriting options (`scrawl` Reenie Beanie / Covered By Your Grace / Ink Free, and `rough` Rock Salt, bringing `TF` to `16` fonts), switched `polaroid` default font to `scrawl` (`TF.scrawl` with `ys: 11`), wired `T.min` (**Minimal** `min` and **Minimal ink** `mini`) into `isMinimal` in `js/svg-engine.js` (previously unhooked because only `cfg.minimalLayout === true` was checked, causing Minimal themes to render full cluttered ticket layouts!) with `TF.mont` default, wrapped 2-line minimal spacing (`210 + D`), `centerTitle` alignment, and `<defs>` support for photo filters/halftone (`de221e7`, `?v=phase8.4`). Re-verified all 6 Node unit test suites and `git diff --check`; live on `http://127.0.0.1:8090/` for hard-refresh inspection.
+  - Added scraggly handwriting options (`scrawl` Reenie Beanie / Covered By Your Grace / Ink Free, and `rough` Rock Salt, bringing `TF` to `16` fonts), switched `polaroid` default font to `scrawl` (`TF.scrawl` with `ys: 11`), wired `T.min` (**Minimal** `min` and **Minimal ink** `mini`) into `isMinimal` in `js/svg-engine.js` (previously unhooked because only `cfg.minimalLayout === true` was checked, causing Minimal themes to render full cluttered ticket layouts!) with `TF.mont` default, wrapped 2-line minimal spacing (`210 + D`), `centerTitle` alignment, and `<defs>` support for photo filters/halftone (`de221e7`, `?v=phase8.4`). Re-verified all 6 Node unit test suites and `git diff --check`.
+
+---
+
+## Phase 9 Part A (Local Band Search) — Implementation & Verification (`ac5d0e9`, `?v=phase9`)
+
+- **Implemented (`js/search.mjs`, `index.html`, `css/app.css`, `js/app.js`, `tests/search.test.mjs`)**:
+  - Built pure filter utilities in `js/search.mjs` (`normalizeSearchText` with NFD diacritic stripping + Latin ligature normalization `æ`/`ø`/`œ`/`ß`/`ł`/`đ`/`ð`/`þ`, `tokenizeSearchQuery` for multi-word queries across fields, `cardSearchHaystack` covering `title`, `genre`, `loc`, `year`, `code`, `stx`, and `imgUrl`, `filterCardIndices`, `formatSearchCount`, and `debounce` with `.cancel()` / `.flush()`).
+  - Enabled `#card-search` in the Phase 3 `.card-search-slot`, paired with `#card-search-clear`, `#card-search-count` (`"1 of 18"`, `"0 of 18"`), and `#card-search-empty` with inline **"Clear search"** button.
+  - Wired transient `cardSearchQuery` completely outside `studioState`, `History` snapshots, autosave, page layout, `#sheets` SVG rendering, and exports; typing debounces at `110ms` over cached DOM rows without rebuilding `#rows` (keeping active focused inputs visible even while editing).
+  - Keyboard & click navigation: `Escape` / Clear restores all rows and keeps focus on `#card-search`; `Enter` selects the first matching card; `ArrowDown` moves focus to the first visible match; clicking any matching row (`[data-action="select-card"]` / `.row`) calls `scrollStageToPage()` to sync `#page-select` and scroll `#stage` to the selected card's page.
+- **Verification**:
+  - **Node unit tests**: `node tests/search.test.mjs` + all 6 existing suites (`stamps.test.mjs`, `borders.test.mjs`, `randomiser.test.mjs` — `26.8 ms` 200-card generation, `history.test.mjs`, `theme-studio-utils.test.mjs`, `color-controls.test.mjs`), `219` unique HTML ID check (`0` duplicates), and `git diff --check` all passed.
+  - **Browser QA (`http://127.0.0.1:8090/`)**: Tested `index.html` at `1440×900` (`18`-card sheet: Card 12 `"Björk"` matched by `"bjork"` -> `"1 of 18"`, 17 rows collapsed cleanly via `[hidden] { display: none !important }`, Undo stack untouched, clicking Card 12 updated `#page-count-label` to `"Page 2 of 2"` and scrolled `#stage` so `page2Y` moved from `1220.5` to `207.14`, `Escape` / Clear / `"0 of 18"` unclipped empty state all verified), `390×844` mobile (`0` horizontal overflow), `theme-studio.html`, `bulk-import.html`, and `tests/title-layout.test.html` (`4` passed) with `0` console errors.
+
+---
+
+## Phase 9 Part B (Online Band Lookup) — Pre-Build TheAudioDB Browser Test Report
+
+Before writing any Part B lookup UI, tested `https://www.theaudiodb.com/api/v1/json/123/search.php?s=...` directly from a real browser origin (`http://127.0.0.1:8090`), plus loaded returned media URLs from `https://r2.theaudiodb.com` and inspected TheAudioDB's documentation/terms pages (`https://www.theaudiodb.com/free_music_api` and `https://www.theaudiodb.com/docs_terms_of_use.php`).
+
+### 1. Cross-Origin Readability (CORS for Plain GET)
+- **Result: PASS (`HTTP 200`, `access-control-allow-origin: *`)**.
+- All 6 plain `GET` `fetch()` calls (no custom headers) from `http://127.0.0.1:8090` succeeded cross-origin cleanly (`corsReadable: true`).
+- Response headers from `www.theaudiodb.com`: `access-control-allow-origin: *`, `access-control-allow-methods: GET, PUT, POST, DELETE, OPTIONS`.
+
+### 2. Sample Band Responses (5 Bands + 1 Nonexistent Band)
+| Query | HTTP Status | `artists` count | Key fields returned (`artists[0]`) |
+|---|---|---|---|
+| `Radiohead` | `200` | `1` | `strArtist: "Radiohead"`, `strGenre: "Alternative Rock"`, `strStyle: "Rock/Pop"`, `strCountry: "Abingdon, England"`, `intFormedYear: "1991"`, `strLabel: "XL Recordings"`, `strArtistThumb`, `strArtistLogo`, `strArtistBanner` |
+| `The Black Keys` | `200` | `1` | `strArtist: "The Black Keys"`, `strGenre: "Indie"`, `strStyle: "Rock/Pop"`, `strCountry: "Akron, Ohio, USA"`, `intFormedYear: "2001"`, `strLabel: "Fat Possum Records"` |
+| `Black Sabbath` | `200` | `1` | `strArtist: "Black Sabbath"`, `strGenre: "Heavy Metal"`, `strStyle: "Metal"`, `strCountry: "Birmingham, England"`, `intFormedYear: "1969"`, `strLabel: "Vertigo"` |
+| `Oasis` | `200` | `1` | `strArtist: "Oasis"`, `strGenre: "Rock"`, `strStyle: "Britpop"`, `strCountry: "Manchester, England"`, `intFormedYear: "1991"`, `strLabel: "Epic"` |
+| `Muse` | `200` | `1` | `strArtist: "Muse"`, `strGenre: "Alternative Rock"`, `strStyle: "Rock/Pop"`, `strCountry: "Teignmouth, England"`, `intFormedYear: "1994"`, `strLabel: "Warner Bros. Records"` |
+| `xyzzy_no_such_band_99999` | `200` | `0` (`null`) | Body is `{"artists":null}` (`artists` is `null`, not `[]`). |
+
+- **Schema note**: `strBiographyEN` is **not** present in the returned JSON object; the English biography is stored in **`strBiography`**. Free tier strictly caps `search.php` to `1` artist (`Free Limit: 1` vs Premium `10`), which can mis-match ambiguous/common band names if the top hit isn't the intended band.
+
+### 3. Image Load & Canvas CORS Readback (`r2.theaudiodb.com`)
+- Tested returned thumb URL `https://r2.theaudiodb.com/images/media/artist/thumb/35poth1668098458.jpg` in real browser from `http://127.0.0.1:8090`:
+  - **Plain `<img src=...>` (no `crossOrigin`)**: **Loaded cleanly** (`loaded: true`, `700×700`, `image/jpeg`), so SVG card previews and SVG exports render the image.
+  - **Canvas pixel read on plain `<img>`**: Blocked with `SecurityError: Failed to execute 'getImageData' on 'CanvasRenderingContext2D': The canvas has been tainted by cross-origin data.`
+  - **`<img crossOrigin="anonymous" src=...>`**: **Failed to load (`loaded: false`)** — `https://r2.theaudiodb.com` does **not** emit `access-control-allow-origin` headers on image responses.
+- **Impact on Ticket Studio**:
+  - Automatic accent sampling (`sampleImageColor()` via canvas) **cannot** sample pixel colors from `r2.theaudiodb.com` URLs; if built, `corsLimited: true` must be preserved so it gracefully keeps default/existing accent without crashing.
+  - Likewise, canvas-based PNG/PDF exports (`rasterizeSvg`) cannot rasterize external `r2.theaudiodb.com` images directly (SVG export & Print work; users who need PNG/PDF raster export will still need a local photo upload or CORS-enabled image host, as warned by the existing `CORS-limited image` tag).
+
+### 4. TheAudioDB Terms, Key `"123"`, Rate Limits, Attribution & Images
+- Verified on `https://www.theaudiodb.com/free_music_api` and `https://www.theaudiodb.com/docs_terms_of_use.php`:
+  - **Shared key `"123"`**: Officially documented free/test API key (`"The current free API key is: 123"`). Free API explicitly allows testing & lookup in development projects, **but states**: *"You cannot publish apps to an appstore unless you are a paid subscriber ($8/month Premium)"* — so free key `"123"` is appropriate for personal/local/open test tools, while a public consumer distribution would breach their free-key rule unless paid/attributed.
+  - **Rate limit**: Free tier is **30 requests/minute** (excess returns `HTTP 429` for 1 minute); Premium = 100/min.
+  - **Attribution & Image reuse**: Paid/public usage requires crediting & linking back to TheAudioDB as the data/artwork source (`"must not pass artwork off as your own and should link back to our website"`). Front-end image access allows appending `/medium` (500px) or `/small` (250px) to artwork URLs; trademarked logos must be used `"As is"`.
+
+### 5. Owner Decision Needed Before Building Phase 9 Part B
+1. **Online lookup provider & photo handling for Part B**:
+   - **Option A (Recommended if single-match text lookup + optional CORS-limited photo is sufficient)**: Build Part B using **TheAudioDB v1 (key `123`)** with an explicit user-triggered lookup dialog (explicit disclosure that the typed query goes to `theaudiodb.com`, `30/min` session throttling + in-memory cache), **metadata fill first** (artist name, genre, origin, formed year), and an opt-in copyright-warned photo checkbox that sets `imgUrl` + `corsLimited: true` cleanly (falling back to default accent without canvas crash; keeping upload/URL fallback). Best if you use this app as a personal/static web tool.
+   - **Option B (Multi-result pick list & appstore/public-safe metadata)**: Switch Part B's pre-build test & dialog to **MusicBrainz API** (`ws/2/artist/?query=...&fmt=json`, CC0 metadata, returns multiple ranked matches to disambiguate similar band names cleanly) + optional **Wikipedia/Wikimedia Commons** CORS-friendly images, tested the same way in-browser before building.
+   - **Option C**: Skip Part B (keep Phase 9 strictly local search only) and move to **Phase 10 (Visiting card layout)**.

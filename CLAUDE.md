@@ -68,4 +68,5 @@
 - Phase 6 customisable borders (16 styles, Customise fold, presets, per-card overrides, scoped SVG defs, `?v=phase6`) are complete on `ui-overhaul`.
 - Phase 7 draggable stamps (per-card `stampPos`/`stamp2Pos`, rotary dial, `Move stamps` mode, strict card-boundary clamping, `44px+` touch targets, copy/reset actions), 5 extra photo mounts (`4..8`), visual stamp picker (33 swatches + `Customise` fold + presets), and the Tarot title double-`D` fix are complete on `ui-overhaul`.
 - Phase 8 ("Surprise me" per-card seeded randomisation with WCAG contrast & stamp/print guard rails, scope/strength dialog, per-card lock & custom indicators, 300-card cap, lazy 200-card row optimization, 1-step undo/redo, and `?v=phase8`) is complete on `ui-overhaul`.
-- Next up: Phase 9 (Band search and match count).
+- Phase 9 Part A (non-destructive local card search with accent/case-insensitive matching across all card text fields, `M of N` match count, Clear / `Escape` / `Enter` / `ArrowDown` keyboard shortcuts, preview page scroll, and `tests/search.test.mjs`, `?v=phase9`) is complete on `ui-overhaul`.
+- Next up: Phase 9 Part B (online band lookup) — real-browser TheAudioDB API & image CORS tests reported in `docs/PROGRESS.md`; waiting for owner approval before building UI.
