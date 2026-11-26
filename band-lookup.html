@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Band Lookup — Ticket Card Studio</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9b">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
+<link rel="stylesheet" href="css/tokens.css?v=phase9b">
+<link rel="stylesheet" href="css/app.css?v=phase9b">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-badge"><span data-icon="logo"></span></span>
+      <span class="brand-title">Ticket Card Studio</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Workspace pages">
+      <a class="nav-tab" href="index.html">Sheet Editor</a>
+      <a class="nav-tab" href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
+      <a class="nav-tab" href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+      <a class="nav-tab active" href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
+    </nav>
+    <details class="mobile-nav">
+      <summary aria-label="Open workspace menu" data-tooltip="Open workspace menu"><span data-icon="menu"></span></summary>
+      <div class="menu-panel">
+        <a href="index.html"><span data-icon="view"></span> Sheet Editor</a>
+        <a href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
+        <a href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+        <a href="band-lookup.html" aria-current="page"><span data-icon="search"></span> Band Lookup</a>
+      </div>
+    </details>
+  </div>
+</header>
+
+<main class="studio-wrap lookup-page">
+  <section class="panel lookup-intro" aria-labelledby="lookup-title">
+    <div class="lookup-header">
+      <div>
+        <h1 id="lookup-title">Online Band Lookup</h1>
+        <p class="subtitle">Search MusicBrainz or Wikipedia, pick the right band match, preview metadata &amp; optional Wikimedia photo, and add it directly to your print sheet.</p>
+      </div>
+      <a class="g btn-link" href="index.html"><span data-icon="view"></span> Back to Sheet Editor</a>
+    </div>
+
+    <div class="lookup-disclosure" role="note">
+      <strong>How lookups work:</strong> Searches run only when you click <strong>Search</strong>. Typed names are sent directly from your browser to <code>musicbrainz.org</code> (CC0 artist metadata; anonymous browser pool ~1 req/sec) and optional photos are fetched from <code>en.wikipedia.org</code> / <code>wikimedia.org</code>. Results are cached for this session.
+    </div>
+
+    <div id="lookup-disabled-banner" class="lookup-warning" hidden>
+      Online lookup is currently disabled in <code>js/band-lookup-providers.mjs</code>. Use manual fields, Bulk Upload, or Image URL in the Sheet Editor.
+    </div>
+
+    <form id="lookup-form" class="lookup-form">
+      <label class="fld lookup-query-fld">
+        <span>Artist / band name</span>
+        <input id="lookup-query" type="search" placeholder="e.g. Radiohead, Nirvana, Muse, Sigur Rós…" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="fld lookup-provider-fld">
+        <span>Source</span>
+        <select id="lookup-provider">
+          <option value="musicbrainz">MusicBrainz (CC0 multi-match)</option>
+          <option value="wikipedia">Wikipedia (Fallback)</option>
+        </select>
+      </label>
+      <div class="lookup-submit-wrap">
+        <button class="accent" id="lookup-search-btn" type="submit"><span data-icon="search"></span> Search</button>
+      </div>
+    </form>
+
+    <div class="lookup-status-row">
+      <div id="lookup-status" class="hint" role="status" aria-live="polite"></div>
+      <div id="lookup-recovery" class="ctrl-flex" hidden>
+        <button class="g sm" id="lookup-retry-btn" type="button"><span data-icon="reset"></span> Retry</button>
+        <button class="g sm" id="lookup-wiki-fallback-btn" type="button">Try Wikipedia search instead</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="lookup-workspace">
+    <section class="panel lookup-results-panel" aria-labelledby="lookup-results-heading">
+      <h2 id="lookup-results-heading">Matches (<span id="lookup-match-count">0</span>)</h2>
+      <div id="lookup-results" class="lookup-results">
+        <p class="hint">Enter a band name above and click Search to see ranked candidates.</p>
+      </div>
+    </section>
+
+    <section class="panel lookup-draft-panel" aria-labelledby="lookup-draft-heading">
+      <div class="lookup-draft-head">
+        <h2 id="lookup-draft-heading">Card details to add</h2>
+        <span id="lookup-source-pill" class="lookup-pill" hidden></span>
+      </div>
+
+      <div class="lookup-draft-grid">
+        <label class="fld w"><span>Artist / band name</span><input type="text" id="lk-title" placeholder="Artist / band name"></label>
+        <label class="fld"><span>Genre</span><input type="text" id="lk-genre" placeholder="Genre"></label>
+        <label class="fld"><span>Origin / place</span><input type="text" id="lk-loc" placeholder="Origin / city / country"></label>
+        <label class="fld"><span>Formed year</span><input type="text" id="lk-year" placeholder="YYYY"></label>
+        <label class="fld"><span>Abbreviation</span><input type="text" id="lk-code" placeholder="Abbr"></label>
+      </div>
+
+      <div class="lookup-photo-box">
+        <div class="lookup-photo-head">
+          <div class="stage-thumb lookup-thumb" id="lk-thumb">No photo selected</div>
+          <div class="lookup-photo-actions">
+            <div class="ctrl-flex">
+              <button class="g sm" id="lk-fetch-photo" type="button"><span data-icon="search"></span> Find Wikimedia photo</button>
+              <button class="g sm" id="lk-upload-btn" type="button"><span data-icon="upload"></span> Upload local photo</button>
+              <input type="file" id="lk-file" accept="image/*" hidden>
+              <button class="g sm" id="lk-clear-photo" type="button" hidden>Clear photo</button>
+            </div>
+            <label class="fld">
+              <span>Or paste direct Image URL</span>
+              <div class="url-row">
+                <input type="url" id="lk-url" placeholder="https://…">
+                <button class="g sm" id="lk-load-url" type="button">Load</button>
+              </div>
+            </label>
+            <div id="lk-photo-status" class="hint"></div>
+          </div>
+        </div>
+        <p class="hint lookup-rights-note">Web photos may be copyrighted or require Creative Commons attribution (CC-BY-SA). Only use images you have rights to; upload a local image if unsure.</p>
+      </div>
+
+      <div class="lookup-commit-box">
+        <div class="lookup-commit-new">
+          <button class="accent" id="lk-add-new" type="button"><span data-icon="plus"></span> Add as new card to sheet</button>
+        </div>
+        <div class="lookup-commit-existing">
+          <label class="fld">
+            <span>Or update existing sheet card</span>
+            <div class="lookup-fill-row">
+              <select id="lk-fill-target"></select>
+              <button class="g" id="lk-fill-btn" type="button">Fill selected card</button>
+            </div>
+          </label>
+          <label class="chk"><input type="checkbox" id="lk-overwrite"> Overwrite fields that already have text</label>
+        </div>
+      </div>
+
+      <div class="lookup-sheet-preview">
+        <h3>Current saved sheet (<span id="lk-sheet-count">0</span> / 300 cards)</h3>
+        <div id="lk-sheet-list" class="lookup-sheet-list"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="lookup-transfer-toast" class="history-toast" role="status" aria-live="polite" hidden>
+  <span id="lookup-transfer-message"></span>
+  <button class="g sm" id="lk-undo-transfer" type="button">Undo</button>
+  <button class="accent sm" id="lk-open-editor" type="button"><span data-icon="view"></span> Open editor</button>
+</div>
+
+<script type="module" src="js/band-lookup.js?v=phase9b"></script>
+</body>
+</html>
