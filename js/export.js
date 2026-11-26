@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase9b";
-import { hslToHex } from "./image-utils.js?v=phase9b";
-import { abbr } from "./svg-engine.js?v=phase9b";
+import { FONTCSS } from "./fonts.js?v=phase9c";
+import { hslToHex } from "./image-utils.js?v=phase9c";
+import { abbr } from "./svg-engine.js?v=phase9c";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);

@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9b";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9b";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9b";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9b";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9b";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase9b";
-import { History } from "./history.mjs?v=phase9b";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9b";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9b";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9c";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9c";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9c";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9c";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9c";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase9c";
+import { History } from "./history.mjs?v=phase9c";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9c";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9c";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase9b";
+} from "./borders.mjs?v=phase9c";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase9b";
+} from "./stamps.mjs?v=phase9c";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase9b";
+} from "./card-styles.mjs?v=phase9c";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase9b";
+} from "./randomiser.mjs?v=phase9c";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase9b";
+} from "./search.mjs?v=phase9c";
 
 const MOUNT_NAMES = {
   "0": "Tape",

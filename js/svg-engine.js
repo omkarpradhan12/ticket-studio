@@ -1,9 +1,9 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9b";
-import { hsl } from "./image-utils.js?v=phase9b";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9b";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9b";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9b";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9c";
+import { hsl } from "./image-utils.js?v=phase9c";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9c";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9c";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9c";
 
 export { SKINDS, STAMPS };
 
@@ -26,30 +26,18 @@ export const displayText = (t, n) => {
   return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 };
 
-export function titleLayout(title, font, maxWidth = 136, scale = 1) {
-  const clean = String(title || "Add name");
-  const requestedScale = Number(scale);
-  const boundedScale = Number.isFinite(requestedScale) ? Math.max(0.7, Math.min(1, requestedScale)) : 1;
-  const scaledFont = { ...font, s: font.s * boundedScale };
-  const singleSize = Number(fit(clean, scaledFont.s, maxWidth, scaledFont.k));
-  if (singleSize >= scaledFont.s - 0.05) return { lines: [clean], size: singleSize, wrapped: false };
-
-  const maxChars = Math.max(4, Math.floor(maxWidth / (scaledFont.s * scaledFont.k)));
+function wrapToTwoLines(clean, maxChars) {
   const words = clean.split(/\s+/).filter(Boolean);
   const lines = [];
   let current = "";
-
   const pushWord = word => {
-    if (!current) {
-      current = word;
-    } else if ((current + " " + word).length <= maxChars) {
-      current += " " + word;
-    } else {
+    if (!current) current = word;
+    else if ((current + " " + word).length <= maxChars) current += " " + word;
+    else {
       lines.push(current);
       current = word;
     }
   };
-
   words.forEach(word => {
     if (word.length <= maxChars) {
       pushWord(word);
@@ -66,12 +54,58 @@ export function titleLayout(title, font, maxWidth = 136, scale = 1) {
     }
   });
   if (current) lines.push(current);
+  return { lines, wrapped: lines.length > 1, twoLines: lines.length > 1 ? lines.slice(0, 2) : lines };
+}
 
-  const twoLines = lines.length > 1 ? lines.slice(0, 2) : lines;
+export function titleLayout(title, font, maxWidth = 136, scale = 1) {
+  const clean = String(title || "Add name");
+  const requestedScale = Number(scale);
+  const boundedScale = Number.isFinite(requestedScale) ? Math.max(0.7, Math.min(1, requestedScale)) : 1;
+  const scaledFont = { ...font, s: font.s * boundedScale };
+  const singleSize = Number(fit(clean, scaledFont.s, maxWidth, scaledFont.k));
+  if (singleSize >= scaledFont.s - 0.05) return { lines: [clean], size: singleSize, wrapped: false };
+
+  const maxChars = Math.max(4, Math.floor(maxWidth / (scaledFont.s * scaledFont.k)));
+  const { twoLines, wrapped } = wrapToTwoLines(clean, maxChars);
   const size = Math.max(3.4, Math.min(scaledFont.s,
     ...twoLines.map(line => Number(fit(line, scaledFont.s, maxWidth, scaledFont.k)))
   ));
-  return { lines: twoLines, size, wrapped: lines.length > 1 };
+  return { lines: twoLines, size, wrapped };
+}
+
+export function subtitleLayout(text, maxSize = 5.8, maxWidth = 96, k = 0.64) {
+  const clean = String(text || "").trim();
+  if (!clean) return { lines: [""], size: maxSize, wrapped: false };
+  const singleSize = Number(fit(clean, maxSize, maxWidth, k));
+  if (singleSize >= maxSize - 0.35) return { lines: [clean], size: singleSize, wrapped: false };
+
+  // Target slightly relaxed ~4.9pt before wrapping; prefer clean break after " // " when both sides fit cleanly
+  const targetSize = Math.max(4.6, maxSize - 0.6);
+  const maxChars = Math.max(10, Math.floor(maxWidth / (targetSize * k)));
+  const sepIdx = clean.indexOf(" // ");
+  if (sepIdx > 0) {
+    const left = clean.slice(0, sepIdx + 3).trim();
+    const right = clean.slice(sepIdx + 4).trim();
+    if (left && right && left.length <= maxChars && right.length <= maxChars) {
+      const size = Math.max(3.6, Math.min(maxSize,
+        Number(fit(left, maxSize, maxWidth, k)),
+        Number(fit(right, maxSize, maxWidth, k))
+      ));
+      return { lines: [left, right], size, wrapped: true };
+    }
+  }
+
+  const { lines, twoLines, wrapped } = wrapToTwoLines(clean, maxChars);
+  // If remainder truncated beyond 2 lines at targetChars, relax per-line char capacity evenly across 2 lines
+  if (lines.length > 2) {
+    const evenMax = Math.max(maxChars, Math.ceil(clean.length / 2) + 2);
+    const balanced = wrapToTwoLines(clean, evenMax);
+    const chosen = balanced.lines.length <= 2 ? balanced.twoLines : [clean.slice(0, Math.ceil(clean.length / 2)).trim(), clean.slice(Math.ceil(clean.length / 2)).trim()];
+    const size = Math.max(3.6, Math.min(maxSize, ...chosen.map(l => Number(fit(l, maxSize, maxWidth, k)))));
+    return { lines: chosen, size, wrapped: true };
+  }
+  const size = Math.max(3.6, Math.min(maxSize, ...twoLines.map(l => Number(fit(l, maxSize, maxWidth, k)))));
+  return { lines: twoLines, size, wrapped };
 }
 
 const FT = 'font-family="Montserrat,Arial,sans-serif"';
@@ -549,10 +583,14 @@ export function renderCard(c0, i, cfg) {
     const minimalTitleMarkup = titleLayoutResult.wrapped
       ? titleLines.map((line, lineIndex) => `<text x="${tx}" y="${(185 + lineIndex * 12 + D).toFixed(1)}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(line)}</text>`).join("")
       : `<text x="${tx}" y="${187 + D}"${ta} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${titleSize.toFixed(1)}">${esc(titleLines[0])}</text>`;
-    const minimalSubY = (titleLayoutResult.wrapped ? 210 + D : 200 + D).toFixed(1);
+    const minimalSubY = titleLayoutResult.wrapped ? 210 + D : 200 + D;
+    const minSubLayout = subtitleLayout(gl, 5.4, tcn ? 120 : 136);
+    const minimalSubMarkup = minSubLayout.wrapped
+      ? minSubLayout.lines.map((line, li) => `<text x="${tx}" y="${(minimalSubY + li * 7.5).toFixed(1)}"${ta} fill="${mute}" font-size="${minSubLayout.size.toFixed(1)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(line)}</text>`).join("")
+      : `<text x="${tx}" y="${minimalSubY}"${ta} fill="${mute}" font-size="${fit(gl, 5.4, tcn ? 120 : 136)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text>`;
     const minimalAccentLine = `<path d="M${tcn ? CW / 2 - 10 : 17} ${169 + D}h20" stroke="${ink}" stroke-opacity=".28" stroke-width=".6" fill="none"/>`;
     const minimalCornerHw = c0.cornerHardware ? renderCornerHardware({ style: c0.cornerHardware, index: i, CW, CH, accent: A, theme: T }) : "";
-    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${minimalBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${minimalCornerHw}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}${minimalAccentLine}${minimalTitleMarkup}<text x="${tx}" y="${minimalSubY}"${ta} fill="${mute}" font-size="${fit(gl, 5.4, tcn ? 120 : 136)}" font-weight="500" letter-spacing=".3" ${FT}>${esc(gl)}</text><text x="${tx}" y="${CH - 14}"${ta} fill="${mute}" font-size="5" font-weight="500" letter-spacing=".6" ${FT}>${esc(c.year)}</text>${nfc}${tex}${surfaceFxMarkup}${drag}${mk}</g>`;
+    return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${minimalBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${minimalBorderMarkup}${minimalCornerHw}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}${minimalAccentLine}${minimalTitleMarkup}${minimalSubMarkup}<text x="${tx}" y="${CH - 14}"${ta} fill="${mute}" font-size="5" font-weight="500" letter-spacing=".6" ${FT}>${esc(c.year)}</text>${nfc}${tex}${surfaceFxMarkup}${drag}${mk}</g>`;
   }
 
   if (isPolaroid) {
@@ -575,6 +613,11 @@ export function renderCard(c0, i, cfg) {
     return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})"><defs>${gradDef}${polaroidBorderDefs}${grayDef}${halftoneDef}<clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath><clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs><g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>${polaroidBorderMarkup}${polaroidCornerHw}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width=".7"/><path d="M${PX + 0.5} ${PB - 0.5}V${PY + 0.5}H${PX + PS - 0.5}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>${polaroidTitleMarkup}${yearMarkup}${nfc}${tex}${surfaceFxMarkup}${drag}${mk}</g>`;
   }
 
+  const subLayout = subtitleLayout(gl, 5.8, tcn ? 72 : 96);
+  const subMarkup = subLayout.wrapped
+    ? subLayout.lines.map((line, li) => `<text x="${tx}" y="${(213 + li * 8).toFixed(1)}"${ta} fill="${mute}" font-size="${subLayout.size.toFixed(1)}" font-weight="700" letter-spacing=".4" ${FT}>${U(line)}</text>`).join("")
+    : `<text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>`;
+
   return `<g data-ci="${i}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
    <defs>${gradDef}${inkFilter("ink" + i, i + 3, resolved.stampWear)}${borderDefs}${grayDef}${halftoneDef}
    <clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath>
@@ -590,7 +633,7 @@ export function renderCard(c0, i, cfg) {
    ${badge}
    <text x="${CW - 17}" y="175.2" text-anchor="end" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>AUDIO PASS</text>
    ${titleMarkup}
-   <text x="${tx}" y="214"${ta} fill="${mute}" font-size="${fit(gl, 5.8, tcn ? 72 : 96)}" font-weight="700" letter-spacing=".4" ${FT}>${U(gl)}</text>
+   ${subMarkup}
    </g>${nfc}${serial}${tex}${surfaceFxMarkup}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
 }
 
