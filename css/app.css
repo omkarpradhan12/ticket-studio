@@ -1940,9 +1940,18 @@ details.sec > summary {
   min-height: 40px;
 }
 
+.card-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
 .card-search-slot {
   display: block;
-  margin: 0 0 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .card-search-slot input {
@@ -1950,11 +1959,61 @@ details.sec > summary {
   min-height: 40px;
 }
 
+.card-search-slot input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .card-search-slot input:disabled {
   opacity: 1;
   background: #121210;
   color: var(--mute);
   cursor: not-allowed;
+}
+
+.card-search-count {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2, #161514);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.card-search-count[hidden],
+.card-search-empty[hidden],
+.row[hidden],
+.rows-page-break[hidden] {
+  display: none !important;
+}
+
+.card-search-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--mute);
+  font-size: 12px;
+}
+
+.card-search-empty [data-search-empty-msg] {
+  flex: 1 1 150px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.card-search-empty button {
+  flex: 0 0 auto;
 }
 
 .row {
@@ -2704,6 +2763,32 @@ details.sec > summary {
 
   .card-search-slot input {
     padding-left: 34px;
+    padding-right: 38px;
+  }
+
+  .card-search-clear {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    right: 4px;
+    width: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    color: var(--mute);
+    transform: translateY(-50%);
+  }
+
+  .card-search-clear:hover,
+  .card-search-clear:focus-visible {
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .card-search-clear[hidden] {
+    display: none;
   }
 
   .nav-tab .icon {

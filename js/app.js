@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase8.4";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase8.4";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase8.4";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase8.4";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase8.4";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase8.4";
-import { History } from "./history.mjs?v=phase8.4";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase8.4";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase8.4";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase9";
+import { History } from "./history.mjs?v=phase9";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase8.4";
+} from "./borders.mjs?v=phase9";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase8.4";
+} from "./stamps.mjs?v=phase9";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,13 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase8.4";
+} from "./card-styles.mjs?v=phase9";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase8.4";
+} from "./randomiser.mjs?v=phase9";
+import {
+  cardSearchHaystack,
+  debounce,
+  filterCardIndices,
+  formatSearchCount
+} from "./search.mjs?v=phase9";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -119,6 +125,8 @@ let historyReady = false;
 let batchImportInProgress = false;
 let undoToastTimer;
 let previewZoom = 1;
+// Transient local card-list filter (never stored in studioState, history, layout, or exports)
+let cardSearchQuery = "";
 let lastSurpriseSeed = generateSeed();
 let pendingPhotoUploadIndex = -1;
 let sharedPhotoFileInput = null;
@@ -1312,9 +1320,88 @@ function render() {
   saveSoon();
 }
 
-function selectCard(index, scroll = false) {
+function scrollStageToPage(targetPage) {
+  const stage = $("stage");
+  const sheetEl = $("sheets")?.querySelector(`svg.sheet[data-page="${targetPage}"]`);
+  if (!stage || !sheetEl) return;
+  const behavior = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth";
+  if (stage.scrollHeight > stage.clientHeight + 2) {
+    const stageRect = stage.getBoundingClientRect();
+    const sheetRect = sheetEl.getBoundingClientRect();
+    const toolsH = $("page-tools")?.offsetHeight || 48;
+    const targetTop = Math.max(0, stage.scrollTop + (sheetRect.top - stageRect.top) - toolsH - 12);
+    if (typeof stage.scrollTo === "function") stage.scrollTo({ top: targetTop, behavior });
+    else stage.scrollTop = targetTop;
+  } else {
+    sheetEl.scrollIntoView({ behavior, block: "start" });
+  }
+}
+
+function syncPreviewPageForCard(index, scrollStage = false) {
+  const per = currentLayout?.PER || computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket").PER || 9;
+  const pageCount = Math.max(1, Math.ceil(studioState.count / per));
+  const targetPage = Math.max(0, Math.min(pageCount - 1, Math.floor(index / per)));
+  if (studioState.activePage !== targetPage) {
+    studioState.activePage = targetPage;
+    syncPageTools(pageCount);
+  }
+  if (scrollStage) scrollStageToPage(targetPage);
+}
+
+function applyCardSearchFilter() {
+  const rowsContainer = $("rows");
+  const clearBtn = $("card-search-clear");
+  const countEl = $("card-search-count");
+  if (clearBtn) clearBtn.hidden = !cardSearchQuery.length;
+  const res = filterCardIndices(studioState.cards, studioState.count, cardSearchQuery);
+  if (countEl) {
+    countEl.hidden = !res.isActive;
+    countEl.textContent = res.isActive ? formatSearchCount(res.matchCount, res.totalCount) : "";
+  }
+  if (!rowsContainer) return;
+  const per = currentLayout?.PER || lastBuiltRowsPerPage || 9;
+  const activeEl = document.activeElement;
+  const visiblePages = new Set();
+  rowsContainer.querySelectorAll(".row").forEach(row => {
+    const idx = Number(row.dataset.index);
+    const matches = !res.isActive || res.matchedSet.has(idx);
+    const keepFocused = Boolean(activeEl && row.contains(activeEl));
+    const hidden = res.isActive && !matches && !keepFocused;
+    row.hidden = hidden;
+    if (!hidden) visiblePages.add(Math.floor(idx / per));
+  });
+  rowsContainer.querySelectorAll(".rows-page-break").forEach(div => {
+    const pageIdx = Number(div.dataset.page);
+    div.hidden = res.isActive && !visiblePages.has(pageIdx);
+  });
+  const emptyEl = $("card-search-empty");
+  if (emptyEl) {
+    const showEmpty = res.isActive && res.matchCount === 0;
+    emptyEl.hidden = !showEmpty;
+    const emptyMsg = emptyEl.querySelector("[data-search-empty-msg]");
+    if (emptyMsg) {
+      emptyMsg.textContent = showEmpty ? `No cards match “${cardSearchQuery.trim()}”.` : "";
+    }
+  }
+}
+
+const debouncedCardSearch = debounce(() => applyCardSearchFilter(), 110);
+
+function clearCardSearch(refocus = true) {
+  debouncedCardSearch.cancel();
+  cardSearchQuery = "";
+  const input = $("card-search");
+  if (input) {
+    input.value = "";
+    if (refocus) input.focus();
+  }
+  applyCardSearchFilter();
+}
+
+function selectCard(index, scroll = false, scrollPreview = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
+  syncPreviewPageForCard(index, scrollPreview);
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${index + 1}`;
   const applyStBtn = $("st-apply-selected");
@@ -1513,6 +1600,7 @@ function buildRows() {
           output.textContent = input.value;
           output.hidden = input.value.length <= 24;
         }
+        if (cardSearchQuery.trim()) applyCardSearchFilter();
         scheduleRender();
       });
       const fieldNames = { title: "name", genre: "genre", loc: "place", year: "year", code: "abbreviation" };
@@ -1530,6 +1618,7 @@ function buildRows() {
     row.querySelectorAll("[data-option]").forEach(input => {
       input.addEventListener("input", () => {
         updateCard(index, { [input.dataset.option]: input.value });
+        if (input.dataset.option === "stx" && cardSearchQuery.trim()) applyCardSearchFilter();
         scheduleRender();
       });
       const labels = { theme: "change card theme", sk: "change card stamp", stx: "change card stamp text" };
@@ -1640,8 +1729,12 @@ function buildRows() {
     row.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
       const action = button.dataset.action;
+      if (action === "select-card") {
+        selectCard(index, false, true);
+        return;
+      }
       selectCard(index);
-      if (action === "select-card" || action === "load-url") return;
+      if (action === "load-url") return;
       if (action === "view") { selectCard(index); openPreview(index); }
       else if (action === "surprise") {
         surpriseCards({ seed: generateSeed(), onlyIndex: index, actionLabel: "surprise card styling" });
@@ -1737,13 +1830,21 @@ function buildRows() {
       const pageStart = (pageNum - 1) * per;
       const divider = document.createElement("div");
       divider.className = "rows-page-break";
+      divider.dataset.page = String(pageNum - 1);
       divider.setAttribute("role", "separator");
       divider.setAttribute("aria-label", `End of page ${pageNum}`);
       divider.innerHTML = `<span>End of page ${pageNum}</span><span class="rows-page-range">Cards ${pageStart + 1}–${index + 1}</span>`;
       frag.append(divider);
     }
   });
+  const emptyNotice = document.createElement("div");
+  emptyNotice.id = "card-search-empty";
+  emptyNotice.className = "card-search-empty";
+  emptyNotice.hidden = true;
+  emptyNotice.innerHTML = `<span data-search-empty-msg></span><button class="g sm" type="button" data-action="clear-search">Clear search</button>`;
+  frag.append(emptyNotice);
   $("rows").replaceChildren(frag);
+  applyCardSearchFilter();
   syncCardStampRow(studioState.selectedCard);
 }
 
@@ -2266,6 +2367,7 @@ function bindEvents() {
     $("page-theme").value = studioState.pageThemes[studioState.activePage] || "";
     $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${event.target.options.length}`;
     if (historyReady) history.refresh(captureSnapshot());
+    scrollStageToPage(studioState.activePage);
   });
   $("page-theme")?.addEventListener("change", event => {
     studioState.pageThemes = studioState.pageThemes.map((theme, page) =>
@@ -2277,9 +2379,39 @@ function bindEvents() {
   $("duplicate-page")?.addEventListener("click", () => duplicateActivePage(currentLayout.PER));
   $("delete-page")?.addEventListener("click", () => deleteActivePage(currentLayout.PER));
   $("rows").addEventListener("click", event => {
+    if (event.target.closest("[data-action='clear-search']")) {
+      clearCardSearch(true);
+      return;
+    }
     const row = event.target.closest(".row");
-    if (row) selectCard(+row.dataset.index);
+    if (row) selectCard(+row.dataset.index, false, true);
   });
+  $("card-search")?.addEventListener("input", event => {
+    cardSearchQuery = event.target.value;
+    const clearBtn = $("card-search-clear");
+    if (clearBtn) clearBtn.hidden = !cardSearchQuery.length;
+    debouncedCardSearch();
+  });
+  $("card-search")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if (cardSearchQuery || event.target.value) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearCardSearch(true);
+      }
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      debouncedCardSearch.flush();
+      const firstMatch = filterCardIndices(studioState.cards, studioState.count, cardSearchQuery).matchedIndices[0];
+      if (firstMatch !== undefined) selectCard(firstMatch, true, true);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      debouncedCardSearch.flush();
+      const firstVisibleBtn = $("rows")?.querySelector(".row:not([hidden]) [data-action='select-card']");
+      firstVisibleBtn?.focus();
+    }
+  });
+  $("card-search-clear")?.addEventListener("click", () => clearCardSearch(true));
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
   ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
   $("style").addEventListener("change", () => {

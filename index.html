@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase8.4">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase8.4">
-<link rel="stylesheet" href="css/app.css?v=phase8.4">
+<link rel="stylesheet" href="css/tokens.css?v=phase9">
+<link rel="stylesheet" href="css/app.css?v=phase9">
 </head>
 <body>
 <header class="topbar">
@@ -568,11 +568,15 @@
         <label class="chk"><input type="checkbox" id="drag"> Drag photos on sheet</label>
       </div>
     </div>
-    <label class="card-search-slot">
-      <span class="sr-only">Search cards</span>
-      <span class="search-slot-icon" data-icon="search"></span>
-      <input id="card-search" type="search" placeholder="Search cards (coming in Phase 9)" disabled>
-    </label>
+    <div class="card-search-bar">
+      <div class="card-search-slot">
+        <label class="sr-only" for="card-search">Search cards</label>
+        <span class="search-slot-icon" data-icon="search"></span>
+        <input id="card-search" type="search" placeholder="Search title, genre, origin, year…" autocomplete="off" spellcheck="false" aria-describedby="card-search-count">
+        <button class="g icon-only card-search-clear" id="card-search-clear" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><span data-icon="close"></span></button>
+      </div>
+      <output class="card-search-count" id="card-search-count" for="card-search" aria-live="polite" hidden></output>
+    </div>
     <div id="rows"></div>
   </div>
 
