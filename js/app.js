@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase9";
-import { History } from "./history.mjs?v=phase9";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9";
+import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9b";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9b";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9b";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9b";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9b";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase9b";
+import { History } from "./history.mjs?v=phase9b";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9b";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9b";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase9";
+} from "./borders.mjs?v=phase9b";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase9";
+} from "./stamps.mjs?v=phase9b";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase9";
+} from "./card-styles.mjs?v=phase9b";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase9";
+} from "./randomiser.mjs?v=phase9b";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase9";
+} from "./search.mjs?v=phase9b";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -82,13 +82,14 @@ const SETTINGS_FIELDS = {
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize",
   stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
-  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc",
+  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc", cornerHardware: "corner-hw",
   yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter"
 };
 const CHECK_FIELDS = {
   cropMarks: "marks", bleed: "bleed", nfc: "nfc", cutTemplate: "tpl",
   serials: "serial", stampAuto: "sauto", regMarks: "regmarks", punchHole: "punch",
-  centerTitle: "design-center", halftone: "design-halftone"
+  centerTitle: "design-center", halftone: "design-halftone",
+  fxClaw: "fx-claw", fxTear: "fx-tear", fxBullet: "fx-bullet", fxBlood: "fx-blood"
 };
 const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa"];
 
@@ -297,6 +298,11 @@ function renderConfig(one = false) {
     photoMounts: settings.photoMounts,
     centerTitle: settings.centerTitle,
     halftone: settings.halftone,
+    cornerHardware: settings.cornerHardware,
+    fxClaw: settings.fxClaw,
+    fxTear: settings.fxTear,
+    fxBullet: settings.fxBullet,
+    fxBlood: settings.fxBlood,
     pageThemes: settings.pageThemes,
     doors: settings.doors,
     side: settings.side,
@@ -726,7 +732,12 @@ function bindHistoryControlEvents() {
     regMarks: "toggle registration marks",
     punchHole: "toggle punch hole",
     centerTitle: "toggle centered title",
-    halftone: "toggle photo halftone"
+    halftone: "toggle photo halftone",
+    cornerHardware: "change corner hardware",
+    fxClaw: "toggle claw marks",
+    fxTear: "toggle corner tear",
+    fxBullet: "toggle bullet hole",
+    fxBlood: "toggle blood spatter"
   };
   const controls = new Map();
   for (const [field, id] of Object.entries(SETTINGS_FIELDS)) controls.set(id, labels[field]);
@@ -2343,6 +2354,7 @@ function syncPreviewControls() {
   setVal("pv-accent", hslToHex(card));
   setVal("pv-theme", card.theme || "");
   setVal("pv-stamp", card.sk || "");
+  setVal("pv-hardware", card.cornerHardware || "");
   const st = resolveCardStamp(previewIndex, 0);
   const rotDeg = Math.round(st.r || 0);
   const scalePct = Math.round((st.mult || 1) * 100);
@@ -2497,7 +2509,7 @@ function bindEvents() {
   });
   $("card-search-clear")?.addEventListener("click", () => clearCardSearch(true));
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "nfc", "punch", "tpl", "regmarks", "sauto", "corner-hw", "fx-claw", "fx-tear", "fx-bullet", "fx-blood", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
   $("style").addEventListener("change", () => {
     studioState.quickColors = undefined;
     syncQuickColorsControls({ rebuildStops: true });
@@ -3103,7 +3115,8 @@ function bindEvents() {
   if ($("pv-accent")) bindContinuousHistory($("pv-accent"), "change card accent colour", "pv:accent");
   [
     ["pv-theme", "theme", "change card theme"],
-    ["pv-stamp", "sk", "change card stamp"]
+    ["pv-stamp", "sk", "change card stamp"],
+    ["pv-hardware", "cornerHardware", "change card corner hardware"]
   ].forEach(([id, field, label]) => {
     const el = $(id);
     if (!el) return;

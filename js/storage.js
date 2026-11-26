@@ -55,7 +55,12 @@ export const SET0 = {
   tearStyle: 0,
   photoFilter: 0,
   centerTitle: false,
-  halftone: false
+  halftone: false,
+  cornerHardware: "bolts",
+  fxClaw: false,
+  fxTear: false,
+  fxBullet: false,
+  fxBlood: false
 };
 
 export const blankCard = () => ({

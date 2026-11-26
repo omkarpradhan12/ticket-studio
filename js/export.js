@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase9";
-import { hslToHex } from "./image-utils.js?v=phase9";
-import { abbr } from "./svg-engine.js?v=phase9";
+import { FONTCSS } from "./fonts.js?v=phase9b";
+import { hslToHex } from "./image-utils.js?v=phase9b";
+import { abbr } from "./svg-engine.js?v=phase9b";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -145,6 +145,11 @@ export function exportProjectJson(settings, cards, count) {
       if (c.halftone !== undefined) r.halftone = Boolean(c.halftone);
       if (c.gradientAngle !== undefined) r.gradientAngle = c.gradientAngle;
       if (c.gradientSpread !== undefined) r.gradientSpread = c.gradientSpread;
+      if (c.cornerHardware) r.cornerHardware = c.cornerHardware;
+      if (c.fxClaw !== undefined) r.fxClaw = Boolean(c.fxClaw);
+      if (c.fxTear !== undefined) r.fxTear = Boolean(c.fxTear);
+      if (c.fxBullet !== undefined) r.fxBullet = Boolean(c.fxBullet);
+      if (c.fxBlood !== undefined) r.fxBlood = Boolean(c.fxBlood);
       if (c.locked) r.locked = true;
       return r;
     })

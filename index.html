@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9b">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase9">
-<link rel="stylesheet" href="css/app.css?v=phase9">
+<link rel="stylesheet" href="css/tokens.css?v=phase9b">
+<link rel="stylesheet" href="css/app.css?v=phase9b">
 </head>
 <body>
 <header class="topbar">
@@ -21,6 +21,7 @@
       <a class="nav-tab active" href="index.html">Sheet Editor</a>
       <a class="nav-tab" href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
       <a class="nav-tab" href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+      <a class="nav-tab" href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
     </nav>
     <div class="history-actions" aria-label="History controls. Undo history is in memory only and clears on reload.">
       <button class="g history-action" id="undo" type="button" aria-label="Undo" data-tooltip="Undo" disabled><span data-icon="undo"></span></button>
@@ -53,6 +54,7 @@
         <a href="index.html" aria-current="page">Sheet Editor</a>
         <a href="theme-studio.html"><span data-icon="palette"></span> Theme Studio</a>
         <a href="bulk-import.html"><span data-icon="bulkUpload"></span> Bulk Upload</a>
+        <a href="band-lookup.html"><span data-icon="search"></span> Band Lookup</a>
       </div>
     </details>
   </div>
@@ -143,6 +145,25 @@
           <span>Stamp ink wear</span>
           <input type="range" id="wear" min="0" max="100" value="35">
         </label>
+        <label class="fld full">
+          <span>Corner hardware</span>
+          <select id="corner-hw">
+            <option value="bolts">Bolts (Default)</option>
+            <option value="pins">Push pins</option>
+            <option value="staples">Corner staples</option>
+            <option value="rivets">Eyelet rivets</option>
+            <option value="none">None (Clean corners)</option>
+          </select>
+        </label>
+        <fieldset class="fx-marks-group full">
+          <legend>Fun distress marks</legend>
+          <div class="ctrl-grid fx-marks-grid">
+            <label class="chk"><input type="checkbox" id="fx-claw"> Claw marks</label>
+            <label class="chk"><input type="checkbox" id="fx-tear"> Corner tear</label>
+            <label class="chk"><input type="checkbox" id="fx-bullet"> Bullet hole</label>
+            <label class="chk"><input type="checkbox" id="fx-blood"> Blood spatter</label>
+          </div>
+        </fieldset>
       </div>
     </details>
 
@@ -734,6 +755,17 @@
           <div class="pv-ed-grid">
             <label class="fld"><span>Card theme</span><select id="pv-theme"></select></label>
             <label class="fld"><span>Card stamp</span><select id="pv-stamp"></select></label>
+            <label class="fld w">
+              <span>Corner hardware</span>
+              <select id="pv-hardware">
+                <option value="">Same as sheet</option>
+                <option value="bolts">Bolts (Default)</option>
+                <option value="pins">Push pins</option>
+                <option value="staples">Corner staples</option>
+                <option value="rivets">Eyelet rivets</option>
+                <option value="none">None (Clean corners)</option>
+              </select>
+            </label>
           </div>
           <label class="pv-slider-fld">
             <span class="lbl-row"><span>Stamp angle</span><output id="pv-srot-val" for="pv-srot">0°</output></span>
@@ -755,6 +787,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase9"></script>
+<script type="module" src="js/app.js?v=phase9b"></script>
 </body>
 </html>
