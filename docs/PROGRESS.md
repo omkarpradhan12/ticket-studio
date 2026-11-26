@@ -2,7 +2,7 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Phase 9 (Part A local search `ac5d0e9`, Preview quick editor `3430114`, Part B isolated `band-lookup.html` `19d3674`) & Corner Hardware/Distress FX (`0c728b3`) complete (`?v=phase9b`)
+- Current phase: Phase 9 (Part A local search `ac5d0e9`, Preview quick editor `3430114`, Part B isolated `band-lookup.html` `19d3674`), Corner Hardware/Distress FX (`0c728b3`), 2-line subtitles (`561d0d2`), & standalone Album Lookup (`1b99442`, `?v=phase9d`) complete
 - Next approval: owner confirmation before starting Phase 10 (Visiting card layout).
 
 ## Task conventions
@@ -785,3 +785,4 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
   - Added optional fun surface distress toggles (`#fx-claw` Claw marks, `#fx-tear` Corner tear, `#fx-bullet` Bullet hole, `#fx-blood` Blood spatter) rendered cleanly across standard, minimal, and Polaroid cards with 1-step Undo/Redo and JSON export/import persistence.
 - **Verification**:
   - Added `wrapToTwoLines()` and `subtitleLayout()` in `js/svg-engine.js` so long `Genre // Place` subtitles wrap cleanly onto 2 readable lines (`y=213.0` & `221.0` on standard tickets, `minimalSubY` & `+7.5` on Minimal cards, preferring clean breaks after `//` when both parts fit) while keeping short subtitles identical (`561d0d2`, `?v=phase9c`). Expanded `tests/title-layout.test.html` to `7` checks and verified in browser (`"Passed 7 card title layout checks."`, long subtitle rendered at `font-size="4.8"` across 2 lines, `#lookup-recovery` cleanly hidden on `band-lookup.html`, `0` console errors) alongside all `9` Node unit test suites.
+  - Built standalone **Album Lookup** workspace (`album-lookup.html`, `js/album-lookup.js`, `js/album-lookup-providers.mjs`, `tests/album-lookup.test.mjs`, `1b99442`, `?v=phase9d`) per Option 2 (skipping any 3rd-studio-album ordinal lookup per owner instruction) and wired `kind: "album"` card rendering in `js/svg-engine.js` (Album Name headline, clean Artist Name subtitle without `"Genre //"` prefix, `EST. <Year>` & left-border `NO. <Year>-<Abbr>`, `"ALBUM PASS"` tag) + JSON export/import round-trip (`js/export.js`, `js/app.js`). Verified MusicBrainz `OK Computer` + `Radiohead` (`5` candidates), CORS-safe Cover Art Archive `thumb500.jpg` + sampled accent `#3b9bce`, live SVG preview & direct SVG/PNG export, Undo/sheet transfer onto `index.html`, all `10` Node test suites (`25.6 ms`), `git diff --check`, and 5-page desktop + `390×844` browser QA (`0` console errors, `0` horizontal overflow).
