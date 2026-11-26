@@ -686,22 +686,75 @@
 </div>
 
 <!-- CARD PREVIEW MODAL -->
-<div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview">
+<div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview and quick editor">
   <div class="pvbox">
     <div class="pvbar">
-      <button class="g" id="pvp" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
+      <button class="g" id="pvp" type="button" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
       <span id="pvt" class="preview-title"></span>
-      <button class="g" id="pvn" aria-label="Next card" data-tooltip="Next card"><span data-icon="next"></span></button>
+      <button class="g" id="pvn" type="button" aria-label="Next card" data-tooltip="Next card"><span data-icon="next"></span></button>
       <span class="preview-spacer" aria-hidden="true"></span>
-      <button class="g" id="pve">Edit</button>
-      <button class="g" id="pvpng">PNG</button>
-      <button class="g" id="pvsvg">SVG</button>
-      <button id="pvx" aria-label="Close preview" data-tooltip="Close preview"><span data-icon="close"></span></button>
+      <button class="g" id="pve" type="button">Jump to sidebar</button>
+      <button class="g" id="pvpng" type="button">PNG</button>
+      <button class="g" id="pvsvg" type="button">SVG</button>
+      <button id="pvx" type="button" aria-label="Close preview" data-tooltip="Close preview"><span data-icon="close"></span></button>
     </div>
-    <div id="pvi" aria-label="Card preview"></div>
+    <div class="pv-body">
+      <div id="pvi" aria-label="Card preview"></div>
+      <div class="pv-editor" id="pv-editor" aria-label="Edit selected card">
+        <div class="pv-ed-group">
+          <div class="pv-ed-grid">
+            <label class="fld w"><span>Artist / band name</span><input type="text" id="pv-title" placeholder="Artist / band name"></label>
+            <label class="fld"><span>Genre</span><input type="text" id="pv-genre" placeholder="Genre"></label>
+            <label class="fld"><span>Origin / place</span><input type="text" id="pv-loc" placeholder="Place"></label>
+            <label class="fld"><span>Year</span><input type="text" id="pv-year" placeholder="Year"></label>
+            <label class="fld"><span>Code</span><input type="text" id="pv-code" placeholder="Abbr"></label>
+            <label class="fld"><span>Stamp text</span><input type="text" id="pv-stx" placeholder="Same as sheet"></label>
+          </div>
+        </div>
+        <div class="pv-ed-group">
+          <div class="pv-ed-row">
+            <button class="g sm" id="pv-photo-btn" type="button"><span data-icon="upload"></span> Photo…</button>
+            <button class="g sm" id="pv-crop-reset" type="button">Reset crop</button>
+            <label class="pv-accent-pick"><input type="color" id="pv-accent" aria-label="Card accent colour"><span>Accent</span></label>
+          </div>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Photo zoom</span><output id="pv-zm-val" for="pv-zm">100%</output></span>
+            <input type="range" id="pv-zm" min="100" max="300" step="1" value="100">
+          </label>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Photo horizontal</span><output id="pv-px-val" for="pv-px">0</output></span>
+            <input type="range" id="pv-px" min="-100" max="100" step="1" value="0">
+          </label>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Photo vertical</span><output id="pv-py-val" for="pv-py">0</output></span>
+            <input type="range" id="pv-py" min="-100" max="100" step="1" value="0">
+          </label>
+        </div>
+        <div class="pv-ed-group">
+          <div class="pv-ed-grid">
+            <label class="fld"><span>Card theme</span><select id="pv-theme"></select></label>
+            <label class="fld"><span>Card stamp</span><select id="pv-stamp"></select></label>
+          </div>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Stamp angle</span><output id="pv-srot-val" for="pv-srot">0°</output></span>
+            <input type="range" id="pv-srot" min="-180" max="180" step="5" value="0">
+          </label>
+          <label class="pv-slider-fld">
+            <span class="lbl-row"><span>Stamp scale</span><output id="pv-sscale-val" for="pv-sscale">100%</output></span>
+            <input type="range" id="pv-sscale" min="40" max="250" step="5" value="100">
+          </label>
+          <div class="pv-ed-row pv-ed-actions">
+            <button class="g sm" id="pv-surprise" type="button"><span data-icon="surprise"></span> Surprise</button>
+            <button class="g sm" id="pv-lock" type="button" aria-pressed="false"><span data-icon="lock"></span> Keep</button>
+            <button class="g sm" id="pv-reset-stamp" type="button">Reset stamp</button>
+            <button class="g sm" id="pv-reset-style" type="button" hidden>Reset style</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase8.2"></script>
+<script type="module" src="js/app.js?v=phase9"></script>
 </body>
 </html>

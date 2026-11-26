@@ -507,11 +507,12 @@ button.sm, .btn.sm {
   background: var(--panel);
   border-radius: 12px;
   padding: 14px;
-  width: min(600px, 100%);
+  width: min(920px, 100%);
   max-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
   box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
 }
 .pvbar {
@@ -520,8 +521,16 @@ button.sm, .btn.sm {
   align-items: center;
   flex-wrap: wrap;
 }
+.pv-body {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 340px);
+  gap: 14px;
+  align-items: start;
+  min-height: 0;
+  overflow: auto;
+}
 #pvi {
-  max-height: 70vh;
+  max-height: 74vh;
   max-width: 100%;
   background: #fff;
   border-radius: 8px;
@@ -532,9 +541,87 @@ button.sm, .btn.sm {
 #pvi svg {
   display: block;
   max-width: 100%;
-  max-height: 70vh;
+  max-height: 74vh;
   width: auto;
   height: auto;
+}
+.pv-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  max-height: 74vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.pv-ed-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.pv-ed-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 8px;
+}
+.pv-ed-grid .w {
+  grid-column: 1 / -1;
+}
+.pv-ed-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pv-ed-actions {
+  margin-top: 2px;
+}
+.pv-accent-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mute);
+  cursor: pointer;
+}
+.pv-slider-fld {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mute);
+}
+.pv-slider-fld .lbl-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink);
+}
+@media (max-width: 780px) {
+  .pv-body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #pvi {
+    flex: 0 0 auto;
+    width: 100%;
+    max-height: 44vh;
+  }
+  #pvi svg {
+    max-height: 44vh;
+  }
+  .pv-editor {
+    flex: 0 0 auto;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 /* Responsive Breakpoints */

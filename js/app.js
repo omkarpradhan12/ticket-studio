@@ -2303,16 +2303,100 @@ function scopePreviewSvgIds(markup, prefix = "pv-") {
     .replace(/\burl\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
 }
 
+function syncPreviewSelects(force = false) {
+  const themeSel = $("pv-theme");
+  const stampSel = $("pv-stamp");
+  if (themeSel && (force || !themeSel.options.length)) {
+    populateThemeSelect(themeSel, true);
+  }
+  if (stampSel && (force || !stampSel.options.length)) {
+    stampSel.innerHTML = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
+      .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
+  }
+}
+
+function syncPreviewControls() {
+  if (previewIndex < 0 || $("pv").hidden) return;
+  const card = studioState.cards[previewIndex];
+  if (!card) return;
+  syncPreviewSelects();
+  const active = document.activeElement;
+  const setVal = (id, val) => {
+    const el = $(id);
+    if (el && active !== el) el.value = val;
+  };
+  setVal("pv-title", card.title || "");
+  setVal("pv-genre", card.genre || "");
+  setVal("pv-loc", card.loc || "");
+  setVal("pv-year", card.year || "");
+  setVal("pv-code", card.code || "");
+  setVal("pv-stx", card.stx || "");
+  const zmVal = Math.round((card.zm || 1) * 100);
+  const pxVal = card.px || 0;
+  const pyVal = card.py || 0;
+  setVal("pv-zm", zmVal);
+  setVal("pv-px", pxVal);
+  setVal("pv-py", pyVal);
+  if ($("pv-zm-val")) $("pv-zm-val").textContent = `${zmVal}%`;
+  if ($("pv-px-val")) $("pv-px-val").textContent = String(pxVal);
+  if ($("pv-py-val")) $("pv-py-val").textContent = String(pyVal);
+  setVal("pv-accent", hslToHex(card));
+  setVal("pv-theme", card.theme || "");
+  setVal("pv-stamp", card.sk || "");
+  const st = resolveCardStamp(previewIndex, 0);
+  const rotDeg = Math.round(st.r || 0);
+  const scalePct = Math.round((st.mult || 1) * 100);
+  setVal("pv-srot", rotDeg);
+  setVal("pv-sscale", scalePct);
+  if ($("pv-srot-val")) $("pv-srot-val").textContent = `${rotDeg}°`;
+  if ($("pv-sscale-val")) $("pv-sscale-val").textContent = `${scalePct}%`;
+  const lockBtn = $("pv-lock");
+  if (lockBtn) {
+    const isLocked = Boolean(card.locked);
+    lockBtn.setAttribute("aria-pressed", String(isLocked));
+    lockBtn.classList.toggle("is-locked", isLocked);
+  }
+  const resetStyleBtn = $("pv-reset-style");
+  if (resetStyleBtn) resetStyleBtn.hidden = !hasCustomCardStyling(card);
+}
+
+function syncSidebarRowValues(index) {
+  const row = getCardRowEl(index);
+  const card = studioState.cards[index];
+  if (!row || !card) return;
+  const setRowEl = (sel, val) => {
+    const el = row.querySelector(sel);
+    if (el) el.value = val;
+  };
+  setRowEl("[data-field='title']", card.title || "");
+  setRowEl("[data-field='genre']", card.genre || "");
+  setRowEl("[data-field='loc']", card.loc || "");
+  setRowEl("[data-field='year']", card.year || "");
+  setRowEl("[data-field='code']", card.code || "");
+  const nameBtn = row.querySelector(".card-name");
+  if (nameBtn) nameBtn.textContent = `Card ${index + 1} · ${card.title || "Untitled card"}`;
+  setRowEl("[data-adjust='zm']", Math.round((card.zm || 1) * 100));
+  setRowEl("[data-adjust='px']", card.px || 0);
+  setRowEl("[data-adjust='py']", card.py || 0);
+  setRowEl("[data-accent]", hslToHex(card));
+  setRowEl("[data-option='stx']", card.stx || "");
+  syncCardStampRow(index);
+  if (cardSearchQuery.trim()) applyCardSearchFilter();
+}
+
 function refreshPreview() {
   if (previewIndex < 0 || $("pv").hidden) return;
   $("pvi").innerHTML = scopePreviewSvgIds(sheetCardPreviewSvg(previewIndex));
   $("pvt").textContent = `Card ${previewIndex + 1} of ${studioState.count}`;
+  syncPreviewControls();
 }
 
 function openPreview(index) {
   previewIndex = (index + studioState.count) % studioState.count;
+  selectCard(previewIndex);
   if ($("pv").hidden) previousFocus = document.activeElement;
   $("pv").hidden = false;
+  syncPreviewSelects(true);
   refreshPreview();
   $("pvx").focus();
 }
@@ -2964,6 +3048,127 @@ function bindEvents() {
     selectCard(index, true);
     getCardRowEl(index)?.querySelector("[data-field='title']")?.focus({ preventScroll: true });
   });
+  [
+    ["pv-title", "title", "change card name"],
+    ["pv-genre", "genre", "change card genre"],
+    ["pv-loc", "loc", "change card place"],
+    ["pv-year", "year", "change card year"],
+    ["pv-code", "code", "change card abbreviation"],
+    ["pv-stx", "stx", "change card stamp text"]
+  ].forEach(([id, field, label]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      updateCard(previewIndex, { [field]: el.value });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+    });
+    bindContinuousHistory(el, label, `pv:${field}`);
+  });
+  [
+    ["pv-zm", "zm", "pv-zm-val", v => `${v}%`, v => Number(v) / 100, "change photo zoom"],
+    ["pv-px", "px", "pv-px-val", v => String(v), v => Number(v), "change horizontal photo position"],
+    ["pv-py", "py", "pv-py-val", v => String(v), v => Number(v), "change vertical photo position"]
+  ].forEach(([id, field, outId, fmt, parseFn, label]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      if ($(outId)) $(outId).textContent = fmt(el.value);
+      updateCard(previewIndex, { [field]: parseFn(el.value) });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+    });
+    bindContinuousHistory(el, label, `pv:${field}`);
+  });
+  $("pv-photo-btn")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    pendingPhotoUploadIndex = previewIndex;
+    ensureSharedPhotoInput().click();
+  });
+  $("pv-crop-reset")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { zm: 1, px: 0, py: 0 });
+    recordDiscrete("reset photo crop");
+    syncSidebarRowValues(previewIndex);
+    render();
+  });
+  $("pv-accent")?.addEventListener("input", event => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { ...hexToHS(event.target.value), autoAccent: false });
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+  });
+  if ($("pv-accent")) bindContinuousHistory($("pv-accent"), "change card accent colour", "pv:accent");
+  [
+    ["pv-theme", "theme", "change card theme"],
+    ["pv-stamp", "sk", "change card stamp"]
+  ].forEach(([id, field, label]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      if (previewIndex < 0) return;
+      updateCard(previewIndex, { [field]: el.value });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  const applyPreviewStampEdit = (patch, label) => {
+    if (previewIndex < 0) return;
+    const st = resolveCardStamp(previewIndex, 0);
+    const current = studioState.cards[previewIndex]?.stampPos;
+    const next = sanitizeStampOverride({
+      x: current?.x ?? st.nx,
+      y: current?.y ?? st.ny,
+      r: current?.r ?? st.r,
+      scale: current?.scale ?? st.mult,
+      ...patch
+    });
+    updateCard(previewIndex, { stampPos: next });
+    patchLiveStampDom(previewIndex, 0);
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+    recordContinuous(label, "pv:stamp-pos");
+  };
+  $("pv-srot")?.addEventListener("input", event => {
+    const angle = normalizeAngle(Number(event.target.value));
+    if ($("pv-srot-val")) $("pv-srot-val").textContent = `${angle}°`;
+    applyPreviewStampEdit({ r: angle }, "rotate stamp");
+  });
+  $("pv-srot")?.addEventListener("change", () => finishContinuous("rotate stamp", "pv:stamp-pos"));
+  $("pv-sscale")?.addEventListener("input", event => {
+    const scale = clampStampScale(Number(event.target.value) / 100);
+    if ($("pv-sscale-val")) $("pv-sscale-val").textContent = `${Math.round(scale * 100)}%`;
+    applyPreviewStampEdit({ scale }, "scale stamp");
+  });
+  $("pv-sscale")?.addEventListener("change", () => finishContinuous("scale stamp", "pv:stamp-pos"));
+  $("pv-surprise")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    surpriseCards({ seed: generateSeed(), onlyIndex: previewIndex, actionLabel: "surprise card styling" });
+  });
+  $("pv-lock")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    toggleCardLock(previewIndex);
+    syncPreviewControls();
+  });
+  $("pv-reset-stamp")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    const current = studioState.cards[previewIndex];
+    if (current && (current.stampPos || current.stamp2Pos)) {
+      const { stampPos: _p1, stamp2Pos: _p2, ...rest } = current;
+      const next = { ...rest };
+      cardIds.set(next, cardIdentity(current));
+      studioState.cards = studioState.cards.map((item, idx) => idx === previewIndex ? next : item);
+      recordDiscrete("reset stamp position");
+      buildRows();
+      render();
+    }
+  });
+  $("pv-reset-style")?.addEventListener("click", () => {
+    if (previewIndex >= 0) resetSingleCardStyling(previewIndex);
+  });
   $("pvsvg").addEventListener("click", downloadCardSvg);
   $("pvpng").addEventListener("click", async () => {
     try {
@@ -2985,8 +3190,9 @@ function bindEvents() {
   });
   document.addEventListener("keydown", event => {
     if ($("pv").hidden) return;
-    if (event.key === "Escape") closePreview();
-    else if (event.key === "ArrowLeft") openPreview(previewIndex - 1);
+    if (event.key === "Escape") { closePreview(); return; }
+    if (event.target?.matches?.("#pv input, #pv select, #pv textarea")) return;
+    if (event.key === "ArrowLeft") openPreview(previewIndex - 1);
     else if (event.key === "ArrowRight") openPreview(previewIndex + 1);
   });
   document.addEventListener("keydown", event => {
