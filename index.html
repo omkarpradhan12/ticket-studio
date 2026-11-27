@@ -30,12 +30,13 @@
     </div>
     <div class="topbar-actions">
       <button class="g" id="print" type="button"><span data-icon="print"></span> Print</button>
-      <button class="accent" id="svg" type="button"><span data-icon="download"></span> Export SVG</button>
+      <button class="accent" id="pdf" type="button"><span data-icon="download"></span> Export PDF (300 dpi)</button>
       <details class="action-menu export-menu">
-        <summary aria-label="More export formats">Formats</summary>
+        <summary aria-label="Advanced export options">Advanced</summary>
         <div class="menu-panel">
+          <button class="g" id="svg" type="button"><span data-icon="download"></span> Vector SVG (files)</button>
+          <button class="g" id="svg-code-open" type="button"><span data-icon="duplicate"></span> Copy SVG code (pages)</button>
           <button class="g" id="png" type="button"><span data-icon="download"></span> PNG (300 dpi)</button>
-          <button class="g" id="pdf" type="button"><span data-icon="download"></span> PDF (300 dpi)</button>
           <button class="g" id="cut" type="button"><span data-icon="download"></span> Cutter SVG</button>
         </div>
       </details>
@@ -703,9 +704,22 @@
   <p class="hint surprise-seed" id="sp-seed-info"></p>
 </dialog>
 
+<dialog id="svg-code-dialog" class="svg-code-dialog" aria-labelledby="svg-code-dialog-title">
+  <form method="dialog" class="dialog-header">
+    <h2 id="svg-code-dialog-title">Page SVG code</h2>
+    <button class="g" type="submit" aria-label="Close SVG code dialog"><span data-icon="close"></span> Close</button>
+  </form>
+  <p class="svg-code-intro">Copy standalone vector SVG code for each rendered page.</p>
+  <div class="svg-code-toolbar">
+    <label class="chk"><input type="checkbox" id="svg-code-fonts" checked> Embed font CSS (<code>@font-face</code>)</label>
+    <span class="hint" id="svg-code-summary"></span>
+  </div>
+  <div id="svg-code-list" class="svg-code-list"></div>
+</dialog>
+
 <div class="mobile-actionbar" aria-label="Sheet actions">
   <button class="g" id="mobile-print" type="button"><span data-icon="print"></span> Print</button>
-  <button class="accent" id="mobile-export" type="button"><span data-icon="download"></span> Export SVG</button>
+  <button class="accent" id="mobile-export" type="button"><span data-icon="download"></span> Export PDF</button>
 </div>
 
 <div id="undo-toast" class="history-toast" role="status" aria-live="polite" hidden>

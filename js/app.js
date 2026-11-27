@@ -2,7 +2,7 @@ import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSessi
 import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9e";
 import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9e";
 import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9e";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9e";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase9e";
 import { FONTCSS, injectFonts } from "./fonts.js?v=phase9e";
 import { History } from "./history.mjs?v=phase9e";
 import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9e";
@@ -3096,10 +3096,65 @@ function bindEvents() {
     printSheet().catch(() => window.print());
   });
   $("mobile-print").addEventListener("click", () => $("print").click());
-  $("mobile-export").addEventListener("click", () => $("svg").click());
+  $("mobile-export").addEventListener("click", () => $("pdf").click());
   $("svg").addEventListener("click", () => exportAllSvgs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("png").addEventListener("click", () => exportAllPngs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("pdf").addEventListener("click", () => exportPdf([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
+  const populateSvgCodeDialog = () => {
+    const list = $("svg-code-list");
+    const summary = $("svg-code-summary");
+    if (!list) return;
+    const sheets = [...document.querySelectorAll("#sheets .sheet")];
+    const embedFonts = Boolean($("svg-code-fonts")?.checked);
+    if (summary) summary.textContent = `${sheets.length} page${sheets.length === 1 ? "" : "s"}`;
+    list.replaceChildren();
+    sheets.forEach((sheetEl, idx) => {
+      const code = serializeSheetSvg(sheetEl, currentLayout.W, currentLayout.H, { embedFonts });
+      const rawName = sheetEl.dataset.name || `ticket-cards-p${idx + 1}`;
+      const label = rawName === "cut-template"
+        ? "Cut Template"
+        : `Page ${idx + 1} (${rawName})`;
+      const sizeKb = (code.length / 1024).toFixed(1);
+      const card = document.createElement("section");
+      card.className = "svg-code-card";
+      card.innerHTML = `
+        <div class="svg-code-head">
+          <strong>${escapeHtml(label)}</strong>
+          <span class="hint">${sizeKb} KB</span>
+          <button class="g sm" type="button" data-copy-svg="${idx}">${iconMarkup("duplicate")} Copy SVG</button>
+        </div>
+        <textarea class="svg-code-textarea" readonly rows="6" aria-label="${escapeHtml(label)} SVG code"></textarea>`;
+      const textarea = card.querySelector("textarea");
+      textarea.value = code;
+      const copyBtn = card.querySelector("[data-copy-svg]");
+      copyBtn.addEventListener("click", async () => {
+        try {
+          if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(code);
+          else {
+            textarea.focus();
+            textarea.select();
+            document.execCommand?.("copy");
+          }
+          copyBtn.innerHTML = `${iconMarkup("duplicate")} Copied!`;
+          message(`Copied ${label} SVG code (${sizeKb} KB).`);
+          setTimeout(() => { copyBtn.innerHTML = `${iconMarkup("duplicate")} Copy SVG`; }, 1600);
+        } catch {
+          textarea.focus();
+          textarea.select();
+          message("Selected SVG text — press Ctrl+C to copy.");
+        }
+      });
+      list.append(card);
+    });
+  };
+  $("svg-code-open")?.addEventListener("click", () => {
+    populateSvgCodeDialog();
+    $("svg-code-dialog")?.showModal();
+  });
+  $("svg-code-fonts")?.addEventListener("change", populateSvgCodeDialog);
+  $("svg-code-dialog")?.addEventListener("click", event => {
+    if (event.target === $("svg-code-dialog")) $("svg-code-dialog").close();
+  });
   $("cut").addEventListener("click", () => {
     triggerDownload(new Blob([cutSvg(currentLayout, $("crad").value, $("regmarks").checked)], { type: "image/svg+xml" }), "cutter-template.svg");
     message("Cutter SVG downloaded (red = cut, blue = punch).");

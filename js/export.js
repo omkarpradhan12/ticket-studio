@@ -12,14 +12,16 @@ export function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-export function serializeSheetSvg(el, W, H) {
+export function serializeSheetSvg(el, W, H, { embedFonts = true } = {}) {
   const t = el.cloneNode(true);
   t.querySelectorAll(".pp, .st-ui, .st-snap-guide").forEach(n => n.remove());
   t.setAttribute("width", (W / 2.83465).toFixed(2) + "mm");
   t.setAttribute("height", (H / 2.83465).toFixed(2) + "mm");
-  const st = document.createElementNS("http://www.w3.org/2000/svg", "style");
-  st.textContent = FONTCSS;
-  t.insertBefore(st, t.firstChild);
+  if (embedFonts) {
+    const st = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    st.textContent = FONTCSS;
+    t.insertBefore(st, t.firstChild);
+  }
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(t);
 }
 
