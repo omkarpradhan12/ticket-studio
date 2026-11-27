@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10d";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10d";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10d";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10d";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10d";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10d";
-import { History } from "./history.mjs?v=phase10d";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10d";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10d";
+import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10e";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10e";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10e";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10e";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10e";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10e";
+import { History } from "./history.mjs?v=phase10e";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10e";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10e";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase10d";
+} from "./borders.mjs?v=phase10e";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase10d";
+} from "./stamps.mjs?v=phase10e";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase10d";
+} from "./card-styles.mjs?v=phase10e";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase10d";
+} from "./randomiser.mjs?v=phase10e";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase10d";
+} from "./search.mjs?v=phase10e";
 
 const MOUNT_NAMES = {
   "0": "Tape",

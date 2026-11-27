@@ -4080,8 +4080,17 @@ details.sec > summary {
   #lookup-transfer-toast[hidden],
   #alb-recovery[hidden],
   #alb-disabled-banner[hidden],
-  #alb-transfer-toast[hidden] {
+  #alb-transfer-toast[hidden],
+  .lookup-spotify-wrap[hidden] {
     display: none !important;
+  }
+
+  .lookup-spotify-wrap {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.03);
   }
 
   .lookup-query-fld input[type="search"] {

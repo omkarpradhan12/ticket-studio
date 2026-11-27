@@ -886,7 +886,11 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 
 ---
 
-## Parked Follow-Up Note (Waiting for User to Resume)
-- **Alternative / Improved Music Search API Option**:
-  - Reference: `https://gist.github.com/0xdevalias/eba698730024674ecae7f43f4c650096` (*A collection of music APIs, databases, and related tools*).
-  - **Status**: Noted only — do not implement until the user returns and asks to continue. Goal will be to add a better API option from that list (CORS-friendly / fast discography & artist/album search + cover art for browser usage without strict ~1 req/sec 503 throttling) to the lookup modes.
+## Alternative Music Search APIs (`?v=phase10e`, Completed)
+- **Reference**: `https://gist.github.com/0xdevalias/eba698730024674ecae7f43f4c650096` (*A collection of music APIs, databases, and related tools*).
+- **Album Lookup (`album-lookup.html`, `js/album-lookup-providers.mjs`, `js/album-lookup.js`)**:
+  - Added **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`) supporting album, artist-only discography (LP albums prioritized chronologically ahead of EPs/singles), and album+artist searches with direct CORS-safe `600x600bb` artwork.
+  - Added **`Spotify Web API (Token · Gist)`** (`spotify`) supporting optional session-only Bearer tokens (`/v1/search` and `/v1/artists/{id}/albums` for artist-only queries).
+  - Kept **`MusicBrainz`** & **`Wikipedia`**, added `#alb-fast-fallback-btn` (`Try iTunes (fast)`) alongside `#alb-wiki-fallback-btn`, and wired auto cover preview + direct `coverUrl` fast path in `fetchAlbumCoverArt()`.
+- **Band Lookup (`band-lookup.html`, `js/band-lookup-providers.mjs`, `js/band-lookup.js`)**:
+  - Added **`TheAudioDB (Fast · origin/year/genre)`** (`theaudiodb`), **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`), and **`Spotify Web API (Token · Gist)`** (`spotify`) alongside `MusicBrainz` & `Wikipedia`, with `#lookup-fast-fallback-btn` (`Try TheAudioDB (fast)`) and shared sessionStorage Spotify token handling.

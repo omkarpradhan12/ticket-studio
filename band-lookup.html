@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Band Lookup — Ticket Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10d">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10e">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
-<link rel="stylesheet" href="css/tokens.css?v=phase10d">
-<link rel="stylesheet" href="css/app.css?v=phase10d">
+<link rel="stylesheet" href="css/tokens.css?v=phase10e">
+<link rel="stylesheet" href="css/app.css?v=phase10e">
 </head>
 <body>
 <header class="topbar">
@@ -47,7 +47,7 @@
     </div>
 
     <div class="lookup-disclosure" role="note">
-      <strong>How lookups work:</strong> Searches run only when you click <strong>Search</strong>. Typed names are sent directly from your browser to <code>musicbrainz.org</code> (CC0 artist metadata; anonymous browser pool ~1 req/sec) and optional photos are fetched from <code>en.wikipedia.org</code> / <code>wikimedia.org</code>. Results are cached for this session.
+      <strong>How lookups work:</strong> Searches run only when you click <strong>Search</strong>. Choose <strong>MusicBrainz</strong> (CC0; ~1 req/sec), <strong>TheAudioDB</strong> (fast zero-key genre/origin/year + photo), <strong>iTunes / Apple Music</strong> (fast zero-key), <strong>Spotify Web API</strong> (optional Bearer token), or <strong>Wikipedia</strong>. Results are cached for this session.
     </div>
 
     <div id="lookup-disabled-banner" class="lookup-warning" hidden>
@@ -63,6 +63,9 @@
         <span>Source</span>
         <select id="lookup-provider">
           <option value="musicbrainz">MusicBrainz (CC0 multi-match)</option>
+          <option value="theaudiodb">TheAudioDB (Fast · origin/year/genre)</option>
+          <option value="itunes">iTunes / Apple Music (Fast · zero-key)</option>
+          <option value="spotify">Spotify Web API (Token · Gist)</option>
           <option value="wikipedia">Wikipedia (Fallback)</option>
         </select>
       </label>
@@ -71,11 +74,19 @@
       </div>
     </form>
 
+    <div id="lookup-spotify-wrap" class="lookup-spotify-wrap" hidden>
+      <label class="fld">
+        <span>Spotify Bearer token (session-only, never exported)</span>
+        <input id="lookup-spotify-token" type="password" placeholder="Paste OAuth access token from developer.spotify.com…" autocomplete="off" spellcheck="false">
+      </label>
+    </div>
+
     <div class="lookup-status-row">
       <div id="lookup-status" class="hint" role="status" aria-live="polite"></div>
       <div id="lookup-recovery" class="ctrl-flex" hidden>
         <button class="g sm" id="lookup-retry-btn" type="button"><span data-icon="reset"></span> Retry</button>
-        <button class="g sm" id="lookup-wiki-fallback-btn" type="button">Try Wikipedia search instead</button>
+        <button class="g sm" id="lookup-fast-fallback-btn" type="button">Try TheAudioDB (fast)</button>
+        <button class="g sm" id="lookup-wiki-fallback-btn" type="button">Try Wikipedia search</button>
       </div>
     </div>
   </section>
@@ -155,6 +166,6 @@
   <button class="accent sm" id="lk-open-editor" type="button"><span data-icon="view"></span> Open editor</button>
 </div>
 
-<script type="module" src="js/band-lookup.js?v=phase10d"></script>
+<script type="module" src="js/band-lookup.js?v=phase10e"></script>
 </body>
 </html>

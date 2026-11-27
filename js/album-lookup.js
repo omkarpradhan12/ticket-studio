@@ -1,18 +1,31 @@
-import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10d";
-import { populateThemeSelect } from "./themes.js?v=phase10d";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10d";
-import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10d";
-import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10d";
-import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10d";
-import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10d";
+import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10e";
+import { populateThemeSelect } from "./themes.js?v=phase10e";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10e";
+import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10e";
+import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10e";
+import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10e";
+import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10e";
 import {
   ALBUM_LOOKUP_CONFIG,
   fetchAlbumCoverArt,
   searchOnlineAlbums
-} from "./album-lookup-providers.mjs?v=phase10d";
+} from "./album-lookup-providers.mjs?v=phase10e";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
+const SPOTIFY_TOKEN_KEY = "ticketgen.spotifyToken.v1";
+const ALBUM_PROVIDER_NAMES = {
+  musicbrainz: "MusicBrainz",
+  itunes: "iTunes / Apple Music",
+  spotify: "Spotify",
+  wikipedia: "Wikipedia"
+};
+
+function syncSpotifyTokenUi() {
+  const wrap = $("alb-spotify-wrap");
+  if (!wrap) return;
+  wrap.hidden = ($("alb-provider")?.value || "") !== "spotify";
+}
 
 let activeResults = [];
 let selectedMatchId = "";
@@ -111,6 +124,11 @@ function populateDraftFromAlbum(item) {
   $("alb-code").value = item.code || abbr(item.artistName || item.albumName || "");
   $("alb-source-pill").hidden = false;
   $("alb-source-pill").textContent = item.licenseNote || item.source || "";
+  const hasManualUpload = Boolean(String(draftCover?.img || "").startsWith("data:"));
+  if (item.coverUrl && !hasManualUpload && $("alb-url").value.trim() !== item.coverUrl) {
+    $("alb-url").value = item.coverUrl;
+    loadCoverUrl(item.coverUrl, item.licenseNote, item.id);
+  }
   renderResults();
   refreshLivePreview();
 }
@@ -149,17 +167,20 @@ async function runAlbumSearch(overrideProvider = null) {
     return;
   }
   if (overrideProvider) $("alb-provider").value = overrideProvider;
+  syncSpotifyTokenUi();
   const provider = $("alb-provider").value || "musicbrainz";
+  const providerLabel = ALBUM_PROVIDER_NAMES[provider] || provider;
+  const spotifyToken = ($("alb-spotify-token")?.value || "").trim();
   const displayQuery = query && artist ? `${query} — ${artist}` : (query || artist);
   lastSearchQuery = displayQuery;
   setBusy(true);
   setStatus(
     !query && artist
-      ? `Searching ${provider === "wikipedia" ? "Wikipedia" : "MusicBrainz"} albums by “${artist}”…`
-      : `Searching ${provider === "wikipedia" ? "Wikipedia" : "MusicBrainz"} albums for “${displayQuery}”…`
+      ? `Searching ${providerLabel} albums by “${artist}”…`
+      : `Searching ${providerLabel} albums for “${displayQuery}”…`
   );
   try {
-    const res = await searchOnlineAlbums(query, { artist, provider });
+    const res = await searchOnlineAlbums(query, { artist, provider, spotifyToken });
     activeResults = res.results;
     renderResults();
     if (!res.results.length) {
@@ -193,7 +214,9 @@ async function fetchCoverArt() {
       mbid: match?.mbid || "",
       albumName,
       artistName,
-      wikiPageTitle: match?.wikiPageTitle || ""
+      wikiPageTitle: match?.wikiPageTitle || "",
+      coverUrl: match?.coverUrl || "",
+      source: match?.source || ""
     });
     if (!found || !found.coverUrl) {
       $("alb-photo-status").textContent = "No cover art found online. Paste a direct URL or upload an image.";
@@ -208,15 +231,17 @@ async function fetchCoverArt() {
   }
 }
 
-async function loadCoverUrl(url, note = "") {
+async function loadCoverUrl(url, note = "", expectMatchId = "") {
   const cleanUrl = String(url || "").trim();
   if (!cleanUrl) return;
   try {
     const imgData = await processImageUrl(cleanUrl);
+    if (expectMatchId && selectedMatchId !== expectMatchId) return;
     draftCover = { ...imgData, imgUrl: cleanUrl };
     syncDraftCoverUi();
     if (note) $("alb-photo-status").textContent += ` (${note})`;
   } catch {
+    if (expectMatchId && selectedMatchId !== expectMatchId) return;
     draftCover = { img: cleanUrl, imgUrl: cleanUrl, corsLimited: true };
     syncDraftCoverUi();
     if (note) $("alb-photo-status").textContent += ` ${note}`;
@@ -351,7 +376,17 @@ function init() {
     event.preventDefault();
     runAlbumSearch();
   });
+  try {
+    const savedToken = sessionStorage.getItem(SPOTIFY_TOKEN_KEY) || "";
+    if (savedToken && $("alb-spotify-token")) $("alb-spotify-token").value = savedToken;
+  } catch {}
+  $("alb-provider")?.addEventListener("change", syncSpotifyTokenUi);
+  $("alb-spotify-token")?.addEventListener("input", event => {
+    try { sessionStorage.setItem(SPOTIFY_TOKEN_KEY, event.target.value.trim()); } catch {}
+  });
+  syncSpotifyTokenUi();
   $("alb-retry-btn").addEventListener("click", () => runAlbumSearch());
+  $("alb-fast-fallback-btn")?.addEventListener("click", () => runAlbumSearch("itunes"));
   $("alb-wiki-fallback-btn").addEventListener("click", () => runAlbumSearch("wikipedia"));
   $("alb-results").addEventListener("click", event => {
     const btn = event.target.closest("[data-match-id]");

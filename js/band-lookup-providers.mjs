@@ -4,7 +4,7 @@
 
 export const LOOKUP_FEATURE_CONFIG = {
   enabled: true,
-  defaultProvider: "musicbrainz", // "musicbrainz" | "wikipedia"
+  defaultProvider: "musicbrainz", // "musicbrainz" | "theaudiodb" | "itunes" | "spotify" | "wikipedia"
   minMbGapMs: 1250,
   requestTimeoutMs: 10000
 };
@@ -98,18 +98,93 @@ export function parseWikipediaSearch(json) {
   }).filter(item => item.name);
 }
 
-async function fetchJsonWithTimeout(url, fetchImpl, timeoutMs) {
+export function parseTheAudioDbArtists(json) {
+  const list = Array.isArray(json?.artists) ? json.artists : [];
+  return list.map(a => {
+    const name = String(a?.strArtist || "").trim();
+    const genre = [a?.strGenre, a?.strStyle]
+      .map(s => String(s || "").trim())
+      .filter((s, idx, arr) => s && arr.indexOf(s) === idx)
+      .slice(0, 2)
+      .join(" / ");
+    return {
+      id: `tadb:${a.idArtist || name}`,
+      mbid: a.strMusicBrainzID || "",
+      source: "TheAudioDB",
+      name,
+      disambiguation: String(a?.strLabel || "").trim(),
+      genre,
+      loc: String(a?.strCountry || "").trim(),
+      year: extractYear(a?.intFormedYear || a?.intBornYear),
+      code: makeBandAbbr(name),
+      photoUrl: String(a?.strArtistThumb || "").trim(),
+      score: 100,
+      licenseNote: "Metadata: TheAudioDB"
+    };
+  }).filter(item => item.name);
+}
+
+export function parseItunesArtists(json) {
+  const list = Array.isArray(json?.results) ? json.results : [];
+  return list
+    .filter(item => item && item.wrapperType === "artist" && item.artistName)
+    .map(item => {
+      const name = String(item.artistName || "").trim();
+      return {
+        id: `it:${item.artistId || name}`,
+        mbid: "",
+        source: "iTunes",
+        name,
+        disambiguation: item.artistType ? String(item.artistType) : "",
+        genre: String(item.primaryGenreName || "").trim(),
+        loc: "",
+        year: "",
+        code: makeBandAbbr(name),
+        score: 100,
+        licenseNote: "Metadata: Apple / iTunes Search API"
+      };
+    });
+}
+
+export function parseSpotifyArtists(json) {
+  const list = Array.isArray(json?.artists?.items) ? json.artists.items : [];
+  return list
+    .filter(item => item && item.name)
+    .map(item => {
+      const name = String(item.name || "").trim();
+      const genres = (Array.isArray(item.genres) ? item.genres : []).slice(0, 2).map(titleCaseTag);
+      const images = Array.isArray(item.images) ? item.images : [];
+      return {
+        id: `sp:${item.id || name}`,
+        mbid: "",
+        source: "Spotify",
+        name,
+        disambiguation: "",
+        genre: genres.join(" / "),
+        loc: "",
+        year: "",
+        code: makeBandAbbr(name),
+        photoUrl: images[0]?.url || images[images.length - 1]?.url || "",
+        score: Number(item.popularity) || 0,
+        licenseNote: "Metadata & photo: Spotify Web API"
+      };
+    });
+}
+
+async function fetchJsonWithTimeout(url, fetchImpl, timeoutMs, options = {}) {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
   try {
-    const resp = await fetchImpl(url, ctrl ? { signal: ctrl.signal } : undefined);
+    const resp = await fetchImpl(url, ctrl ? { ...options, signal: ctrl.signal } : options);
     if (!resp.ok) {
       const err = new Error(
-        resp.status === 503
-          ? "MusicBrainz is temporarily rate-limiting browser requests (HTTP 503). Wait a moment and retry, or switch to Wikipedia lookup."
-          : resp.status === 429
-            ? "Rate limit reached (HTTP 429). Please wait before searching again."
-            : `Lookup request failed (HTTP ${resp.status}).`
+        resp.status === 401
+          ? "Authorization failed (HTTP 401). Check your Spotify Bearer token or switch to TheAudioDB / MusicBrainz."
+          : resp.status === 503
+            ? "MusicBrainz is temporarily rate-limiting browser requests (HTTP 503). Wait a moment or switch to TheAudioDB / iTunes."
+            : resp.status === 429
+              ? "Rate limit reached (HTTP 429). Please wait before searching again."
+              : `Lookup request failed (HTTP ${resp.status}).`
       );
       err.httpStatus = resp.status;
       throw err;
@@ -133,6 +208,7 @@ function enqueueMb(taskFn, minGapMs = LOOKUP_FEATURE_CONFIG.minMbGapMs) {
 
 export async function searchOnlineBands(rawQuery, {
   provider = LOOKUP_FEATURE_CONFIG.defaultProvider,
+  spotifyToken = "",
   fetchImpl = (...args) => fetch(...args),
   timeoutMs = LOOKUP_FEATURE_CONFIG.requestTimeoutMs
 } = {}) {
@@ -145,9 +221,40 @@ export async function searchOnlineBands(rawQuery, {
     throw new Error("You appear to be offline. Connect to the internet or use Manual URL / Bulk Upload.");
   }
 
+  const cleanToken = String(spotifyToken || "").trim().replace(/^Bearer\s+/i, "");
+  if (provider === "spotify" && !cleanToken) {
+    throw new Error("Spotify Web API requires a Bearer token. Paste a token or switch to TheAudioDB / MusicBrainz.");
+  }
+
   const cacheKey = `${provider}:${query.toLowerCase()}`;
   if (searchCache.has(cacheKey)) {
     return { ...searchCache.get(cacheKey), fromCache: true };
+  }
+
+  if (provider === "theaudiodb") {
+    const url = `https://www.theaudiodb.com/api/v1/json/123/search.php?s=${encodeURIComponent(query)}`;
+    const json = await fetchJsonWithTimeout(url, fetchImpl, timeoutMs);
+    const out = { query, provider: "theaudiodb", results: parseTheAudioDbArtists(json), fromCache: false };
+    searchCache.set(cacheKey, out);
+    return out;
+  }
+
+  if (provider === "itunes") {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=musicArtist&limit=10`;
+    const json = await fetchJsonWithTimeout(url, fetchImpl, timeoutMs);
+    const out = { query, provider: "itunes", results: parseItunesArtists(json), fromCache: false };
+    searchCache.set(cacheKey, out);
+    return out;
+  }
+
+  if (provider === "spotify") {
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=10`;
+    const json = await fetchJsonWithTimeout(url, fetchImpl, timeoutMs, {
+      headers: { Authorization: `Bearer ${cleanToken}` }
+    });
+    const out = { query, provider: "spotify", results: parseSpotifyArtists(json), fromCache: false };
+    searchCache.set(cacheKey, out);
+    return out;
   }
 
   if (provider === "wikipedia") {

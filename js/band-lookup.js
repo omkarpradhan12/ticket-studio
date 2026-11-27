@@ -1,16 +1,30 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10d";
-import { processImageFile, processImageUrl, hexToHS, hslToHex } from "./image-utils.js?v=phase10d";
-import { abbr } from "./svg-engine.js?v=phase10d";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10d";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10e";
+import { processImageFile, processImageUrl, hexToHS, hslToHex } from "./image-utils.js?v=phase10e";
+import { abbr } from "./svg-engine.js?v=phase10e";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10e";
 import {
   LOOKUP_FEATURE_CONFIG,
   fetchWikipediaPhotoForArtist,
   mergeCardLookupFields,
   searchOnlineBands
-} from "./band-lookup-providers.mjs?v=phase10d";
+} from "./band-lookup-providers.mjs?v=phase10e";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
+const SPOTIFY_TOKEN_KEY = "ticketgen.spotifyToken.v1";
+const BAND_PROVIDER_NAMES = {
+  musicbrainz: "MusicBrainz",
+  theaudiodb: "TheAudioDB",
+  itunes: "iTunes / Apple Music",
+  spotify: "Spotify",
+  wikipedia: "Wikipedia"
+};
+
+function syncSpotifyTokenUi() {
+  const wrap = $("lookup-spotify-wrap");
+  if (!wrap) return;
+  wrap.hidden = ($("lookup-provider")?.value || "") !== "spotify";
+}
 
 let activeResults = [];
 let selectedMatchId = "";
@@ -62,6 +76,11 @@ function populateDraftFromMatch(item) {
   $("lk-code").value = item.code || abbr(item.name || "");
   $("lookup-source-pill").hidden = false;
   $("lookup-source-pill").textContent = item.licenseNote || item.source || "";
+  const hasManualUpload = Boolean(String(draftPhoto?.img || "").startsWith("data:"));
+  if (item.photoUrl && !hasManualUpload && $("lk-url").value.trim() !== item.photoUrl) {
+    $("lk-url").value = item.photoUrl;
+    loadImageFromUrl(item.photoUrl, item.licenseNote, item.id);
+  }
   renderResults();
 }
 
@@ -98,12 +117,15 @@ async function runSearch(overrideProvider = null) {
     return;
   }
   if (overrideProvider) $("lookup-provider").value = overrideProvider;
+  syncSpotifyTokenUi();
   const provider = $("lookup-provider").value || "musicbrainz";
+  const providerLabel = BAND_PROVIDER_NAMES[provider] || provider;
+  const spotifyToken = ($("lookup-spotify-token")?.value || "").trim();
   lastSearchQuery = query;
   setBusy(true);
-  setStatus(`Searching ${provider === "wikipedia" ? "Wikipedia" : "MusicBrainz"} for “${query}”…`);
+  setStatus(`Searching ${providerLabel} for “${query}”…`);
   try {
-    const res = await searchOnlineBands(query, { provider });
+    const res = await searchOnlineBands(query, { provider, spotifyToken });
     activeResults = res.results;
     renderResults();
     if (!res.results.length) {
@@ -130,13 +152,23 @@ async function fetchSelectedWikimediaPhoto() {
   const match = activeResults.find(r => r.id === selectedMatchId);
   const btn = $("lk-fetch-photo");
   btn.disabled = true;
-  $("lk-photo-status").textContent = "Checking Wikipedia / Wikimedia Commons for a photo…";
+  $("lk-photo-status").textContent = "Checking Wikimedia / provider photo…";
   try {
+    if (match?.photoUrl && !$("lk-url").value.trim()) {
+      $("lk-url").value = match.photoUrl;
+      await loadImageFromUrl(match.photoUrl, match.licenseNote || match.source || "");
+      return;
+    }
     const found = await fetchWikipediaPhotoForArtist({
       name: title,
       wikiPageTitle: match?.wikiPageTitle || ""
     });
     if (!found || !found.thumbUrl) {
+      if (match?.photoUrl) {
+        $("lk-url").value = match.photoUrl;
+        await loadImageFromUrl(match.photoUrl, match.licenseNote || match.source || "");
+        return;
+      }
       $("lk-photo-status").textContent = "No Wikimedia photo found for this artist. Paste a URL or upload a local file.";
       return;
     }
@@ -149,15 +181,17 @@ async function fetchSelectedWikimediaPhoto() {
   }
 }
 
-async function loadImageFromUrl(url, note = "") {
+async function loadImageFromUrl(url, note = "", expectMatchId = "") {
   const cleanUrl = String(url || "").trim();
   if (!cleanUrl) return;
   try {
     const imgData = await processImageUrl(cleanUrl);
+    if (expectMatchId && selectedMatchId !== expectMatchId) return;
     draftPhoto = { ...imgData, imgUrl: cleanUrl };
     syncDraftPhotoUi();
     if (note) $("lk-photo-status").textContent += ` (${note})`;
   } catch {
+    if (expectMatchId && selectedMatchId !== expectMatchId) return;
     // Graceful fallback: keep direct URL marked corsLimited so accent defaults cleanly without crashing
     draftPhoto = { img: cleanUrl, imgUrl: cleanUrl, corsLimited: true };
     syncDraftPhotoUi();
@@ -289,7 +323,17 @@ function init() {
     event.preventDefault();
     runSearch();
   });
+  try {
+    const savedToken = sessionStorage.getItem(SPOTIFY_TOKEN_KEY) || "";
+    if (savedToken && $("lookup-spotify-token")) $("lookup-spotify-token").value = savedToken;
+  } catch {}
+  $("lookup-provider")?.addEventListener("change", syncSpotifyTokenUi);
+  $("lookup-spotify-token")?.addEventListener("input", event => {
+    try { sessionStorage.setItem(SPOTIFY_TOKEN_KEY, event.target.value.trim()); } catch {}
+  });
+  syncSpotifyTokenUi();
   $("lookup-retry-btn").addEventListener("click", () => runSearch());
+  $("lookup-fast-fallback-btn")?.addEventListener("click", () => runSearch("theaudiodb"));
   $("lookup-wiki-fallback-btn").addEventListener("click", () => runSearch("wikipedia"));
   $("lookup-results").addEventListener("click", event => {
     const btn = event.target.closest("[data-match-id]");
