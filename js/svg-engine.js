@@ -1,10 +1,10 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10";
-import { hsl } from "./image-utils.js?v=phase10";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10";
-import { renderQrSvgMarkup } from "./qr.mjs?v=phase10";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10b";
+import { hsl } from "./image-utils.js?v=phase10b";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10b";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10b";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10b";
+import { renderQrSvgMarkup } from "./qr.mjs?v=phase10b";
 
 export { SKINDS, STAMPS };
 
@@ -899,7 +899,7 @@ export function renderCardBack(slotIndex, cfg) {
   // Clean vector centerpiece stamp logo (slightly rotated, no ink wear/bleed)
   const skRaw = cfg.stampShape || "round";
   const sk = skRaw === "mixed" ? "round" : skRaw;
-  const centerScale = Number(Math.max(0.75, Math.min(1.45, Math.min(CW, CH) * 0.0082)).toFixed(2));
+  const centerScale = Number(Math.max(1.45, Math.min(2.85, Math.min(CW, CH) * 0.0162)).toFixed(2));
   const cleanStyle = { ...resolveStampStyle(cfg, null), wear: 0, opacity: 100 };
   const centerStamp = sk === "none"
     ? ""

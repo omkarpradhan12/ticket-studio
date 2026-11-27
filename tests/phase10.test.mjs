@@ -4,6 +4,7 @@ import { autoStampGeometry, resolveStampTransform, snapStampNorm } from "../js/s
 import { pickSafeStampNorm, surpriseSingleCard } from "../js/randomiser.mjs";
 import { cardSearchHaystack, filterCardIndices } from "../js/search.mjs";
 import { BORDER_STYLES, renderBorder } from "../js/borders.mjs";
+import { clearCardStylingRecord, hasCustomCardStyling, sanitizeCardStyleOverrides } from "../js/card-styles.mjs";
 
 // 1. QR matrix structure and SVG generation
 {
@@ -64,6 +65,27 @@ import { BORDER_STYLES, renderBorder } from "../js/borders.mjs";
   assert.deepEqual(filterCardIndices(cards, 2, "northlightsound.co").matchedIndices, [0]);
   assert.deepEqual(filterCardIndices(cards, 2, "creative director").matchedIndices, [0]);
   assert.deepEqual(filterCardIndices(cards, 2, "0148").matchedIndices, [0]);
+}
+
+// 5. Per-card border, corner hardware, mounts & distress overrides round-trip and reset cleanly
+{
+  const overrides = sanitizeCardStyleOverrides({
+    border: { style: 17, width: 2.2, corner: "notched", ornament: "diamond", wear: 15, inner: true },
+    cornerHardware: "rivets",
+    photoMounts: [4, 8],
+    fxClaw: true,
+    fxBullet: true
+  });
+  assert.equal(overrides.border.style, 17);
+  assert.equal(overrides.border.corner, "notched");
+  assert.equal(overrides.cornerHardware, "rivets");
+  assert.deepEqual(overrides.photoMounts, [4, 8]);
+  assert.equal(overrides.fxClaw, true);
+  assert.equal(overrides.fxBullet, true);
+  assert.equal(hasCustomCardStyling(overrides), true);
+  const cleared = clearCardStylingRecord({ title: "Test Band", ...overrides });
+  assert.equal(hasCustomCardStyling(cleared), false);
+  assert.equal(cleared.title, "Test Band");
 }
 
 console.log("Phase 10 visiting card, QR, borders 16-17, and card back prep tests passed.");

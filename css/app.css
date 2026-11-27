@@ -490,6 +490,11 @@ button.sm, .btn.sm {
   box-shadow: 0 5px 22px rgba(0, 0, 0, 0.22);
   background: #fff;
   border-radius: 2px;
+  transition: outline-color 0.16s ease, box-shadow 0.16s ease;
+}
+.sheet.is-active-page {
+  outline: 2px solid color-mix(in srgb, var(--accent, #ff5a36) 72%, transparent);
+  outline-offset: 2px;
 }
 .pp {
   cursor: grab;
@@ -614,6 +619,45 @@ button.sm, .btn.sm {
   justify-content: space-between;
   color: var(--ink);
 }
+.pv-ed-subheader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.pv-ed-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 2px 0;
+}
+.pv-sub-fields {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 0;
+  padding: 6px 8px 8px;
+}
+.pv-sub-fields legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mute);
+}
+.pv-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+}
+.pv-check-grid .chk {
+  font-size: 11px;
+}
 @media (max-width: 780px) {
   .pv-body {
     display: flex;
@@ -734,6 +778,7 @@ button.sm, .btn.sm {
     height: 297mm;
     border-radius: 0;
     box-shadow: none;
+    outline: none !important;
     break-after: page;
     page-break-after: always;
     break-inside: avoid;
