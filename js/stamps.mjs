@@ -401,14 +401,31 @@ export function uniqueStampPresetName(name, existingNames = []) {
 }
 
 export function autoStampGeometry({ index = 0, stampIndex = 0, CH = 239, stampSize = 100 }) {
-  const D = CH - 239;
-  const PX = 17, PY = 16, PS = 136, PH = 136 + D, PB = PY + PH;
   const ss = (stampSize || 100) / 100;
-  const rr = 17 * ss;
   const rn = k => {
     const v = Math.sin((index + 1) * 127.1 + k * 311.7) * 43758.5453;
     return v - Math.floor(v);
   };
+  if (CH < 204) {
+    const adj = Math.min(ss, ss * 0.82);
+    if (stampIndex === 1) {
+      return {
+        x: 118 + (rn(8) - 0.5) * 16,
+        y: Math.min(CH - 20, CH * 0.72 + (rn(9) - 0.5) * 8),
+        r: (rn(10) - 0.5) * 24,
+        scale: adj * 0.85
+      };
+    }
+    return {
+      x: 138 + (rn(1) - 0.5) * 12,
+      y: Math.max(20, Math.min(CH - 22, CH * 0.30 + (rn(2) - 0.5) * 10)),
+      r: (rn(3) - 0.5) * 32,
+      scale: adj
+    };
+  }
+  const D = CH - 239;
+  const PX = 17, PY = 16, PS = 136, PH = 136 + D, PB = PY + PH;
+  const rr = 17 * ss;
   if (stampIndex === 1) {
     return {
       x: PX + 30 + rn(8) * (PS - 60),
@@ -484,7 +501,7 @@ export function snapStampNorm(nx, ny, { CW = 170, CH = 239, effScale = 1, snapEn
   const threshold = 3.5;
 
   const targetsX = [CW / 2, 26, CW - 26];
-  const targetsY = [CH / 2, PMY, 26, CH - 26];
+  const targetsY = CH < 204 ? [CH / 2, 22, CH - 22] : [CH / 2, PMY, 26, CH - 26];
 
   let outNx = clamped.nx;
   let outNy = clamped.ny;

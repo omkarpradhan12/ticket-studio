@@ -1,9 +1,9 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase9e";
-import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase9e";
-import { abbr } from "./svg-engine.js?v=phase9e";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9e";
-import { attachColorHexFields } from "./color-controls.mjs?v=phase9e";
-import { sanitizeCardStyleOverrides } from "./card-styles.mjs?v=phase9e";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10";
+import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase10";
+import { abbr } from "./svg-engine.js?v=phase10";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10";
+import { attachColorHexFields } from "./color-controls.mjs?v=phase10";
+import { sanitizeCardStyleOverrides } from "./card-styles.mjs?v=phase10";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
@@ -150,7 +150,15 @@ function parseCsv(text) {
       place: item.place || item.location || item.loc || "",
       year: item.year || "",
       abbreviation: item.abbreviation || item.abbr || item.code || "",
-      photo: item.photo || item.photourl || item.image || item.url || ""
+      photo: item.photo || item.photourl || item.image || item.url || "",
+      ...(item.role || item.jobtitle || item.position ? { role: item.role || item.jobtitle || item.position } : {}),
+      ...(item.company || item.org || item.organisation || item.organization ? { company: item.company || item.org || item.organisation || item.organization } : {}),
+      ...(item.phone || item.tel || item.mobile ? { phone: item.phone || item.tel || item.mobile } : {}),
+      ...(item.email || item.mail ? { email: item.email || item.mail } : {}),
+      ...(item.website || item.web || item.site ? { website: item.website || item.web || item.site } : {}),
+      ...(item.address || item.addr || item.street ? { address: item.address || item.addr || item.street } : {}),
+      ...(item.qrtext || item.qr ? { qrText: item.qrtext || item.qr } : {}),
+      ...(item.kind ? { kind: item.kind } : {})
     };
   });
 }
@@ -180,6 +188,22 @@ async function importStructuredFile(file) {
       year: String(item.year || ""),
       code: String(item.abbreviation || item.abbr || item.code || abbr(title))
     };
+    const vcRole = String(item.role || item.jobTitle || item.jobtitle || item.position || "").trim();
+    const vcCompany = String(item.company || item.org || item.organisation || item.organization || "").trim();
+    const vcPhone = String(item.phone || item.tel || item.mobile || "").trim();
+    const vcEmail = String(item.email || item.mail || "").trim();
+    const vcWebsite = String(item.website || item.web || item.site || "").trim();
+    const vcAddress = String(item.address || item.addr || item.street || "").trim();
+    const vcQr = String(item.qrText || item.qrtext || item.qr || "").trim();
+    if (vcRole) card.role = vcRole;
+    if (vcCompany) card.company = vcCompany;
+    if (vcPhone) card.phone = vcPhone;
+    if (vcEmail) card.email = vcEmail;
+    if (vcWebsite) card.website = vcWebsite;
+    if (vcAddress) card.address = vcAddress;
+    if (vcQr) card.qrText = vcQr;
+    if (item.kind === "visiting" || item.kind === "album") card.kind = item.kind;
+    else if (vcRole || vcCompany || vcPhone || vcEmail || vcWebsite || vcAddress) card.kind = "visiting";
     if (typeof photo === "string" && photo.startsWith("data:image/")) {
       card.img = photo;
       if (/^#[\da-f]{6}$/i.test(item.accent || "")) Object.assign(card, hexToHS(item.accent));

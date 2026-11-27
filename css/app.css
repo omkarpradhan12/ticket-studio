@@ -2521,6 +2521,11 @@ details.sec > summary {
     min-height: 40px;
   }
 
+  .export-menu > summary {
+    width: auto;
+    padding-inline: 10px;
+  }
+
   .mobile-view-toggle {
     position: sticky;
     top: 98px;
@@ -3570,6 +3575,13 @@ details.sec > summary {
   }
 
   .surprise-dialog::backdrop,
+  .pv-band-fld[hidden],
+  .pv-vc-fld[hidden],
+  #corient-wrap[hidden],
+  #vc-badge-wrap[hidden] {
+    display: none !important;
+  }
+
   .svg-code-dialog::backdrop {
     background: rgba(8, 7, 6, 0.78);
     backdrop-filter: blur(4px);

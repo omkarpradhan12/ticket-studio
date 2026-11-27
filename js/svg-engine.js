@@ -1,9 +1,10 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase9e";
-import { hsl } from "./image-utils.js?v=phase9e";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase9e";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase9e";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase9e";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10";
+import { hsl } from "./image-utils.js?v=phase10";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10";
+import { renderQrSvgMarkup } from "./qr.mjs?v=phase10";
 
 export { SKINDS, STAMPS };
 
@@ -13,8 +14,13 @@ export const SIZES = {
   poker:  [63.5, 88.9],
   credit: [54, 85.6],
   mini:   [45, 64],
-  tarot:  [70, 120]
+  tarot:  [70, 120],
+  vc_eu:  [85, 55],
+  vc_us:  [89, 51],
+  vc_90:  [90, 50]
 };
+
+export const isVisitingSize = csizeVal => /^vc_/.test(String(csizeVal || ""));
 
 export const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 export const U = t => esc(String(t).toUpperCase());
@@ -110,22 +116,61 @@ export function subtitleLayout(text, maxSize = 5.8, maxWidth = 96, k = 0.64) {
 
 const FT = 'font-family="Montserrat,Arial,sans-serif"';
 
-export function computeLayout(paperVal = "a4", csizeVal = "ticket") {
+export function computeLayout(paperVal = "a4", csizeVal = "ticket", orientation = "landscape") {
   const isLetter = paperVal === "letter";
   const P = isLetter ? [612, 792] : [595.276, 841.89];
   const W = P[0], H = P[1];
   const S = SIZES[csizeVal] || SIZES.ticket;
-  const K = S[0] * 2.83465 / CW;
-  const CH = Math.max(204, Math.min(309, Math.round(S[1] * 2.83465 / K * 10) / 10));
+  const isVisiting = isVisitingSize(csizeVal);
+  if (!isVisiting) {
+    const K = S[0] * 2.83465 / CW;
+    const CH = Math.max(204, Math.min(309, Math.round(S[1] * 2.83465 / K * 10) / 10));
+    const CWp = CW * K, CHp = CH * K;
+    const GX = 22, GY = 20;
+    const COLS = Math.max(1, Math.floor((W - 28 + GX) / (CWp + GX)));
+    const ROWS = Math.max(1, Math.floor((H - 28 + GY) / (CHp + GY)));
+    const PER = COLS * ROWS;
+    const MX = (W - COLS * CWp - (COLS - 1) * GX) / 2;
+    const MY = (H - ROWS * CHp - (ROWS - 1) * GY) / 2;
+    return { W, H, K, CH, CWp, CHp, GX, GY, COLS, ROWS, PER, MX, MY, isLetter, isVisiting: false, orientation: "portrait" };
+  }
+
+  const isPortrait = orientation === "portrait";
+  const physW = isPortrait ? Math.min(S[0], S[1]) : Math.max(S[0], S[1]);
+  const physH = isPortrait ? Math.max(S[0], S[1]) : Math.min(S[0], S[1]);
+  const K = physW * 2.83465 / CW;
+  const CH = Math.round(physH * 2.83465 / K * 10) / 10;
   const CWp = CW * K, CHp = CH * K;
-  const GX = 22, GY = 20;
+  const GX = 22;
+  let GY = 20;
   const COLS = Math.max(1, Math.floor((W - 28 + GX) / (CWp + GX)));
   const ROWS = Math.max(1, Math.floor((H - 28 + GY) / (CHp + GY)));
+  let MY = (H - ROWS * CHp - (ROWS - 1) * GY) / 2;
+  // Ensure 3 mm bleed + outer crop ticks clear top/bottom edges on dense portrait sheets (e.g. 55x85 US Letter)
+  if (ROWS > 1 && MY < 16.5) {
+    GY = 17.6;
+    MY = (H - ROWS * CHp - (ROWS - 1) * GY) / 2;
+  }
   const PER = COLS * ROWS;
   const MX = (W - COLS * CWp - (COLS - 1) * GX) / 2;
-  const MY = (H - ROWS * CHp - (ROWS - 1) * GY) / 2;
 
-  return { W, H, K, CH, CWp, CHp, GX, GY, COLS, ROWS, PER, MX, MY, isLetter };
+  return {
+    W, H, K, CH, CWp, CHp, GX, GY, COLS, ROWS, PER, MX, MY, isLetter,
+    isVisiting: true,
+    orientation: isPortrait ? "portrait" : "landscape",
+    physW,
+    physH
+  };
+}
+
+export function getCardPhotoRect({ isPolaroid = false, isVisiting = false, orientation = "landscape", CH = 239 } = {}) {
+  if (isVisiting) {
+    if (orientation === "portrait") return { PX: 35, PY: 18, PS: 100, PH: 100 };
+    return { PX: 10, PY: 11, PS: 38, PH: 38 };
+  }
+  const D = CH - 239;
+  if (isPolaroid) return { PX: 12, PY: 13, PS: 146, PH: 146 + D };
+  return { PX: 17, PY: 16, PS: 136, PH: 136 + D };
 }
 
 export function fitBox(c, CH = 239, PS = 136, PH = 136 + CH - 239) {
@@ -378,10 +423,10 @@ export function resolveCardRenderOptions(c0 = {}, cfg = {}) {
   };
 }
 
-export function renderNfcBadge({ CW, D = 0, accent, theme = {}, withYt = true, scale = 1 }) {
+export function renderNfcBadge({ CW, D = 0, accent, theme = {}, withYt = true, scale = 1, anchorY = null }) {
   const sc = Math.max(0.5, Math.min(2, Number(scale) || 1));
   const anchorX = CW - 20;
-  const anchorY = 209 + D;
+  const resolvedY = anchorY !== null ? anchorY : (209 + D);
   const scaleAttr = sc !== 1 ? ` scale(${sc.toFixed(2)})` : "";
   let waves = "";
   if (withYt) {
@@ -389,13 +434,25 @@ export function renderNfcBadge({ CW, D = 0, accent, theme = {}, withYt = true, s
       const px = 7 + k * 2.6, h = 2 + k * 1.5;
       waves += `<path d="M${px} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px} ${h}" fill="none" stroke="${accent}" stroke-width="1.1" stroke-linecap="round"/>`;
     }
-    return `<g class="nfc-badge" transform="translate(${anchorX} ${anchorY})${scaleAttr} translate(-18 0)"><circle r="5.6" fill="${theme.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${theme.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${theme.np || "#fff"}"/>${waves}</g>`;
+    return `<g class="nfc-badge" transform="translate(${anchorX} ${resolvedY})${scaleAttr} translate(-18 0)"><circle r="5.6" fill="${theme.nc || "#d9322f"}"/><circle r="4" fill="none" stroke="${theme.np || "#fff"}" stroke-width=".7"/><path d="M-1.2 -2L2 0L-1.2 2Z" fill="${theme.np || "#fff"}"/>${waves}</g>`;
   }
   for (let k = 1; k <= 3; k++) {
     const px = -11.5 + k * 2.8, h = 2 + k * 1.5;
     waves += `<path d="M${px.toFixed(1)} ${-h}Q${(px + h * 0.8).toFixed(1)} 0 ${px.toFixed(1)} ${h}" fill="none" stroke="${accent}" stroke-width="1.2" stroke-linecap="round"/>`;
   }
-  return `<g class="nfc-badge nfc-only" transform="translate(${anchorX} ${anchorY})${scaleAttr}"><circle cx="-11.5" cy="0" r="1.4" fill="${accent}"/>${waves}</g>`;
+  return `<g class="nfc-badge nfc-only" transform="translate(${anchorX} ${resolvedY})${scaleAttr}"><circle cx="-11.5" cy="0" r="1.4" fill="${accent}"/>${waves}</g>`;
+}
+
+function cropMarksSvg({ CW, CH, bl, isVisiting = false, MX = 24, MY = 24 }) {
+  const tick = isVisiting && Math.min(MX, MY) < 18
+    ? Math.max(4, Math.floor(Math.min(MX, MY) - bl - 2))
+    : 7;
+  let mk = "";
+  [[0, 0, -1, -1], [CW, 0, 1, -1], [0, CH, -1, 1], [CW, CH, 1, 1]].forEach(([mx, my, dx, dy]) => {
+    const o = bl + 2;
+    mk += `<path d="M${mx + dx * o} ${my}h${dx * tick}M${mx} ${my + dy * o}v${dy * tick}" stroke="#000" stroke-width=".4" fill="none"/>`;
+  });
+  return mk;
 }
 
 /**
@@ -405,7 +462,7 @@ export function renderNfcBadge({ CW, D = 0, accent, theme = {}, withYt = true, s
  * @param {Object} cfg - Global rendering settings & layout
  */
 export function renderCard(c0, i, cfg) {
-  const { K = 1, CH = 239, COLS = 3, PER = 9, GX = 22, GY = 20, MX = 0, MY = 0, CWp = 170, CHp = 239 } = cfg.lay || {};
+  const { K = 1, CH = 239, COLS = 3, PER = 9, GX = 22, GY = 20, MX = 0, MY = 0, CWp = 170, CHp = 239, isVisiting = false, orientation = "landscape" } = cfg.lay || {};
   const c = {
     ...c0,
     title: c0.title || "Add name",
@@ -433,20 +490,21 @@ export function renderCard(c0, i, cfg) {
   const accLum = (T.fixed || customAccent) ? lum(T.fixed || customAccent) : hslLum(c.h ?? 35, effS, effL);
   const bt = T.bt || (accLum > 0.52 ? "#111" : "#fff");
 
-  const isPolaroid = Boolean(T.polaroid) && cfg.minimalLayout !== true;
+  const isPolaroid = !isVisiting && Boolean(T.polaroid) && cfg.minimalLayout !== true;
   const odd = i % 2;
-  const PX = isPolaroid ? 12 : 17;
-  const PY = isPolaroid ? 13 : 16;
-  const PS = isPolaroid ? 146 : 136;
-  const PH = PS + D;
+  const { PX, PY, PS, PH } = getCardPhotoRect({ isPolaroid, isVisiting, orientation, CH });
   const PB = PY + PH, PM = PX + PS / 2, PMY = PY + PH / 2;
 
   const b = c.img && fitBox(c, CH, PS, PH);
+  const emptyPhotoSize = isVisiting && orientation === "landscape" ? 5.5 : 9;
+  const emptyPhotoLabel = isVisiting ? "Logo / photo" : "Add photo";
   const ph = c.img
     ? `<g clip-path="url(#cc${i})"><image id="photo${i}" href="${esc(c.img)}" ${b ? `x="${(PX + PS / 2 - b.w / 2 + (c.px || 0) / 100 * b.mx).toFixed(2)}" y="${(PMY - b.h / 2 + (c.py || 0) / 100 * b.my).toFixed(2)}" width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" preserveAspectRatio="xMidYMid slice"` : `x="${PX}" y="${PY}" width="${PS}" height="${PH}" preserveAspectRatio="xMidYMid slice"`}${design.photoFilter ? ` filter="url(#np${i})"` : ""}/></g>`
-    : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${isPolaroid ? (T.hi || "#ffffff") : A}"${isPolaroid ? ' opacity=".65"' : ""} font-size="9" ${FT}>Add photo</text>`;
+    : `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="${T.ph}"/><text x="${PM}" y="${PMY}" text-anchor="middle" fill="${isPolaroid ? (T.hi || "#ffffff") : A}"${isPolaroid ? ' opacity=".65"' : ""} font-size="${emptyPhotoSize}" ${FT}>${emptyPhotoLabel}</text>`;
 
-  const tp = mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
+  const tp = isVisiting
+    ? (design.photoMounts?.includes(3) ? "" : mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts }))
+    : mount(0, PX, PY, PS, PB, odd, i, A, { ...T, mounts: design.photoMounts });
   const ss = (resolved.stampSize || 100) / 100;
   const rn = k => { const v = Math.sin((i + 1) * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
 
@@ -540,20 +598,17 @@ export function renderCard(c0, i, cfg) {
         accent: A,
         theme: T,
         withYt: cfg.nfcWithYt !== false,
-        scale: (Number(cfg.nfcScale ?? 100) || 100) / 100
+        scale: (Number(cfg.nfcScale ?? 100) || 100) / 100,
+        anchorY: isVisiting ? (CH - 15) : null
       })
     : "";
   if (cfg.punchHole) {
     nfc += `<g aria-label="NFC punch hole" transform="translate(${CW / 2} ${PMY})"><circle r="3.4" fill="#fff" stroke="${T.frame}" stroke-width=".6"/><circle r="1.7" fill="#e7e4dc" stroke="${A}" stroke-width=".35"/></g>`;
   }
 
-  let mk = "";
-  if (cfg.cropMarks && !cfg.one) {
-    [[0, 0, -1, -1], [CW, 0, 1, -1], [0, CH, -1, 1], [CW, CH, 1, 1]].forEach(([mx, my, dx, dy]) => {
-      const o = bl + 2;
-      mk += `<path d="M${mx + dx * o} ${my}h${dx * 7}M${mx} ${my + dy * o}v${dy * 7}" stroke="#000" stroke-width=".4" fill="none"/>`;
-    });
-  }
+  const mk = (cfg.cropMarks && !cfg.one)
+    ? cropMarksSvg({ CW, CH, bl, isVisiting, MX, MY })
+    : "";
 
   const isAlbum = c0.kind === "album";
   const gl = isAlbum
@@ -596,6 +651,122 @@ export function renderCard(c0, i, cfg) {
   const grayDef = design.photoFilter ? `<filter id="np${i}" color-interpolation-filters="sRGB">${design.photoFilter === 2 ? `<feColorMatrix type="matrix" values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0"/>` : `<feColorMatrix type="saturate" values="0"/>`}<feComponentTransfer><feFuncR type="linear" slope="1.3" intercept="-.12"/><feFuncG type="linear" slope="1.3" intercept="-.12"/><feFuncB type="linear" slope="1.3" intercept="-.12"/></feComponentTransfer></filter>` : "";
   const halftoneDef = design.halftone ? `<pattern id="ht${i}" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.2" cy="1.2" r=".6" fill="#000" opacity=".3"/></pattern>` : "";
   const borderDefs = borderRendered.isLegacy ? inkFilter("bd" + i, i + 21, resolved.borderWear) : borderRendered.defs;
+
+  if (isVisiting) {
+    const vcName = String(c0.title || "Your Name");
+    const vcRole = String(c0.role !== undefined ? c0.role : (c0.genre || "")).trim();
+    const vcCompany = String(c0.company !== undefined ? c0.company : (c0.loc || "")).trim();
+    const vcPhone = String(c0.phone || "").trim();
+    const vcEmail = String(c0.email || "").trim();
+    const vcWebsite = String(c0.website || "").trim();
+    const vcAddress = String(c0.address || "").trim();
+    const vcBadge = cfg.vcBadge || "qr-nfc";
+    const showQr = vcBadge === "qr-nfc" || vcBadge === "qr";
+    const showNfc = cfg.nfc && (vcBadge === "qr-nfc" || vcBadge === "nfc");
+    const vcNfc = showNfc
+      ? renderNfcBadge({
+          CW,
+          D: 0,
+          accent: A,
+          theme: T,
+          withYt: cfg.nfcWithYt !== false,
+          scale: (Number(cfg.nfcScale ?? 100) || 100) / 100,
+          anchorY: CH - 15
+        })
+      : "";
+    const qrPayload = String(c0.qrText || vcWebsite || (vcEmail ? `mailto:${vcEmail}` : "") || vcPhone || vcName).trim();
+    const isPort = orientation === "portrait";
+    const qrSize = isPort ? 26 : 24;
+    const qrX = isPort ? 16 : 11;
+    const qrY = isPort ? CH - 37 : CH - 34;
+    const vcQr = showQr && qrPayload
+      ? renderQrSvgMarkup(qrPayload, { x: qrX, y: qrY, size: qrSize, fg: ink, bg: "#ffffff", radius: 1.5 })
+      : "";
+
+    const contacts = [
+      vcPhone && ["P", vcPhone],
+      vcEmail && ["E", vcEmail],
+      vcWebsite && ["W", vcWebsite],
+      vcAddress && ["A", vcAddress]
+    ].filter(Boolean);
+
+    let vcTextMarkup = "";
+    if (!isPort) {
+      const colX = design.centerTitle ? 108 : 57;
+      const colTa = design.centerTitle ? ' text-anchor="middle"' : "";
+      const colW = 100;
+      const nameLayout = titleLayout(vcName, tf, colW, Math.min(resolved.titleScale, 0.85));
+      const nameSz = Math.min(11.5, nameLayout.size);
+      const nameMarkup = nameLayout.wrapped
+        ? nameLayout.lines.map((line, idx) =>
+            `<text x="${colX}" y="${(18.5 + idx * 10.5).toFixed(1)}"${colTa} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${nameSz.toFixed(1)}" letter-spacing=".4">${esc(line)}</text>`
+          ).join("")
+        : `<text x="${colX}" y="22.5"${colTa} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${nameSz.toFixed(1)}" letter-spacing=".4">${esc(nameLayout.lines[0])}</text>`;
+      const roleStr = [vcRole, vcCompany].filter(Boolean).join(" · ");
+      const subBaseY = nameLayout.wrapped ? 38.5 : 33;
+      const roleLayout = subtitleLayout(roleStr, 5.2, colW);
+      const roleMarkup = roleStr
+        ? (roleLayout.wrapped
+            ? roleLayout.lines.map((line, li) => `<text x="${colX}" y="${(subBaseY + li * 6.8).toFixed(1)}"${colTa} fill="${li === 0 ? A : mute}" font-size="${roleLayout.size.toFixed(1)}" font-weight="700" letter-spacing=".3" ${FT}>${esc(line)}</text>`).join("")
+            : `<text x="${colX}" y="${subBaseY}"${colTa} fill="${A}" font-size="${fit(roleStr, 5.2, colW)}" font-weight="700" letter-spacing=".3" ${FT}>${esc(roleStr)}</text>`)
+        : "";
+      const divY = Math.min(50, (roleLayout.wrapped ? subBaseY + 11 : subBaseY + 6.5));
+      const divX1 = design.centerTitle ? colX - 18 : colX;
+      const divLine = `<path d="M${divX1} ${divY.toFixed(1)}h36" stroke="${A}" stroke-width=".9" stroke-opacity=".8" fill="none"/>`;
+      const cStart = divY + 8;
+      const cAvail = Math.max(20, (CH - 10) - cStart);
+      const cStep = contacts.length > 1 ? Math.min(8.2, cAvail / contacts.length) : 8.2;
+      const contactMarkup = contacts.map(([tag, val], idx) => {
+        const cy = cStart + idx * cStep;
+        const maxRowW = (showNfc && cy >= CH - 25) ? 74 : colW;
+        const label = `${tag}: ${val}`;
+        const fSz = fit(label, 4.7, maxRowW);
+        return `<text x="${colX}" y="${cy.toFixed(1)}"${colTa} fill="${mute}" font-size="${fSz}" font-weight="500" ${FT}><tspan fill="${A}" font-weight="800">${tag} </tspan>${esc(val)}</text>`;
+      }).join("");
+      vcTextMarkup = `${nameMarkup}${roleMarkup}${divLine}${contactMarkup}`;
+    } else {
+      const txP = design.centerTitle ? CW / 2 : 16;
+      const taP = design.centerTitle ? ' text-anchor="middle"' : "";
+      const nameLayout = titleLayout(vcName, tf, 136, resolved.titleScale);
+      const nameSz = Math.min(13.5, nameLayout.size);
+      const nameMarkup = nameLayout.wrapped
+        ? nameLayout.lines.map((line, idx) =>
+            `<text x="${txP}" y="${(136 + idx * 12).toFixed(1)}"${taP} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${nameSz.toFixed(1)}" letter-spacing=".5">${esc(line)}</text>`
+          ).join("")
+        : `<text x="${txP}" y="139"${taP} fill="${ink}" font-family="${tf.f}" font-weight="${tf.w}" font-size="${nameSz.toFixed(1)}" letter-spacing=".5">${esc(nameLayout.lines[0])}</text>`;
+      const roleStr = [vcRole, vcCompany].filter(Boolean).join(" · ");
+      const subBaseY = nameLayout.wrapped ? 158 : 151;
+      const roleLayout = subtitleLayout(roleStr, 5.5, 136);
+      const roleMarkup = roleStr
+        ? (roleLayout.wrapped
+            ? roleLayout.lines.map((line, li) => `<text x="${txP}" y="${(subBaseY + li * 7.5).toFixed(1)}"${taP} fill="${li === 0 ? A : mute}" font-size="${roleLayout.size.toFixed(1)}" font-weight="700" letter-spacing=".3" ${FT}>${esc(line)}</text>`).join("")
+            : `<text x="${txP}" y="${subBaseY}"${taP} fill="${A}" font-size="${fit(roleStr, 5.5, 136)}" font-weight="700" letter-spacing=".3" ${FT}>${esc(roleStr)}</text>`)
+        : "";
+      const divY = roleLayout.wrapped ? subBaseY + 13 : subBaseY + 8;
+      const divLine = `<path d="M${design.centerTitle ? CW / 2 - 18 : 16} ${divY.toFixed(1)}h36" stroke="${A}" stroke-width=".9" stroke-opacity=".8" fill="none"/>`;
+      const cStart = divY + 10;
+      const cAvail = Math.max(36, (CH - 44) - cStart);
+      const cStep = contacts.length > 1 ? Math.min(10.5, cAvail / contacts.length) : 10.5;
+      const contactMarkup = contacts.map(([tag, val], idx) => {
+        const cy = cStart + idx * cStep;
+        const label = `${tag}: ${val}`;
+        const fSz = fit(label, 5.1, 136);
+        return `<text x="${txP}" y="${cy.toFixed(1)}"${taP} fill="${mute}" font-size="${fSz}" font-weight="500" ${FT}><tspan fill="${A}" font-weight="800">${tag} </tspan>${esc(val)}</text>`;
+      }).join("");
+      vcTextMarkup = `${nameMarkup}${roleMarkup}${divLine}${contactMarkup}`;
+    }
+
+    const vcPhotoBorder = c.img || !T.min
+      ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width=".85"/>`
+      : "";
+    return `<g data-ci="${i}" data-kind="visiting" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
+     <defs>${gradDef}${inkFilter("ink" + i, i + 3, resolved.stampWear)}${borderDefs}${grayDef}${halftoneDef}
+     <clipPath id="cc${i}"><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}"/></clipPath>
+     <clipPath id="ck${i}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs>
+     <g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
+     ${borderRendered.markup}${sc}${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}${vcPhotoBorder}${tp}
+     ${vcTextMarkup}${vcQr}${vcNfc}${tex}${surfaceFxMarkup}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
+  }
 
   const isMinimal = cfg.minimalLayout === true || Boolean(T.min);
   if (isMinimal) {
@@ -665,6 +836,99 @@ export function renderCard(c0, i, cfg) {
    </g>${nfc}${serial}${tex}${surfaceFxMarkup}${stamp}${stamp2}${drag}${mk}${stampUi}</g>`;
 }
 
+/**
+ * Renders a uniform, horizontally mirrored trading-card back for duplex printing across all card sizes.
+ * Retains sheet theme paper/gradient/grain/wear and border style with uniform theme color (no per-card accent bleed).
+ */
+export function renderCardBack(slotIndex, cfg) {
+  const { K = 1, CH = 239, COLS = 3, PER = 9, GX = 22, GY = 20, MX = 0, MY = 0, CWp = 170, CHp = 239, isVisiting = false } = cfg.lay || {};
+  const li = slotIndex % PER, col = li % COLS, row = Math.floor(li / COLS);
+  const mirroredCol = (COLS - 1) - col;
+  const x = cfg.one ? 0 : MX + mirroredCol * (CWp + GX);
+  const y = cfg.one ? 0 : MY + row * (CHp + GY);
+  const bl = cfg.one ? 0 : (cfg.bleed ? 3 / K : 0);
+
+  // Resolve sheet/page theme with fixed uniform color and zero per-card overrides
+  const resolved = resolveCardRenderOptions({ h: 35, s: 0.72 }, { ...cfg, cornerHardware: cfg.cornerHardware || "bolts" });
+  const T = resolved.theme;
+  const U = T.fixed || T.frame || T.ink;
+  const uid = `bk${slotIndex}`;
+  const bgF = T.grad ? `url(#bgg${uid})` : T.bg;
+  const gradDef = T.grad
+    ? renderGradDef(T, uid, CH, resolved.gradientAngle, resolved.gradientSpread, 35, 0.72, resolved.gradEnd, true)
+    : "";
+
+  // Sheet border style forced to uniform theme color U and fixed seed so all card backs match identically
+  const baseBorder = resolveBorderConfig(cfg, null);
+  const uniformBorder = { ...baseBorder, colorMode: "custom", color: U, innerColorMode: "custom", innerColor: U };
+  const borderRendered = renderBorder({
+    index: slotIndex,
+    CW,
+    CH,
+    accent: U,
+    theme: T,
+    border: uniformBorder,
+    scope: "bk",
+    seed: 42
+  });
+  const borderDefs = borderRendered.defs || "";
+
+  // Fixed seed paper texture/wear retaining sheet paper grain/edge/crease/scuff
+  const lumB = lum(T.bg), dkp = lumB < 0.45, tcol = dkp ? "#fff" : "#3a2a18";
+  const tr = dkp ? 1 : 0.15, tg = dkp ? 1 : 0.1, tb = dkp ? 1 : 0.05;
+  const rn = k => { const v = Math.sin(43 * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+  let cre = "";
+  const crVal = resolved.creases;
+  if (crVal) {
+    const o = (crVal / 100 * 0.5).toFixed(2);
+    for (let k = 0; k < (crVal > 60 ? 2 : 1); k++) {
+      const v = k ? 1 : rn(6) < 0.5, pp = 0.28 + rn(7 + k) * 0.44, q = (rn(9 + k) - 0.5) * 26;
+      const d2 = v ? `M${CW * pp} 0L${CW * pp + q} ${CH}` : `M0 ${CH * pp}L${CW} ${CH * pp + q}`;
+      cre += `<path d="${d2}" stroke="${tcol}" stroke-width=".5" opacity="${o}" fill="none"/><path d="${d2}" transform="translate(${v ? 0.7 : 0} ${v ? 0 : 0.7})" stroke="${dkp ? "#000" : "#fff"}" stroke-width=".4" opacity="${(o * 0.9).toFixed(2)}" fill="none"/>`;
+    }
+  }
+  const grVal = resolved.grain, ewVal = resolved.edgeWear, scVal = resolved.scuffs;
+  let texDefs = "";
+  if (grVal) texDefs += `<filter id="gr${uid}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="47" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 ${tr} 0 0 0 0 ${tg} 0 0 0 0 ${tb} 1.6 0 0 0 -.45"/><feComposite in2="SourceAlpha" operator="in"/></filter>`;
+  if (scVal) texDefs += `<filter id="sc${uid}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".012 .7" numOctaves="2" seed="51" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 ${tr} 0 0 0 0 ${tg} 0 0 0 0 ${tb} 7 0 0 0 -4.1"/><feComposite in2="SourceAlpha" operator="in"/></filter>`;
+  if (ewVal) texDefs += `<filter id="ew${uid}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>`;
+  const tex = (grVal || ewVal || crVal || scVal)
+    ? `<g clip-path="url(#ck${uid})" pointer-events="none">${texDefs ? `<defs>${texDefs}</defs>` : ""}${grVal ? `<rect width="${CW}" height="${CH}" fill="#000" filter="url(#gr${uid})" opacity="${(grVal / 100 * 0.55).toFixed(2)}"/>` : ""}${ewVal ? `<rect width="${CW}" height="${CH}" fill="none" stroke="${tcol}" stroke-width="12" filter="url(#ew${uid})" opacity="${(ewVal / 100 * 0.55).toFixed(2)}"/>` : ""}${scVal ? `<g transform="rotate(${Math.round(rn(5) * 60 - 30)} ${CW / 2} ${CH / 2})"><rect x="-60" y="-60" width="${CW + 120}" height="${CH + 120}" fill="#000" filter="url(#sc${uid})" opacity="${(scVal / 100 * 0.7).toFixed(2)}"/></g>` : ""}${cre}</g>`
+    : "";
+
+  // Clean vector centerpiece stamp logo (slightly rotated, no ink wear/bleed)
+  const skRaw = cfg.stampShape || "round";
+  const sk = skRaw === "mixed" ? "round" : skRaw;
+  const centerScale = Number(Math.max(0.75, Math.min(1.45, Math.min(CW, CH) * 0.0082)).toFixed(2));
+  const cleanStyle = { ...resolveStampStyle(cfg, null), wear: 0, opacity: 100 };
+  const centerStamp = sk === "none"
+    ? ""
+    : renderStampMarkup({
+        shapeKey: sk,
+        text: cfg.stamp || "Soul Fuel",
+        year: cfg.stampYear || "2026",
+        scale: centerScale,
+        px: CW / 2,
+        py: CH / 2,
+        rotation: -14,
+        color: U,
+        wear: 0,
+        filterId: "",
+        idAttr: "",
+        style: cleanStyle,
+        themeBg: T.bg
+      });
+
+  const mk = (cfg.cropMarks && !cfg.one)
+    ? cropMarksSvg({ CW, CH, bl, isVisiting, MX, MY })
+    : "";
+
+  return `<g class="card-back" data-bi="${slotIndex}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${cfg.one ? 1 : K})">
+   <defs>${gradDef}${borderDefs}<clipPath id="ck${uid}"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}"/></clipPath></defs>
+   <g clip-path="url(#ck${uid})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
+   ${borderRendered.markup}${centerStamp}${tex}${mk}</g>`;
+}
+
 export function regMarksSvg(W, H, enabled) {
   if (!enabled) return "";
   const m = 14, len = 28;
@@ -677,26 +941,27 @@ export function regMarksSvg(W, H, enabled) {
 }
 
 export function tplSvg(lay, regEnabled = false) {
-  const { W, H, K, CH, COLS, PER, GX, GY, MX, MY, CWp, CHp } = lay;
+  const { W, H, K, CH, COLS, PER, GX, GY, MX, MY, CWp, CHp, isVisiting = false, orientation = "landscape" } = lay;
   let o = "";
-  const D = CH - 239;
+  const { PX, PY, PS, PH } = getCardPhotoRect({ isVisiting, orientation, CH });
   for (let j = 0; j < PER; j++) {
     const x = (MX + (j % COLS) * (CWp + GX)).toFixed(2);
     const y = (MY + Math.floor(j / COLS) * (CHp + GY)).toFixed(2);
-    const cx = 17 + 68, cy = 16 + (136 + D) / 2;
-    o += `<g transform="translate(${x} ${y}) scale(${K})"><rect width="${CW}" height="${CH}" fill="none" stroke="#000" stroke-width=".6"/><rect x="17" y="16" width="136" height="${136 + D}" fill="none" stroke="#555" stroke-width=".5" stroke-dasharray="3 2"/><path d="M${cx - 4.5} ${cy}h9M${cx} ${cy - 4.5}v9" stroke="#d9322f" stroke-width=".6"/><text x="${cx}" y="${cy + 9}" text-anchor="middle" fill="#d9322f" font-size="4.2" font-weight="800" ${FT}>POKE ME</text></g>`;
+    const cx = PX + PS / 2, cy = PY + PH / 2;
+    o += `<g transform="translate(${x} ${y}) scale(${K})"><rect width="${CW}" height="${CH}" fill="none" stroke="#000" stroke-width=".6"/><rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="#555" stroke-width=".5" stroke-dasharray="3 2"/><path d="M${cx - 4.5} ${cy}h9M${cx} ${cy - 4.5}v9" stroke="#d9322f" stroke-width=".6"/><text x="${cx}" y="${cy + 9}" text-anchor="middle" fill="#d9322f" font-size="4.2" font-weight="800" ${FT}>POKE ME</text></g>`;
   }
   return `<svg class="sheet" data-name="cut-template" width="${(W / 2.83465).toFixed(2)}mm" height="${(H / 2.83465).toFixed(2)}mm" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#fff"/>${regMarksSvg(W, H, regEnabled)}${o}</svg>`;
 }
 
 export function cutSvg(lay, cornerRadiusMm = 0, regEnabled = false) {
-  const { W, H, K, CH, COLS, PER, GX, GY, MX, MY, CWp, CHp } = lay;
-  const D = CH - 239, rx = (+cornerRadiusMm) * 2.83465;
+  const { W, H, K, CH, COLS, PER, GX, GY, MX, MY, CWp, CHp, isVisiting = false, orientation = "landscape" } = lay;
+  const rx = (+cornerRadiusMm) * 2.83465;
+  const { PX, PY, PS, PH } = getCardPhotoRect({ isVisiting, orientation, CH });
   let c = "", p = "";
   for (let j = 0; j < PER; j++) {
     const x = MX + (j % COLS) * (CWp + GX), y = MY + Math.floor(j / COLS) * (CHp + GY);
     c += `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${CWp.toFixed(2)}" height="${CHp.toFixed(2)}" rx="${rx}"/>`;
-    p += `<circle cx="${(x + 85 * K).toFixed(2)}" cy="${(y + (16 + (136 + D) / 2) * K).toFixed(2)}" r="1.4"/>`;
+    if (!isVisiting) p += `<circle cx="${(x + 85 * K).toFixed(2)}" cy="${(y + (PY + PH / 2) * K).toFixed(2)}" r="1.4"/>`;
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${(W / 2.83465).toFixed(2)}mm" height="${(H / 2.83465).toFixed(2)}mm">${regMarksSvg(W, H, regEnabled)}<g id="cut" fill="none" stroke="#ff0000" stroke-width=".25">${c}</g><g id="punch" fill="none" stroke="#0000ff" stroke-width=".25">${p}</g></svg>`;

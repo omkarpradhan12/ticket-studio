@@ -36,6 +36,9 @@ export const SET0 = {
   titleScale: 85,
   paper: "a4",
   cardSize: "ticket",
+  cardOrientation: "landscape",
+  vcBadge: "qr-nfc",
+  cardBack: false,
   cutterCorners: "0",
   grain: 15,
   edgeWear: 0,
@@ -99,6 +102,57 @@ export const DEFAULT_CARDS = SAMPLE_CARDS.map(c => ({
   year: "",
   code: ""
 }));
+
+export const VISITING_SAMPLE_CARDS = [
+  {
+    kind: "visiting",
+    title: "Maya Linwood",
+    role: "Creative Director",
+    company: "Northlight Soundworks",
+    phone: "+1 (206) 555-0148",
+    email: "maya@northlightsound.co",
+    website: "https://northlightsound.co",
+    address: "418 Pine St, Suite 402, Seattle",
+    qrText: "https://northlightsound.co",
+    h: 18,
+    s: 0.78,
+    img: null,
+    imgUrl: "",
+    corsLimited: false
+  },
+  {
+    kind: "visiting",
+    title: "Arjun Kulkarni",
+    role: "Mastering Engineer",
+    company: "Tape & Copper Press",
+    phone: "+44 20 7946 0821",
+    email: "arjun@tapecopper.uk",
+    website: "https://tapecopper.uk",
+    address: "19 Redchurch St, Shoreditch, London",
+    qrText: "https://tapecopper.uk",
+    h: 204,
+    s: 0.72,
+    img: null,
+    imgUrl: "",
+    corsLimited: false
+  },
+  {
+    kind: "visiting",
+    title: "Elena Rostova",
+    role: "Founder & Printmaker",
+    company: "Letterpress Atelier",
+    phone: "+49 30 5559 2310",
+    email: "elena@letterpress-atelier.de",
+    website: "https://letterpress-atelier.de",
+    address: "Torstrasse 112, 10119 Berlin",
+    qrText: "https://letterpress-atelier.de",
+    h: 342,
+    s: 0.74,
+    img: null,
+    imgUrl: "",
+    corsLimited: false
+  }
+];
 
 function idbOp(mode, fn) {
   return new Promise((res, rej) => {

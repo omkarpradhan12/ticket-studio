@@ -1,5 +1,5 @@
 // Seeded per-card "Surprise me" style randomiser with WCAG contrast, print-safe & stamp bounds guard rails
-import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase9d";
+import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase10";
 import {
   SKINDS,
   STAMP_MAX_SCALE,
@@ -7,7 +7,7 @@ import {
   clampStampNorm,
   compactStampStyle,
   stampNormBounds
-} from "./stamps.mjs?v=phase9d";
+} from "./stamps.mjs?v=phase10";
 import {
   SURPRISE_MANAGED_STYLE_KEYS,
   blendHex,
@@ -17,7 +17,7 @@ import {
   hslObjectToHex,
   normalizeHex,
   relativeLuminance
-} from "./card-styles.mjs?v=phase9d";
+} from "./card-styles.mjs?v=phase10";
 
 const FALLBACK_THEMES = Object.freeze({
   cream: { grp: "Light", n: "Cream", bg: "#f2eadb", ink: "#1b1a19", mute: "#3a3733" }
@@ -244,21 +244,30 @@ export function pickSafeStampNorm({ rng, strength, stampIndex = 0, CH = 239, CW 
   const D = CH - 239;
   const PB = 152 + D;
   const bounds = stampNormBounds({ CW, CH, effScale });
-  const tearNy = PB / CH;
-
-  const zones = stampIndex === 1
-    ? [
-      { nx: [0.18, 0.30], ny: [Math.min(bounds.maxNy - 0.02, (PB + 10) / CH), Math.min(bounds.maxNy, (PB + 18) / CH)] },
-      { nx: [0.68, 0.82], ny: [(26) / CH, (40) / CH] }
-    ]
-    : [
-      { nx: [0.18, 0.32], ny: [tearNy - 0.035, tearNy + 0.02] }, // Bottom-left tear margin
-      { nx: [0.68, 0.83], ny: [tearNy - 0.035, tearNy + 0.02] }, // Bottom-right tear margin
-      { nx: [0.43, 0.58], ny: [tearNy - 0.035, tearNy + 0.01] }, // Bottom-center tear overlap (above EST./title)
-      { nx: [0.70, 0.84], ny: [24 / CH, 40 / CH] },               // Top-right photo corner
-      { nx: [0.17, 0.30], ny: [24 / CH, 40 / CH] },               // Top-left photo corner
-      ...(!hasNfc ? [{ nx: [0.72, 0.84], ny: [(202 + D) / CH, Math.min(bounds.maxNy, (214 + D) / CH)] }] : [])
-    ];
+  let zones;
+  if (CH < 204) {
+    zones = stampIndex === 1
+      ? [{ nx: [0.68, 0.84], ny: [0.64, Math.min(bounds.maxNy, 0.80)] }]
+      : [
+        { nx: [0.76, Math.min(bounds.maxNx, 0.89)], ny: [0.20, 0.42] },
+        { nx: [0.72, Math.min(bounds.maxNx, 0.86)], ny: [0.60, Math.min(bounds.maxNy, 0.80)] }
+      ];
+  } else {
+    const tearNy = PB / CH;
+    zones = stampIndex === 1
+      ? [
+        { nx: [0.18, 0.30], ny: [Math.min(bounds.maxNy - 0.02, (PB + 10) / CH), Math.min(bounds.maxNy, (PB + 18) / CH)] },
+        { nx: [0.68, 0.82], ny: [(26) / CH, (40) / CH] }
+      ]
+      : [
+        { nx: [0.18, 0.32], ny: [tearNy - 0.035, tearNy + 0.02] }, // Bottom-left tear margin
+        { nx: [0.68, 0.83], ny: [tearNy - 0.035, tearNy + 0.02] }, // Bottom-right tear margin
+        { nx: [0.43, 0.58], ny: [tearNy - 0.035, tearNy + 0.01] }, // Bottom-center tear overlap (above EST./title)
+        { nx: [0.70, 0.84], ny: [24 / CH, 40 / CH] },               // Top-right photo corner
+        { nx: [0.17, 0.30], ny: [24 / CH, 40 / CH] },               // Top-left photo corner
+        ...(!hasNfc ? [{ nx: [0.72, 0.84], ny: [(202 + D) / CH, Math.min(bounds.maxNy, (214 + D) / CH)] }] : [])
+      ];
+  }
 
   const zone = pickFrom(rng, zones);
   const nxRaw = randRange(rng, zone.nx[0], zone.nx[1]);

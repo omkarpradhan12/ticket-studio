@@ -2,10 +2,8 @@
 
 ## Resume status
 - Current branch: `ui-overhaul`
-- Current phase: Photo wheel/pinch zoom (`31b8eb2`) + Phase 10 Step 1 & Card Back design specs recorded; paused while owner stepped away.
-- Next queue when owner resumes:
-  1. **Pre-Phase 10 Export UI Update**: Make **PDF (300 dpi)** the primary download CTA (`index.html`, `#mobile-export`), move **SVG** under an **Advanced** exports dropdown menu, and add a **Copy page SVG code** dialog with copyable per-page SVG blocks.
-  2. **Phase 10 Step 2 & Step 3**: Visiting Card layout (`vc_eu` `85×55`, `vc_us` `89×51`, `vc_90` `90×50`, landscape/portrait) + Optional Mirrored Duplex Card Back (`settings.cardBack`) across all card sizes.
+- Current phase: **Phase 10 Complete** (`P9-03` primary PDF export + copyable page SVG dialog `6ea940f`, reference borders `16..17` `2dd7072`, Visiting Card layout + Optional Mirrored Duplex Card Backs `?v=phase10`).
+- Next step: awaiting owner review/feedback on Phase 10 and any follow-up work.
 
 ## Task conventions
 - Status values: `todo`, `in_progress`, `done`, `blocked`, `not an issue`.
@@ -75,8 +73,8 @@
 | P8-02 | Surprise every card / one undo step | M | high | done | cb79133, f15637c, 7ce1da6 | Seeded `js/randomiser.mjs` + tests, scope/strength dialog, per-card locks & Custom badges, 200-card lazy rows optimization, 1-step Undo/Redo & Undo toasts, `?v=phase8` |
 | P9-01 | Band search and match count (Part A: local) | M | medium | done | ac5d0e9 | Non-destructive accent/case-insensitive filter (`js/search.mjs`), `M of N`, Escape/Clear/Enter/ArrowDown, preview page scroll, `tests/search.test.mjs`, browser QA passed |
 | P9-02 | Online band lookup (Part B: isolated page + providers) | M | medium | done | 19d3674 | Standalone `band-lookup.html` + `js/band-lookup.js` + `js/band-lookup-providers.mjs` (MusicBrainz v2 + Wikipedia/Wikimedia photo, rate queue, cache, non-overwriting fill, undo transfer); `0c728b3` adds Corner Hardware & Fun Distress FX |
-| P9-03 | PDF 300 dpi primary export + Advanced SVG & copyable page SVG code dialog | S | low | todo | - | Owner requested right before Phase 10; make `#pdf` primary CTA (`#mobile-export` -> PDF), move `#svg` into `Advanced` menu, add `#svg-code-dialog` with per-page SVG code blocks |
-| P10-01 | Visiting card layout & optional mirrored card back (Step 1 spec done; run after `P9-03`) | L | high | in_progress | 0e96d1f, 3f40efc | Step 1 + Duplex Card Back spec recorded in `docs/PROGRESS.md` |
+| P9-03 | PDF 300 dpi primary export + Advanced SVG & copyable page SVG code dialog | S | low | done | 6ea940f | `#pdf` primary CTA (`#mobile-export` -> PDF), `#svg` in `Advanced` menu, `#svg-code-dialog` per-page SVG blocks + `@font-face` toggle; mobile `.export-menu > summary` padding fix |
+| P10-01 | Visiting card layout & optional mirrored card back (+ 2 reference borders `16..17`) | L | high | done | 2dd7072 | Pure-JS QR (`js/qr.mjs`), `vc_eu`/`vc_us`/`vc_90` landscape & portrait, mirrored uniform `renderCardBack()`, 3 visiting samples (`#smp-visiting`), Bulk Import support, `tests/phase10.test.mjs`, browser & physical mm measurements passed |
 
 ## Known issue disposition
 - Phase 3 verified and addressed B4, B5, B14, and U1-U8 at desktop and 390px. U6's Surprise me/search controls are intentionally disabled placeholders for Phases 8-9.
@@ -871,4 +869,13 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 - **Copyable Per-Page SVG Code Dialog (`#svg-code-dialog`)**:
   - Iterate over rendered `#sheets .sheet` pages (including `Cut Template` if enabled) and display each page's standalone SVG (from `serializeSheetSvg`, plus an optional toggle to include/exclude the embedded ~208 KB `@font-face` `FONTCSS` block for readability) inside a readonly `<textarea>` block with byte/KB count and a 1-click `Copy SVG` button (using `duplicate` icon from `js/icons.mjs`, clipboard copy + select fallback).
 
-*Owner confirmed direction and stepped away — paused cleanly here until owner returns and gives the go-ahead to build `P9-03` first, then Phase 10.*
+---
+
+## Phase 10 & Border Additions Verification Summary (`?v=phase10`)
+- **`P9-03` Export Priority & SVG Code Dialog (`6ea940f`)**: Verified `#pdf` primary button, `#mobile-export` ("Export PDF"), `Advanced` dropdown (`#svg`, `#svg-code-open`, `#png`, `#cut`), and `#svg-code-dialog` per-page copyable SVG `<textarea>` blocks + `#svg-code-fonts` toggle (`312,200` -> `104,678` chars stripped); refined `@media (max-width: 520px)` `.export-menu > summary` width/padding so `"Advanced"` displays cleanly.
+- **2 Border Reference Styles (`2dd7072`)**: Decoded uploaded reference photos (`20261126_130121.heic` & `20261126_130125.heic`), implemented `16` `Lattice knot` and `17` `Key fret` cleanly in `js/borders.mjs` without altering `0..15` (`0..4` legacy fast-path byte-identical), wired `BORDER_POOLS` in `js/randomiser.mjs`, and verified 18 live border swatches with 0 `NaN`.
+- **Photo Removal & Wheel/Pinch Zoom Confirmation**: Verified uploaded and URL-loaded photo removal works in both sidebar card rows (`.row-remove-photo`) and Single Card View (`#pv-photo-remove`), and verified wheel-to-zoom (`deltaY: -120` shifted `#pv-zm` `100% -> 130%` on `#pvi .pp`).
+- **Visiting Card Layout (`vc_eu` `85×55`, `vc_us` `89×51`, `vc_90` `90×50`), Physical Measurements & Mirrored Card Backs**:
+  - Measured SVG physical card dimensions on rendered sheets: legacy `ticket` = `59.97 × 84.31 mm` (unchanged); `vc_eu` landscape = `85.00 × 55.00 mm` (A4 `8/pg`), `vc_eu` portrait = `55.00 × 84.99 mm` (A4 `9/pg`, Letter `9/pg` with crop marks inside `[35.22..576.78, 2.1..789.9]`), `vc_us` landscape = `89.00 × 50.99 mm` (A4 `10/pg`, Letter `8/pg`), `vc_90` landscape = `90.00 × 49.98 mm` (A4 `10/pg`).
+  - Enabled `#card-back` (`renderCardBack`): confirmed `.sheet.sheet-back` interleaved right after front sheets, measured exact horizontal mirroring (`x_back + CWp + x_front === 595.275` on A4 `595.276`, `-0.001 pt` delta), and confirmed identical uniform theme border/stamp colors across cards with differing custom accents (`#ff0000` vs `#00aaff`).
+  - Verified `#smp-visiting` 3 samples, `#surprise-all` on visiting cards, CSV import via `bulk-import.html` -> `index.html`, `tests/title-layout.test.html` (`7` passed), `tests/phase10.test.mjs`, all `11` Node test suites, `390×844` mobile zero overflow, and `0` console errors across all 5 pages.
