@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10b">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10c">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase10b">
-<link rel="stylesheet" href="css/app.css?v=phase10b">
+<link rel="stylesheet" href="css/tokens.css?v=phase10c">
+<link rel="stylesheet" href="css/app.css?v=phase10c">
 </head>
 <body>
 <header class="topbar">
@@ -139,6 +139,23 @@
           <label class="chk"><input type="checkbox" id="marks" checked> Crop marks</label>
           <label class="chk"><input type="checkbox" id="bleed" checked> 3 mm bleed</label>
           <label class="chk"><input type="checkbox" id="card-back"> Card backs (mirrored next page)</label>
+          <div class="ctrl-grid full card-back-opts" id="card-back-logo-wrap" hidden>
+            <label class="fld">
+              <span>Back logo colour</span>
+              <select id="card-back-logo-mode">
+                <option value="theme">Back border colour</option>
+                <option value="ink">Theme text</option>
+                <option value="frame">Theme frame</option>
+                <option value="mute">Theme muted</option>
+                <option value="stamp">Stamp ink colour</option>
+                <option value="custom">Custom hex</option>
+              </select>
+            </label>
+            <label class="fld" id="card-back-logo-color-wrap" hidden>
+              <span>Custom logo colour</span>
+              <input type="color" id="card-back-logo-color" value="#1b1a19" data-live aria-label="Card back logo custom colour">
+            </label>
+          </div>
           <label class="chk"><input type="checkbox" id="regmarks"> Registration marks</label>
           <label class="chk"><input type="checkbox" id="tpl" checked> Cut template page</label>
           <span class="hint full">Plotter registration marks add alignment targets for cutting.</span>
@@ -948,6 +965,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase10b"></script>
+<script type="module" src="js/app.js?v=phase10c"></script>
 </body>
 </html>

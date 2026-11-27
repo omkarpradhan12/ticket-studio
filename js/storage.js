@@ -39,6 +39,8 @@ export const SET0 = {
   cardOrientation: "landscape",
   vcBadge: "qr-nfc",
   cardBack: false,
+  cardBackLogoColorMode: "theme",
+  cardBackLogoColor: "#1b1a19",
   cutterCorners: "0",
   grain: 15,
   edgeWear: 0,

@@ -1,10 +1,10 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10b";
-import { hsl } from "./image-utils.js?v=phase10b";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10b";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10b";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10b";
-import { renderQrSvgMarkup } from "./qr.mjs?v=phase10b";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10c";
+import { hsl } from "./image-utils.js?v=phase10c";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10c";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10c";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10c";
+import { renderQrSvgMarkup } from "./qr.mjs?v=phase10c";
 
 export { SKINDS, STAMPS };
 
@@ -901,6 +901,23 @@ export function renderCardBack(slotIndex, cfg) {
   const sk = skRaw === "mixed" ? "round" : skRaw;
   const centerScale = Number(Math.max(1.45, Math.min(2.85, Math.min(CW, CH) * 0.0162)).toFixed(2));
   const cleanStyle = { ...resolveStampStyle(cfg, null), wear: 0, opacity: 100 };
+  const logoMode = cfg.cardBackLogoColorMode || "theme";
+  const customLogoHex = HEX6_RE.test(String(cfg.cardBackLogoColor || "").trim())
+    ? String(cfg.cardBackLogoColor).trim().toLowerCase()
+    : U;
+  const stampInkFallback = HEX6_RE.test(String(cfg.stampColor || "").trim())
+    ? String(cfg.stampColor).trim().toLowerCase()
+    : U;
+  const stampModeColor = cfg.stampAuto ? (T.fixed || stampInkFallback) : stampInkFallback;
+  const logoColor = logoMode === "custom"
+    ? customLogoHex
+    : (logoMode === "ink"
+        ? (T.ink || U)
+        : (logoMode === "frame"
+            ? (T.frame || U)
+            : (logoMode === "mute"
+                ? (T.mute || U)
+                : (logoMode === "stamp" ? stampModeColor : U))));
   const centerStamp = sk === "none"
     ? ""
     : renderStampMarkup({
@@ -911,7 +928,7 @@ export function renderCardBack(slotIndex, cfg) {
         px: CW / 2,
         py: CH / 2,
         rotation: -14,
-        color: U,
+        color: logoColor,
         wear: 0,
         filterId: "",
         idAttr: "",

@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10b";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10b";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10b";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10b";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10b";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10b";
-import { History } from "./history.mjs?v=phase10b";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10b";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10b";
+import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10c";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10c";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10c";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10c";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10c";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10c";
+import { History } from "./history.mjs?v=phase10c";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10c";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10c";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase10b";
+} from "./borders.mjs?v=phase10c";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase10b";
+} from "./stamps.mjs?v=phase10c";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase10b";
+} from "./card-styles.mjs?v=phase10c";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase10b";
+} from "./randomiser.mjs?v=phase10c";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase10b";
+} from "./search.mjs?v=phase10c";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -84,7 +84,8 @@ const SETTINGS_FIELDS = {
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
   grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc", cornerHardware: "corner-hw",
   yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter",
-  nfcScale: "nfc-scale", cardOrientation: "corient", vcBadge: "vc-badge"
+  nfcScale: "nfc-scale", cardOrientation: "corient", vcBadge: "vc-badge",
+  cardBackLogoColorMode: "card-back-logo-mode", cardBackLogoColor: "card-back-logo-color"
 };
 const CHECK_FIELDS = {
   cropMarks: "marks", bleed: "bleed", cardBack: "card-back", nfc: "nfc", nfcWithYt: "nfc-yt", cutTemplate: "tpl",
@@ -207,10 +208,25 @@ function layoutFromControls() {
   return computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket", $("corient")?.value || "landscape");
 }
 
+function syncCardBackControls() {
+  const wrap = $("card-back-logo-wrap");
+  if (!wrap) return;
+  const enabled = Boolean($("card-back")?.checked);
+  const mode = $("card-back-logo-mode")?.value || "theme";
+  wrap.hidden = !enabled;
+  const customWrap = $("card-back-logo-color-wrap");
+  if (customWrap) customWrap.hidden = !(enabled && mode === "custom");
+  const activeEl = document.activeElement;
+  if (!activeEl?.classList?.contains("color-hex") || !wrap.contains(activeEl)) {
+    syncColorHexFields(wrap);
+  }
+}
+
 function syncVisitingControlsUi() {
   const visiting = isVisitingSize($("csize")?.value);
   if ($("corient-wrap")) $("corient-wrap").hidden = !visiting;
   if ($("vc-badge-wrap")) $("vc-badge-wrap").hidden = !visiting;
+  syncCardBackControls();
 }
 
 function applySettings(settings = {}) {
@@ -281,6 +297,7 @@ function applySettings(settings = {}) {
   syncStampControls();
   syncQuickColorsControls();
   syncThemeDropdown();
+  syncVisitingControlsUi();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -319,6 +336,8 @@ function renderConfig(one = false, interactive = false) {
     nfcScale: settings.nfcScale ?? 100,
     vcBadge: settings.vcBadge || "qr-nfc",
     cardBack: Boolean(settings.cardBack),
+    cardBackLogoColorMode: settings.cardBackLogoColorMode || "theme",
+    cardBackLogoColor: settings.cardBackLogoColor || "#1b1a19",
     punchHole: settings.punchHole,
     borderStyle: settings.borderStyle,
     border: settings.border,
@@ -760,6 +779,8 @@ function bindHistoryControlEvents() {
     cropMarks: "toggle crop marks",
     bleed: "toggle bleed",
     cardBack: "toggle mirrored card backs",
+    cardBackLogoColorMode: "change card back logo colour mode",
+    cardBackLogoColor: "change card back logo colour",
     nfc: "toggle NFC icon",
     nfcWithYt: "toggle YT Music in NFC logo",
     nfcScale: "change NFC logo size",
@@ -2907,7 +2928,11 @@ function bindEvents() {
   $("card-search-clear")?.addEventListener("click", () => clearCardSearch(true));
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
   ["marks", "bleed", "card-back", "nfc", "nfc-yt", "punch", "tpl", "regmarks", "sauto", "corner-hw", "fx-claw", "fx-tear", "fx-bullet", "fx-blood", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id)?.addEventListener("change", scheduleRender));
-  ["csize", "corient", "vc-badge"].forEach(id => $(id)?.addEventListener("change", scheduleRender));
+  $("card-back")?.addEventListener("change", syncCardBackControls);
+  ["csize", "corient", "vc-badge", "card-back-logo-mode"].forEach(id => $(id)?.addEventListener("change", () => {
+    syncCardBackControls();
+    scheduleRender();
+  }));
   $("style").addEventListener("change", () => {
     studioState.quickColors = undefined;
     syncQuickColorsControls({ rebuildStops: true });

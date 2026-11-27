@@ -3623,8 +3623,19 @@ details.sec > summary {
   .pv-band-fld[hidden],
   .pv-vc-fld[hidden],
   #corient-wrap[hidden],
-  #vc-badge-wrap[hidden] {
+  #vc-badge-wrap[hidden],
+  #card-back-logo-wrap[hidden],
+  #card-back-logo-color-wrap[hidden],
+  [data-pv-border-group][hidden] {
     display: none !important;
+  }
+
+  .card-back-opts {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .svg-code-dialog::backdrop {
