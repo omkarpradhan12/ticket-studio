@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase9e";
-import { hslToHex } from "./image-utils.js?v=phase9e";
-import { abbr } from "./svg-engine.js?v=phase9e";
+import { FONTCSS } from "./fonts.js?v=phase10d";
+import { hslToHex } from "./image-utils.js?v=phase10d";
+import { abbr } from "./svg-engine.js?v=phase10d";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -12,14 +12,16 @@ export function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-export function serializeSheetSvg(el, W, H) {
+export function serializeSheetSvg(el, W, H, { embedFonts = true } = {}) {
   const t = el.cloneNode(true);
   t.querySelectorAll(".pp, .st-ui, .st-snap-guide").forEach(n => n.remove());
   t.setAttribute("width", (W / 2.83465).toFixed(2) + "mm");
   t.setAttribute("height", (H / 2.83465).toFixed(2) + "mm");
-  const st = document.createElementNS("http://www.w3.org/2000/svg", "style");
-  st.textContent = FONTCSS;
-  t.insertBefore(st, t.firstChild);
+  if (embedFonts) {
+    const st = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    st.textContent = FONTCSS;
+    t.insertBefore(st, t.firstChild);
+  }
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(t);
 }
 
@@ -111,7 +113,14 @@ export function exportProjectJson(settings, cards, count) {
         abbreviation: c.code || abbr(c.kind === "album" ? (c.loc || c.title) : c.title),
         accent: hslToHex(c)
       };
-      if (c.kind === "album") r.kind = "album";
+      if (c.kind === "album" || c.kind === "visiting") r.kind = c.kind;
+      if (c.role) r.role = c.role;
+      if (c.company) r.company = c.company;
+      if (c.phone) r.phone = c.phone;
+      if (c.email) r.email = c.email;
+      if (c.website) r.website = c.website;
+      if (c.address) r.address = c.address;
+      if (c.qrText) r.qrText = c.qrText;
       if (c.img) {
         r.photo = c.img;
         if (c.imgUrl && !c.img.startsWith("http")) r.photoUrl = c.imgUrl;

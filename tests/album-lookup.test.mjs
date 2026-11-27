@@ -84,4 +84,49 @@ import {
   assert.equal(res.coverUrl, "https://thumb.wikimedia.org/ok.png");
 }
 
+// 5. Artist-only search (blank album query): queries MusicBrainz & Wikipedia, sorts studio albums first chronologically
+{
+  clearAlbumLookupCaches();
+  const seenUrls = [];
+  const mbArtistOnly = await searchOnlineAlbums("", {
+    artist: "Skillet",
+    fetchImpl: async url => {
+      seenUrls.push(url);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          "release-groups": [
+            { id: "r2", title: "Comatose Comes Alive", "primary-type": "Album", "secondary-types": ["Live"], "first-release-date": "2008", "artist-credit": [{ name: "Skillet" }], score: 100 },
+            { id: "r3", title: "Awake", "primary-type": "Album", "secondary-types": [], "first-release-date": "2009-08-25", "artist-credit": [{ name: "Skillet" }], score: 100 },
+            { id: "r1", title: "Comatose", "primary-type": "Album", "secondary-types": [], "first-release-date": "2006-10-03", "artist-credit": [{ name: "Skillet" }], score: 100 }
+          ]
+        })
+      };
+    }
+  });
+  assert.ok(seenUrls[0].includes("artist%3ASkillet"));
+  assert.ok(seenUrls[0].includes("primarytype%3Aalbum"));
+  assert.ok(seenUrls[0].includes("limit=50"));
+  assert.deepEqual(mbArtistOnly.results.map(r => r.albumName), ["Comatose", "Awake", "Comatose Comes Alive"]);
+
+  const wikiArtistOnly = await searchOnlineAlbums("", {
+    artist: "Skillet",
+    provider: "wikipedia",
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        query: {
+          search: [
+            { pageid: 1, title: "Skillet (band)", snippet: "American rock band" },
+            { pageid: 2, title: "Awake (Skillet album)", snippet: "Released in 2009." }
+          ]
+        }
+      })
+    })
+  });
+  assert.deepEqual(wikiArtistOnly.results.map(r => r.albumName), ["Awake"]);
+}
+
 console.log("Album lookup provider tests passed.");

@@ -25,6 +25,13 @@ export function cardSearchHaystack(card) {
     card.loc,
     card.year,
     card.code,
+    card.role,
+    card.company,
+    card.phone,
+    card.email,
+    card.website,
+    card.address,
+    card.qrText,
     card.stx,
     card.imgUrl
   ].filter(Boolean).join(" "));

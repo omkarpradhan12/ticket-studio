@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase9e">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10d">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase9e">
-<link rel="stylesheet" href="css/app.css?v=phase9e">
+<link rel="stylesheet" href="css/tokens.css?v=phase10d">
+<link rel="stylesheet" href="css/app.css?v=phase10d">
 </head>
 <body>
 <header class="topbar">
@@ -30,12 +30,13 @@
     </div>
     <div class="topbar-actions">
       <button class="g" id="print" type="button"><span data-icon="print"></span> Print</button>
-      <button class="accent" id="svg" type="button"><span data-icon="download"></span> Export SVG</button>
+      <button class="accent" id="pdf" type="button"><span data-icon="download"></span> Export PDF (300 dpi)</button>
       <details class="action-menu export-menu">
-        <summary aria-label="More export formats">Formats</summary>
+        <summary aria-label="Advanced export options">Advanced</summary>
         <div class="menu-panel">
+          <button class="g" id="svg" type="button"><span data-icon="download"></span> Vector SVG (files)</button>
+          <button class="g" id="svg-code-open" type="button"><span data-icon="duplicate"></span> Copy SVG code (pages)</button>
           <button class="g" id="png" type="button"><span data-icon="download"></span> PNG (300 dpi)</button>
-          <button class="g" id="pdf" type="button"><span data-icon="download"></span> PDF (300 dpi)</button>
           <button class="g" id="cut" type="button"><span data-icon="download"></span> Cutter SVG</button>
         </div>
       </details>
@@ -44,6 +45,7 @@
         <div class="menu-panel">
           <button class="g" id="rnd" type="button"><span data-icon="randomise"></span> Randomise all</button>
           <button class="g" id="smp" type="button"><span data-icon="bulkUpload"></span> Load samples</button>
+          <button class="g" id="smp-visiting" type="button"><span data-icon="bulkUpload"></span> Load visiting samples</button>
           <button class="danger" id="rst" type="button"><span data-icon="reset"></span> Reset all</button>
           <button class="g" id="data-open" type="button"><span data-icon="upload"></span> Data import / export</button>
         </div>
@@ -93,11 +95,34 @@
         <label class="fld">
           <span>Card size</span>
           <select id="csize" data-live>
-            <option value="ticket">Ticket (60 × 84 mm)</option>
-            <option value="poker">Poker (63.5 × 88.9 mm)</option>
-            <option value="credit">Credit card (54 × 85.6 mm)</option>
-            <option value="mini">Mini (45 × 64 mm)</option>
-            <option value="tarot">Tarot (70 × 120 mm)</option>
+            <optgroup label="Cards &amp; Tickets">
+              <option value="ticket">Ticket (60 × 84 mm)</option>
+              <option value="poker">Poker (63.5 × 88.9 mm)</option>
+              <option value="credit">Credit card (54 × 85.6 mm)</option>
+              <option value="mini">Mini (45 × 64 mm)</option>
+              <option value="tarot">Tarot (70 × 120 mm)</option>
+            </optgroup>
+            <optgroup label="Visiting Cards">
+              <option value="vc_eu">EU Visiting (85 × 55 mm)</option>
+              <option value="vc_us">US Visiting (89 × 51 mm)</option>
+              <option value="vc_90">Wide Visiting (90 × 50 mm)</option>
+            </optgroup>
+          </select>
+        </label>
+        <label class="fld" id="corient-wrap" hidden>
+          <span>Orientation</span>
+          <select id="corient" data-live>
+            <option value="landscape">Landscape</option>
+            <option value="portrait">Portrait</option>
+          </select>
+        </label>
+        <label class="fld" id="vc-badge-wrap" hidden>
+          <span>Card badge</span>
+          <select id="vc-badge" data-live>
+            <option value="qr-nfc">QR + NFC icon</option>
+            <option value="qr">QR code only</option>
+            <option value="nfc">NFC icon only</option>
+            <option value="none">None</option>
           </select>
         </label>
         <label class="fld">
@@ -113,6 +138,24 @@
         <div class="page-options full">
           <label class="chk"><input type="checkbox" id="marks" checked> Crop marks</label>
           <label class="chk"><input type="checkbox" id="bleed" checked> 3 mm bleed</label>
+          <label class="chk"><input type="checkbox" id="card-back"> Card backs (mirrored next page)</label>
+          <div class="ctrl-grid full card-back-opts" id="card-back-logo-wrap" hidden>
+            <label class="fld">
+              <span>Back logo colour</span>
+              <select id="card-back-logo-mode">
+                <option value="theme">Back border colour</option>
+                <option value="ink">Theme text</option>
+                <option value="frame">Theme frame</option>
+                <option value="mute">Theme muted</option>
+                <option value="stamp">Stamp ink colour</option>
+                <option value="custom">Custom hex</option>
+              </select>
+            </label>
+            <label class="fld" id="card-back-logo-color-wrap" hidden>
+              <span>Custom logo colour</span>
+              <input type="color" id="card-back-logo-color" value="#1b1a19" data-live aria-label="Card back logo custom colour">
+            </label>
+          </div>
           <label class="chk"><input type="checkbox" id="regmarks"> Registration marks</label>
           <label class="chk"><input type="checkbox" id="tpl" checked> Cut template page</label>
           <span class="hint full">Plotter registration marks add alignment targets for cutting.</span>
@@ -703,9 +746,22 @@
   <p class="hint surprise-seed" id="sp-seed-info"></p>
 </dialog>
 
+<dialog id="svg-code-dialog" class="svg-code-dialog" aria-labelledby="svg-code-dialog-title">
+  <form method="dialog" class="dialog-header">
+    <h2 id="svg-code-dialog-title">Page SVG code</h2>
+    <button class="g" type="submit" aria-label="Close SVG code dialog"><span data-icon="close"></span> Close</button>
+  </form>
+  <p class="svg-code-intro">Copy standalone vector SVG code for each rendered page.</p>
+  <div class="svg-code-toolbar">
+    <label class="chk"><input type="checkbox" id="svg-code-fonts" checked> Embed font CSS (<code>@font-face</code>)</label>
+    <span class="hint" id="svg-code-summary"></span>
+  </div>
+  <div id="svg-code-list" class="svg-code-list"></div>
+</dialog>
+
 <div class="mobile-actionbar" aria-label="Sheet actions">
   <button class="g" id="mobile-print" type="button"><span data-icon="print"></span> Print</button>
-  <button class="accent" id="mobile-export" type="button"><span data-icon="download"></span> Export SVG</button>
+  <button class="accent" id="mobile-export" type="button"><span data-icon="download"></span> Export PDF</button>
 </div>
 
 <div id="undo-toast" class="history-toast" role="status" aria-live="polite" hidden>
@@ -733,11 +789,18 @@
       <div class="pv-editor" id="pv-editor" aria-label="Edit selected card">
         <div class="pv-ed-group">
           <div class="pv-ed-grid">
-            <label class="fld w"><span>Artist / band name</span><input type="text" id="pv-title" placeholder="Artist / band name"></label>
-            <label class="fld"><span>Genre</span><input type="text" id="pv-genre" placeholder="Genre"></label>
-            <label class="fld"><span>Origin / place</span><input type="text" id="pv-loc" placeholder="Place"></label>
-            <label class="fld"><span>Year</span><input type="text" id="pv-year" placeholder="Year"></label>
-            <label class="fld"><span>Code</span><input type="text" id="pv-code" placeholder="Abbr"></label>
+            <label class="fld w"><span id="pv-title-label">Artist / band name</span><input type="text" id="pv-title" placeholder="Artist / band name"></label>
+            <label class="fld pv-band-fld"><span>Genre</span><input type="text" id="pv-genre" placeholder="Genre"></label>
+            <label class="fld pv-band-fld"><span>Origin / place</span><input type="text" id="pv-loc" placeholder="Place"></label>
+            <label class="fld pv-band-fld"><span>Year</span><input type="text" id="pv-year" placeholder="Year"></label>
+            <label class="fld pv-band-fld"><span>Code</span><input type="text" id="pv-code" placeholder="Abbr"></label>
+            <label class="fld pv-vc-fld" hidden><span>Job title</span><input type="text" id="pv-role" placeholder="Job title"></label>
+            <label class="fld pv-vc-fld" hidden><span>Company</span><input type="text" id="pv-company" placeholder="Company"></label>
+            <label class="fld pv-vc-fld" hidden><span>Phone</span><input type="text" id="pv-phone" placeholder="Phone"></label>
+            <label class="fld pv-vc-fld" hidden><span>Email</span><input type="text" id="pv-email" placeholder="Email"></label>
+            <label class="fld pv-vc-fld w" hidden><span>Website</span><input type="text" id="pv-website" placeholder="https://…"></label>
+            <label class="fld pv-vc-fld w" hidden><span>Address</span><input type="text" id="pv-address" placeholder="Street, City"></label>
+            <label class="fld pv-vc-fld w" hidden><span>QR code text / link</span><input type="text" id="pv-qrtext" placeholder="Auto (website / email / phone)"></label>
             <label class="fld"><span>Stamp text</span><input type="text" id="pv-stx" placeholder="Same as sheet"></label>
           </div>
         </div>
@@ -765,17 +828,6 @@
           <div class="pv-ed-grid">
             <label class="fld"><span>Card theme</span><select id="pv-theme"></select></label>
             <label class="fld"><span>Card stamp</span><select id="pv-stamp"></select></label>
-            <label class="fld w">
-              <span>Corner hardware</span>
-              <select id="pv-hardware">
-                <option value="">Same as sheet</option>
-                <option value="bolts">Bolts (Default)</option>
-                <option value="pins">Push pins</option>
-                <option value="staples">Corner staples</option>
-                <option value="rivets">Eyelet rivets</option>
-                <option value="none">None (Clean corners)</option>
-              </select>
-            </label>
           </div>
           <label class="pv-slider-fld">
             <span class="lbl-row"><span>Stamp angle</span><output id="pv-srot-val" for="pv-srot">0°</output></span>
@@ -792,11 +844,127 @@
             <button class="g sm" id="pv-reset-style" type="button" hidden>Reset style</button>
           </div>
         </div>
+        <div class="pv-ed-group" id="pv-border-hardware-group">
+          <div class="pv-ed-subheader">
+            <span>Border &amp; frame</span>
+            <button class="g sm" id="pv-border-reset" type="button" hidden>Use sheet border</button>
+          </div>
+          <div class="pv-ed-grid">
+            <label class="fld w"><span>Border style</span><select id="pv-border-style"></select></label>
+            <label class="fld" data-pv-border-group="color">
+              <span>Border colour</span>
+              <select id="pv-border-color-mode">
+                <option value="accent">Theme accent</option>
+                <option value="ink">Theme text</option>
+                <option value="frame">Theme frame</option>
+                <option value="mute">Theme muted</option>
+                <option value="custom">Custom hex</option>
+              </select>
+            </label>
+            <label class="fld" data-pv-border-group="customColor" hidden>
+              <span>Custom hex</span>
+              <input type="color" id="pv-border-color" value="#ff5a36" aria-label="Card border custom colour">
+            </label>
+            <label class="fld" data-pv-border-group="pattern">
+              <span>Line pattern</span>
+              <select id="pv-border-pattern">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+                <option value="dashdot">Dash-dot</option>
+              </select>
+            </label>
+            <label class="fld" data-pv-border-group="corner">
+              <span>Corner style</span>
+              <select id="pv-border-corner">
+                <option value="square">Square</option>
+                <option value="rounded">Rounded</option>
+                <option value="notched">Notched</option>
+                <option value="chamfered">Chamfered</option>
+              </select>
+            </label>
+            <label class="fld" data-pv-border-group="ornament">
+              <span>Corner ornament</span>
+              <select id="pv-border-ornament">
+                <option value="none">None</option>
+                <option value="diamond">Diamond</option>
+                <option value="dot">Dot</option>
+                <option value="star">Star</option>
+                <option value="cross">Cross</option>
+                <option value="bracket">Corner tick</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint" id="pv-border-none-note" hidden>No border drawn for None on this card.</p>
+          <label class="pv-slider-fld" data-pv-border-group="width">
+            <span class="lbl-row"><span>Border width</span><output id="pv-border-width-val" for="pv-border-width">1.5</output></span>
+            <input type="range" id="pv-border-width" min="0.5" max="5" step="0.1" value="1.5">
+          </label>
+          <label class="pv-slider-fld" data-pv-border-group="inset">
+            <span class="lbl-row"><span>Border inset</span><output id="pv-border-inset-val" for="pv-border-inset">2.5</output></span>
+            <input type="range" id="pv-border-inset" min="1.5" max="10" step="0.5" value="2.5">
+          </label>
+          <label class="pv-slider-fld" data-pv-border-group="cornerSize" hidden>
+            <span class="lbl-row"><span>Corner size</span><output id="pv-border-corner-size-val" for="pv-border-corner-size">9</output></span>
+            <input type="range" id="pv-border-corner-size" min="2" max="18" step="0.5" value="9">
+          </label>
+          <label class="pv-slider-fld" data-pv-border-group="wear">
+            <span class="lbl-row"><span>Border wear</span><output id="pv-border-wear-val" for="pv-border-wear">35%</output></span>
+            <input type="range" id="pv-border-wear" min="0" max="100" step="1" value="35">
+          </label>
+          <label class="chk" data-pv-border-group="inner"><input type="checkbox" id="pv-border-inner"> Add second inner border</label>
+          <div class="pv-ed-divider" aria-hidden="true"></div>
+          <div class="pv-ed-subheader">
+            <span>Hardware &amp; mounts</span>
+          </div>
+          <div class="pv-ed-grid">
+            <label class="fld w">
+              <span>Corner hardware</span>
+              <select id="pv-hardware">
+                <option value="">Same as sheet</option>
+                <option value="bolts">Bolts (Default)</option>
+                <option value="pins">Push pins</option>
+                <option value="staples">Corner staples</option>
+                <option value="rivets">Eyelet rivets</option>
+                <option value="none">None (Clean corners)</option>
+              </select>
+            </label>
+          </div>
+          <fieldset class="pv-sub-fields">
+            <legend>
+              <span>Photo mounts (max 2)</span>
+              <button class="g sm" id="pv-mounts-reset" type="button" hidden>Sheet default</button>
+            </legend>
+            <div class="pv-check-grid">
+              <label class="chk"><input type="checkbox" data-pv-mount value="0"> Tape</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="1"> Pins</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="2"> Corners</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="4"> Washi</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="5"> Brads</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="6"> Clip</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="7"> Staples</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="8"> Wax</label>
+              <label class="chk"><input type="checkbox" data-pv-mount value="3"> None</label>
+            </div>
+          </fieldset>
+          <fieldset class="pv-sub-fields">
+            <legend>
+              <span>Distress marks</span>
+              <button class="g sm" id="pv-fx-reset" type="button" hidden>Sheet default</button>
+            </legend>
+            <div class="pv-check-grid">
+              <label class="chk"><input type="checkbox" id="pv-fx-claw"> Claw marks</label>
+              <label class="chk"><input type="checkbox" id="pv-fx-tear"> Corner tear</label>
+              <label class="chk"><input type="checkbox" id="pv-fx-bullet"> Bullet hole</label>
+              <label class="chk"><input type="checkbox" id="pv-fx-blood"> Blood spatter</label>
+            </div>
+          </fieldset>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase9e"></script>
+<script type="module" src="js/app.js?v=phase10d"></script>
 </body>
 </html>

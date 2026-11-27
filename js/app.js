@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase9e";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase9e";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase9e";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, renderCard, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase9e";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, triggerDownload, rasterizeSvg } from "./export.js?v=phase9e";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase9e";
-import { History } from "./history.mjs?v=phase9e";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase9e";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase9e";
+import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10d";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10d";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10d";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10d";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10d";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10d";
+import { History } from "./history.mjs?v=phase10d";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10d";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10d";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase9e";
+} from "./borders.mjs?v=phase10d";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase9e";
+} from "./stamps.mjs?v=phase10d";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase9e";
+} from "./card-styles.mjs?v=phase10d";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase9e";
+} from "./randomiser.mjs?v=phase10d";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase9e";
+} from "./search.mjs?v=phase10d";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -84,10 +84,11 @@ const SETTINGS_FIELDS = {
   gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
   grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc", cornerHardware: "corner-hw",
   yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter",
-  nfcScale: "nfc-scale"
+  nfcScale: "nfc-scale", cardOrientation: "corient", vcBadge: "vc-badge",
+  cardBackLogoColorMode: "card-back-logo-mode", cardBackLogoColor: "card-back-logo-color"
 };
 const CHECK_FIELDS = {
-  cropMarks: "marks", bleed: "bleed", nfc: "nfc", nfcWithYt: "nfc-yt", cutTemplate: "tpl",
+  cropMarks: "marks", bleed: "bleed", cardBack: "card-back", nfc: "nfc", nfcWithYt: "nfc-yt", cutTemplate: "tpl",
   serials: "serial", stampAuto: "sauto", regMarks: "regmarks", punchHole: "punch",
   centerTitle: "design-center", halftone: "design-halftone",
   fxClaw: "fx-claw", fxTear: "fx-tear", fxBullet: "fx-bullet", fxBlood: "fx-blood"
@@ -112,6 +113,7 @@ const studioState = {
 let lastSwatchThemeKey = "";
 let lastStampSwatchKey = "";
 let lastBuiltRowsPerPage = 0;
+let lastBuiltLayoutKind = "";
 const cardIds = new WeakMap();
 let nextCardId = 0;
 let currentLayout;
@@ -195,8 +197,36 @@ function readSettings() {
   if ($("nfc-yt")) $("nfc-yt").disabled = !settings.nfc;
   $("nfc-yt-wrap")?.classList.toggle("is-disabled", !settings.nfc);
   $("nfc-scale-wrap")?.classList.toggle("is-disabled", !settings.nfc);
+  settings.nfcWithYt = settings.nfcWithYt !== false;
+  settings.cardOrientation = settings.cardOrientation === "portrait" ? "portrait" : "landscape";
+  settings.vcBadge = settings.vcBadge || "qr-nfc";
   studioState.settings = settings;
   return settings;
+}
+
+function layoutFromControls() {
+  return computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket", $("corient")?.value || "landscape");
+}
+
+function syncCardBackControls() {
+  const wrap = $("card-back-logo-wrap");
+  if (!wrap) return;
+  const enabled = Boolean($("card-back")?.checked);
+  const mode = $("card-back-logo-mode")?.value || "theme";
+  wrap.hidden = !enabled;
+  const customWrap = $("card-back-logo-color-wrap");
+  if (customWrap) customWrap.hidden = !(enabled && mode === "custom");
+  const activeEl = document.activeElement;
+  if (!activeEl?.classList?.contains("color-hex") || !wrap.contains(activeEl)) {
+    syncColorHexFields(wrap);
+  }
+}
+
+function syncVisitingControlsUi() {
+  const visiting = isVisitingSize($("csize")?.value);
+  if ($("corient-wrap")) $("corient-wrap").hidden = !visiting;
+  if ($("vc-badge-wrap")) $("vc-badge-wrap").hidden = !visiting;
+  syncCardBackControls();
 }
 
 function applySettings(settings = {}) {
@@ -267,6 +297,7 @@ function applySettings(settings = {}) {
   syncStampControls();
   syncQuickColorsControls();
   syncThemeDropdown();
+  syncVisitingControlsUi();
   studioState.settings = readSettings();
   syncColorHexFields();
 }
@@ -303,6 +334,10 @@ function renderConfig(one = false, interactive = false) {
     nfc: settings.nfc,
     nfcWithYt: settings.nfcWithYt !== false,
     nfcScale: settings.nfcScale ?? 100,
+    vcBadge: settings.vcBadge || "qr-nfc",
+    cardBack: Boolean(settings.cardBack),
+    cardBackLogoColorMode: settings.cardBackLogoColorMode || "theme",
+    cardBackLogoColor: settings.cardBackLogoColor || "#1b1a19",
     punchHole: settings.punchHole,
     borderStyle: settings.borderStyle,
     border: settings.border,
@@ -731,6 +766,8 @@ function bindHistoryControlEvents() {
     gradientSpread: "change gradient spread",
     paper: "change paper size",
     cardSize: "change card size",
+    cardOrientation: "change card orientation",
+    vcBadge: "change visiting card badge",
     cutterCorners: "change cutter corner radius",
     grain: "change paper grain",
     edgeWear: "change edge wear",
@@ -741,6 +778,9 @@ function bindHistoryControlEvents() {
     photoFilter: "change photo filter",
     cropMarks: "toggle crop marks",
     bleed: "toggle bleed",
+    cardBack: "toggle mirrored card backs",
+    cardBackLogoColorMode: "change card back logo colour mode",
+    cardBackLogoColor: "change card back logo colour",
     nfc: "toggle NFC icon",
     nfcWithYt: "toggle YT Music in NFC logo",
     nfcScale: "change NFC logo size",
@@ -1132,6 +1172,24 @@ function updateMountStatus() {
     : "Active mounts: None";
 }
 
+function applyMountCheckboxRule(inputs, changedInput) {
+  if (changedInput.value === "3" && changedInput.checked) {
+    inputs.forEach(other => {
+      if (other !== changedInput) other.checked = false;
+    });
+  } else if (changedInput.checked) {
+    const none = inputs.find(el => el.value === "3");
+    if (none) none.checked = false;
+  }
+  const checked = inputs.filter(el => el.checked);
+  if (checked.length > 2) {
+    changedInput.checked = false;
+    message("Choose no more than 2 photo mounts.");
+    return null;
+  }
+  return checked.map(el => Number(el.value));
+}
+
 function stampKeyFor(stampIndex) {
   return stampIndex === 1 ? "stamp2Pos" : "stampPos";
 }
@@ -1253,18 +1311,15 @@ function getCardPhotoGeometry(index) {
   const CH = currentLayout?.CH || 239;
   const page = Math.floor(index / (currentLayout?.PER || 9));
   const themeKey = card?.theme || studioState.pageThemes[page] || studioState.settings?.style || "cream";
-  const isPolaroid = Boolean((THEMES[themeKey] || THEMES.cream)?.polaroid) && !studioState.settings?.minimalLayout;
-  const PS = isPolaroid ? 146 : 136;
-  const PH = PS + (CH - 239);
-  return { CH, isPolaroid, PS, PH };
+  const isVisiting = Boolean(currentLayout?.isVisiting);
+  const orientation = currentLayout?.orientation || "landscape";
+  const isPolaroid = !isVisiting && Boolean((THEMES[themeKey] || THEMES.cream)?.polaroid) && !studioState.settings?.minimalLayout;
+  const { PX, PY, PS, PH } = getCardPhotoRect({ isPolaroid, isVisiting, orientation, CH });
+  return { CH, isPolaroid, isVisiting, PX, PY, PS, PH };
 }
 
 function patchLivePhotoDom(index, px, py, box, isPolaroid = false, updateSize = false) {
-  const CH = currentLayout?.CH || 239;
-  const PX = isPolaroid ? 12 : 17;
-  const PY = isPolaroid ? 13 : 16;
-  const PS = isPolaroid ? 146 : 136;
-  const PH = PS + (CH - 239);
+  const { PX, PY, PS, PH } = getCardPhotoGeometry(index);
   const PMY = PY + PH / 2;
   const nextX = (PX + PS / 2 - box.w / 2 + px / 100 * box.mx).toFixed(2);
   const nextY = (PMY - box.h / 2 + py / 100 * box.my).toFixed(2);
@@ -1336,9 +1391,11 @@ function scheduleRender() {
 
 function render() {
   studioState.settings = readSettings();
+  syncVisitingControlsUi();
   const active = THEMES[$("style").value] || THEMES.cream;
-  currentLayout = computeLayout($("paper").value, $("csize").value);
-  if (lastBuiltRowsPerPage && currentLayout.PER !== lastBuiltRowsPerPage) {
+  currentLayout = layoutFromControls();
+  const desiredKind = currentLayout.isVisiting ? "visiting" : "standard";
+  if ((lastBuiltRowsPerPage && currentLayout.PER !== lastBuiltRowsPerPage) || (lastBuiltLayoutKind && desiredKind !== lastBuiltLayoutKind)) {
     buildRows();
   }
   const cfg = renderConfig();
@@ -1347,11 +1404,21 @@ function render() {
   const pages = Math.ceil(activeCards.length / currentLayout.PER);
   const width = (currentLayout.W / 2.83465).toFixed(2) + "mm";
   const height = (currentLayout.H / 2.83465).toFixed(2) + "mm";
-  const svgPages = Array.from({ length: pages }, (_, page) => {
+  const svgPages = [];
+  for (let page = 0; page < pages; page++) {
     const pageCards = activeCards.slice(page * currentLayout.PER, (page + 1) * currentLayout.PER);
     const pageTheme = (cfg.pageThemes?.[page] || "");
-    return `<svg class="sheet" data-name="ticket-cards-p${page + 1}" data-page="${page}" width="${width}" height="${height}" viewBox="0 0 ${currentLayout.W} ${currentLayout.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${currentLayout.W}" height="${currentLayout.H}" fill="#fff"/>${regMarksSvg(currentLayout.W, currentLayout.H, cfg.regMarks)}${pageCards.map((card, i) => renderCard(card, page * currentLayout.PER + i, { ...cfg, style: pageTheme || cfg.style, themeForce: pageTheme || "" })).join("")}</svg>`;
-  });
+    const pageCfg = { ...cfg, style: pageTheme || cfg.style, themeForce: pageTheme || "" };
+    const frontName = `ticket-cards-p${page + 1}${cfg.cardBack ? "-front" : ""}`;
+    svgPages.push(
+      `<svg class="sheet" data-name="${frontName}" data-page="${page}" width="${width}" height="${height}" viewBox="0 0 ${currentLayout.W} ${currentLayout.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${currentLayout.W}" height="${currentLayout.H}" fill="#fff"/>${regMarksSvg(currentLayout.W, currentLayout.H, cfg.regMarks)}${pageCards.map((card, i) => renderCard(card, page * currentLayout.PER + i, pageCfg)).join("")}</svg>`
+    );
+    if (cfg.cardBack) {
+      svgPages.push(
+        `<svg class="sheet sheet-back" data-name="ticket-cards-p${page + 1}-back" data-page="${page}-back" width="${width}" height="${height}" viewBox="0 0 ${currentLayout.W} ${currentLayout.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${currentLayout.W}" height="${currentLayout.H}" fill="#fff"/>${regMarksSvg(currentLayout.W, currentLayout.H, cfg.regMarks)}${pageCards.map((_, i) => renderCardBack(page * currentLayout.PER + i, pageCfg)).join("")}</svg>`
+      );
+    }
+  }
   if ($("tpl").checked) svgPages.push(tplSvg(currentLayout, cfg.regMarks));
   $("sheets").innerHTML = svgPages.join("");
   updatePreviewZoom(previewZoom);
@@ -1368,9 +1435,12 @@ function render() {
       .sheet { width: ${paperWidth} !important; height: ${paperHeight} !important; }
     }`;
   }
-  $("pg").textContent = `${pages + ($("tpl").checked ? 1 : 0)} page${pages + ($("tpl").checked ? 1 : 0) === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
+  const totalSheetPages = pages * (cfg.cardBack ? 2 : 1) + ($("tpl").checked ? 1 : 0);
+  $("pg").textContent = `${totalSheetPages} page${totalSheetPages === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
   const paperName = $("paper").value === "letter" ? "US Letter" : "A4";
-  $("sub-info").textContent = `${studioState.count} cards across ${pages} ${paperName} page${pages === 1 ? "" : "s"} · ${currentLayout.PER}/page`;
+  const sizeNote = currentLayout.isVisiting ? ` (${currentLayout.physW}×${currentLayout.physH} mm)` : "";
+  const backNote = cfg.cardBack ? " ×2 with mirrored backs" : "";
+  $("sub-info").textContent = `${studioState.count} cards across ${pages} ${paperName} page${pages === 1 ? "" : "s"}${backNote} · ${currentLayout.PER}/page${sizeNote}`;
   $("card-count-lbl").textContent = studioState.count;
   $("ssv").textContent = cfg.stampSize + "%";
   $("gsv").textContent = cfg.gradientSpread + "%";
@@ -1413,11 +1483,120 @@ function render() {
   saveSoon();
 }
 
+let programmaticScrollTarget = null;
+let programmaticScrollTimer = 0;
+let stageScrollRaf = 0;
+
+function parseSheetPageIndex(sheetEl) {
+  const raw = sheetEl?.dataset?.page;
+  if (!raw) return null;
+  const page = Number.parseInt(raw, 10);
+  return Number.isInteger(page) && page >= 0 ? page : null;
+}
+
+function markActiveSheetClass(activePage) {
+  $("sheets")?.querySelectorAll("svg.sheet").forEach(sheet => {
+    const p = parseSheetPageIndex(sheet);
+    sheet.classList.toggle("is-active-page", p !== null && p === activePage);
+  });
+}
+
+function detectVisibleStagePage() {
+  const stage = $("stage");
+  const sheetsWrap = $("sheets");
+  if (!stage || !sheetsWrap) return null;
+  const sheets = [...sheetsWrap.querySelectorAll("svg.sheet[data-page]")];
+  if (!sheets.length) return null;
+
+  const toolsH = $("page-tools")?.offsetHeight || 0;
+  const stageScrollable = stage.scrollHeight > stage.clientHeight + 2;
+  let viewTop, viewBottom, atTop, atBottom;
+  if (stageScrollable) {
+    const stageRect = stage.getBoundingClientRect();
+    viewTop = stageRect.top + toolsH;
+    viewBottom = stageRect.bottom;
+    atTop = stage.scrollTop <= 4;
+    atBottom = stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 4;
+  } else {
+    const toolsRect = $("page-tools")?.getBoundingClientRect();
+    viewTop = Math.max(0, toolsRect ? toolsRect.bottom : 0);
+    viewBottom = window.innerHeight || document.documentElement.clientHeight || 0;
+    atTop = (window.scrollY || 0) <= 4;
+    const docH = document.documentElement.scrollHeight || 0;
+    atBottom = (window.scrollY || 0) + (window.innerHeight || 0) >= docH - 4;
+  }
+
+  const pageScores = new Map();
+  let highestVisiblePage = -1;
+  for (const sheet of sheets) {
+    const pageIdx = parseSheetPageIndex(sheet);
+    if (pageIdx === null) continue;
+    const rect = sheet.getBoundingClientRect();
+    if (rect.height <= 0) continue;
+    const overlap = Math.max(0, Math.min(rect.bottom, viewBottom) - Math.max(rect.top, viewTop));
+    if (overlap > 0) {
+      if (overlap > 40 && pageIdx > highestVisiblePage) highestVisiblePage = pageIdx;
+      const prev = pageScores.get(pageIdx) || 0;
+      if (overlap > prev) pageScores.set(pageIdx, overlap);
+    }
+  }
+  if (!pageScores.size) return null;
+  if (atTop && pageScores.has(0)) return 0;
+  if (atBottom && highestVisiblePage >= 0) return highestVisiblePage;
+
+  let bestPage = null;
+  let bestScore = -1;
+  for (const [pageIdx, overlap] of pageScores.entries()) {
+    if (overlap > bestScore) {
+      bestScore = overlap;
+      bestPage = pageIdx;
+    }
+  }
+  return bestPage;
+}
+
+function clearProgrammaticScrollGuard() {
+  programmaticScrollTarget = null;
+  if (programmaticScrollTimer) {
+    clearTimeout(programmaticScrollTimer);
+    programmaticScrollTimer = 0;
+  }
+}
+
+function scheduleStagePageSync() {
+  if (stageScrollRaf) return;
+  stageScrollRaf = window.requestAnimationFrame(() => {
+    stageScrollRaf = 0;
+    const detected = detectVisibleStagePage();
+    if (detected === null) return;
+    if (programmaticScrollTarget !== null) {
+      if (detected === programmaticScrollTarget) {
+        clearProgrammaticScrollGuard();
+      } else {
+        return;
+      }
+    }
+    if (detected !== studioState.activePage) {
+      const per = currentLayout?.PER || layoutFromControls().PER || 9;
+      const pageCount = Math.max(1, Math.ceil(studioState.count / per));
+      studioState.activePage = Math.max(0, Math.min(pageCount - 1, detected));
+      syncPageTools(pageCount);
+      if (historyReady) history.refresh(captureSnapshot());
+    }
+  });
+}
+
 function scrollStageToPage(targetPage) {
   const stage = $("stage");
   const sheetEl = $("sheets")?.querySelector(`svg.sheet[data-page="${targetPage}"]`);
   if (!stage || !sheetEl) return;
-  const behavior = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth";
+  clearProgrammaticScrollGuard();
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if (!reducedMotion) {
+    programmaticScrollTarget = targetPage;
+    programmaticScrollTimer = window.setTimeout(clearProgrammaticScrollGuard, 700);
+  }
+  const behavior = reducedMotion ? "auto" : "smooth";
   if (stage.scrollHeight > stage.clientHeight + 2) {
     const stageRect = stage.getBoundingClientRect();
     const sheetRect = sheetEl.getBoundingClientRect();
@@ -1431,7 +1610,7 @@ function scrollStageToPage(targetPage) {
 }
 
 function syncPreviewPageForCard(index, scrollStage = false) {
-  const per = currentLayout?.PER || computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket").PER || 9;
+  const per = currentLayout?.PER || layoutFromControls().PER || 9;
   const pageCount = Math.max(1, Math.ceil(studioState.count / per));
   const targetPage = Math.max(0, Math.min(pageCount - 1, Math.floor(index / per)));
   if (studioState.activePage !== targetPage) {
@@ -1538,8 +1717,11 @@ function ensureSharedPhotoInput() {
 
 function buildRows() {
   const activeCards = studioState.cards.slice(0, studioState.count);
-  const per = currentLayout?.PER || computeLayout($("paper")?.value || "a4", $("csize")?.value || "ticket").PER || 9;
+  const lay = currentLayout || layoutFromControls();
+  const per = lay.PER || 9;
+  const isVisitingMode = Boolean(lay.isVisiting);
   lastBuiltRowsPerPage = per;
+  lastBuiltLayoutKind = isVisitingMode ? "visiting" : "standard";
   const fullThemeOptions = `<option value="">Same as sheet</option>${getGroupedThemes().map(([lbl, entries]) => `<optgroup label="${escapeHtml(lbl)}">${entries.map(([key, theme]) => `<option value="${key}">${escapeHtml(theme.n)}</option>`).join("")}</optgroup>`).join("")}`;
   const fullStampOptions = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
     .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
@@ -1599,11 +1781,22 @@ function buildRows() {
           </div>
         </div>
         <div class="f card-fields">
+          ${isVisitingMode ? `
+          <label class="fld w"><span>Full name</span><input type="text" data-field="title" aria-label="Card ${index + 1} full name" placeholder="Full name" value="${escapeHtml(card.title)}"></label>
+          <label class="fld"><span>Job title</span><input type="text" data-field="role" aria-label="Job title" placeholder="Job title" value="${escapeHtml(card.role ?? "")}"></label>
+          <label class="fld"><span>Company</span><input type="text" data-field="company" aria-label="Company" placeholder="Company" value="${escapeHtml(card.company ?? "")}"></label>
+          <label class="fld"><span>Phone</span><input type="text" data-field="phone" aria-label="Phone" placeholder="Phone" value="${escapeHtml(card.phone ?? "")}"></label>
+          <label class="fld"><span>Email</span><input type="text" data-field="email" aria-label="Email" placeholder="Email" value="${escapeHtml(card.email ?? "")}"></label>
+          <label class="fld w"><span>Website</span><input type="text" data-field="website" aria-label="Website" placeholder="https://…" value="${escapeHtml(card.website ?? "")}"></label>
+          <label class="fld w"><span>Address</span><input type="text" data-field="address" aria-label="Address" placeholder="Street, City" value="${escapeHtml(card.address ?? "")}"></label>
+          <label class="fld w"><span>QR code text / link</span><input type="text" data-field="qrText" aria-label="QR value" placeholder="Auto (website / email / phone)" value="${escapeHtml(card.qrText ?? "")}"></label>
+          ` : `
           <label class="fld w"><span>Artist / band name</span><input type="text" data-field="title" aria-label="Card ${index + 1} name" placeholder="Artist / band name" value="${escapeHtml(card.title)}"></label>
           <label class="fld w"><span>Genre</span><input type="text" data-field="genre" aria-label="Genre" placeholder="Genre" value="${escapeHtml(genre)}"><output class="field-value" data-field-value="genre"${genre.length > 24 ? "" : " hidden"}>${escapeHtml(genre)}</output></label>
           <label class="fld w"><span>Place</span><input type="text" data-field="loc" aria-label="Place" placeholder="Place" value="${escapeHtml(card.loc)}"></label>
           <label class="fld w"><span>Year</span><input type="text" data-field="year" aria-label="Year" placeholder="Year" value="${escapeHtml(card.year)}"></label>
           <label class="fld w"><span>Abbreviation</span><input type="text" data-field="code" aria-label="Abbreviation" placeholder="Abbreviation" value="${escapeHtml(card.code)}"></label>
+          `}
           <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">${iconMarkup("upload")} Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
           ${card.corsLimited ? '<span class="cors-tag w" tabindex="0" role="note" aria-label="This host blocks canvas access; SVG export works, raster export may not." data-tooltip="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
           <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> <span>Accent sampled from image when available</span><button class="g sm row-remove-photo" type="button" data-action="remove-photo"${imgSrc ? "" : " hidden"} aria-label="Remove photo from card ${index + 1}">Remove photo</button></div>
@@ -1696,7 +1889,11 @@ function buildRows() {
         if (cardSearchQuery.trim()) applyCardSearchFilter();
         scheduleRender();
       });
-      const fieldNames = { title: "name", genre: "genre", loc: "place", year: "year", code: "abbreviation" };
+      const fieldNames = {
+        title: "name", genre: "genre", loc: "place", year: "year", code: "abbreviation",
+        role: "job title", company: "company", phone: "phone", email: "email",
+        website: "website", address: "address", qrText: "QR value"
+      };
       bindContinuousHistory(input, `change card ${fieldNames[input.dataset.field]}`, `card:${index}:${input.dataset.field}`);
     });
     row.querySelectorAll("[data-adjust]").forEach(input => {
@@ -1987,7 +2184,7 @@ function moveCard(from, to) {
   studioState.cards = cards;
   studioState.selectedCard = to;
   recordDiscrete("move card");
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  currentLayout = layoutFromControls();
   buildRows();
   render();
 }
@@ -2004,7 +2201,7 @@ function setCount(value) {
   studioState.selectedCard = Math.min(studioState.selectedCard, studioState.count - 1);
   $("count").value = studioState.count;
   recordDiscrete("change card count");
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  currentLayout = layoutFromControls();
   buildRows();
   render();
 }
@@ -2050,7 +2247,14 @@ async function importJson(text) {
       px: Math.max(-100, Math.min(100, Number(item.photoX) || 0)),
       py: Math.max(-100, Math.min(100, Number(item.photoY) || 0)),
       ...styleOverrides,
-      ...(item.kind === "album" ? { kind: "album" } : {}),
+      ...(item.kind === "album" || item.kind === "visiting" ? { kind: item.kind } : {}),
+      ...(item.role ? { role: String(item.role) } : {}),
+      ...(item.company ? { company: String(item.company) } : {}),
+      ...(item.phone ? { phone: String(item.phone) } : {}),
+      ...(item.email ? { email: String(item.email) } : {}),
+      ...(item.website ? { website: String(item.website) } : {}),
+      ...(item.address ? { address: String(item.address) } : {}),
+      ...(item.qrText ? { qrText: String(item.qrText) } : {}),
       theme: styleOverrides.theme || String(item.theme || ""),
       sk: styleOverrides.sk || String(item.stampShape || ""),
       stx: String(item.stampText || ""),
@@ -2194,6 +2398,21 @@ function loadSamples() {
   showUndoToast("Sample cards loaded.");
 }
 
+function loadVisitingSamples() {
+  if (!isVisitingSize($("csize")?.value)) $("csize").value = "vc_eu";
+  if ($("corient")) $("corient").value = "landscape";
+  studioState.cards = VISITING_SAMPLE_CARDS.map(card => ({ ...blankCard(), ...card }));
+  studioState.count = studioState.cards.length;
+  studioState.selectedCard = 0;
+  $("count").value = studioState.count;
+  currentLayout = layoutFromControls();
+  buildRows();
+  recordDiscrete("load visiting samples");
+  render();
+  message("Loaded 3 sample visiting cards.");
+  showUndoToast("Visiting card samples loaded.");
+}
+
 function updateSurpriseDialogMeta() {
   const lockedCount = studioState.cards.slice(0, studioState.count).filter(c => c.locked).length;
   const info = $("sp-seed-info");
@@ -2249,7 +2468,7 @@ function surpriseCards({ seed = generateSeed(), onlyIndex = null, actionLabel = 
   lastSurpriseSeed = seed;
   studioState.settings = readSettings();
   const cfg = renderConfig();
-  const lay = currentLayout || computeLayout($("paper").value, $("csize").value);
+  const lay = currentLayout || layoutFromControls();
   const previousCards = studioState.cards;
   const res = surpriseCardsBatch({
     cards: previousCards,
@@ -2275,7 +2494,7 @@ function surpriseCards({ seed = generateSeed(), onlyIndex = null, actionLabel = 
   });
   studioState.cards = res.cards;
   recordDiscrete(actionLabel);
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  currentLayout = layoutFromControls();
   buildRows();
   render();
   updateSurpriseDialogMeta();
@@ -2307,7 +2526,7 @@ function toggleCardLock(index) {
     studioState.cards = studioState.cards.map((card, i) => i === index ? next : card);
   }
   recordDiscrete(nextLocked ? "lock card styling" : "unlock card styling");
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  currentLayout = layoutFromControls();
   buildRows();
   render();
   updateSurpriseDialogMeta();
@@ -2324,7 +2543,7 @@ function resetSingleCardStyling(index) {
   cardIds.set(cleared, cardIdentity(current));
   studioState.cards = studioState.cards.map((card, i) => i === index ? cleared : card);
   recordDiscrete("reset card styling");
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  currentLayout = layoutFromControls();
   buildRows();
   render();
   message(`Reset card #${index + 1} styling to sheet defaults.`);
@@ -2345,7 +2564,7 @@ function clearAllRandomStyling() {
     return;
   }
   recordDiscrete("clear random styling");
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  currentLayout = layoutFromControls();
   buildRows();
   render();
   updateSurpriseDialogMeta();
@@ -2366,7 +2585,8 @@ function randomise() {
   $("tcr").value = Math.random() > .5 ? Math.floor(Math.random() * 50) : 0;
   $("tsc").value = Math.random() > .5 ? Math.floor(Math.random() * 40) : 0;
   $("gspread").value = 25 + Math.floor(Math.random() * 45);
-  studioState.borderStyle = Math.floor(Math.random() * (BORDER_STYLES.length - 1));
+  const randBorders = BORDER_STYLES.filter(s => s.id !== 15);
+  studioState.borderStyle = randBorders[Math.floor(Math.random() * randBorders.length)].id;
   studioState.borderConfig = undefined;
   syncBorderControls();
   syncStampControls();
@@ -2394,7 +2614,7 @@ function previewSvg(index, { interactive = false } = {}) {
     themeForce: studioState.pageThemes[page] || ""
   });
   studioState.selectedCard = originalIndex;
-  const height = Math.max(204, Math.min(309, Math.round((SIZES[$("csize").value] || SIZES.ticket)[1] * 2.83465 / layout.K * 10) / 10));
+  const height = layout.CH;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${CW + 16} ${height + 16}" width="${(CW + 16) * 4}" height="${(height + 16) * 4}"><defs><style>${FONTCSS}</style></defs><rect x="-8" y="-8" width="${CW + 16}" height="${height + 16}" fill="#fff"/>${cardMarkup}</svg>`;
 }
 
@@ -2418,11 +2638,16 @@ function scopePreviewSvgIds(markup, prefix = "pv-") {
 function syncPreviewSelects(force = false) {
   const themeSel = $("pv-theme");
   const stampSel = $("pv-stamp");
+  const borderSel = $("pv-border-style");
   if (themeSel && (force || !themeSel.options.length)) {
     populateThemeSelect(themeSel, true);
   }
   if (stampSel && (force || !stampSel.options.length)) {
     stampSel.innerHTML = [["", "Same as sheet"], ["none", "No stamp"], ...Object.keys(STAMPS).map(key => [key, STAMPS[key].name || (key[0].toUpperCase() + key.slice(1))]), ["mixed", "Mixed"]]
+      .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
+  }
+  if (borderSel && (force || !borderSel.options.length)) {
+    borderSel.innerHTML = [["", "Same as sheet"], ...BORDER_STYLES.map(s => [String(s.id), s.name])]
       .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
   }
 }
@@ -2435,13 +2660,27 @@ function syncPreviewControls() {
   const active = document.activeElement;
   const setVal = (id, val) => {
     const el = $(id);
-    if (el && active !== el) el.value = val;
+    if (!el || active === el) return;
+    if (el.type === "checkbox") el.checked = Boolean(val);
+    else el.value = String(val);
   };
+  const cfg = renderConfig();
+  const isVisitingMode = isVisitingSize($("csize")?.value);
+  if ($("pv-title-label")) $("pv-title-label").textContent = isVisitingMode ? "Full name" : "Artist / band name";
+  document.querySelectorAll(".pv-band-fld").forEach(el => { el.hidden = isVisitingMode; });
+  document.querySelectorAll(".pv-vc-fld").forEach(el => { el.hidden = !isVisitingMode; });
   setVal("pv-title", card.title || "");
   setVal("pv-genre", card.genre || "");
   setVal("pv-loc", card.loc || "");
   setVal("pv-year", card.year || "");
   setVal("pv-code", card.code || "");
+  setVal("pv-role", card.role ?? "");
+  setVal("pv-company", card.company ?? "");
+  setVal("pv-phone", card.phone ?? "");
+  setVal("pv-email", card.email ?? "");
+  setVal("pv-website", card.website ?? "");
+  setVal("pv-address", card.address ?? "");
+  setVal("pv-qrtext", card.qrText ?? "");
   setVal("pv-stx", card.stx || "");
   const zmVal = Math.round((card.zm || 1) * 100);
   const pxVal = card.px || 0;
@@ -2456,6 +2695,65 @@ function syncPreviewControls() {
   setVal("pv-theme", card.theme || "");
   setVal("pv-stamp", card.sk || "");
   setVal("pv-hardware", card.cornerHardware || "");
+
+  // Sync per-card border controls
+  const page = Math.floor(previewIndex / (currentLayout?.PER || 9));
+  const pageCfg = { ...cfg, style: studioState.pageThemes[page] || cfg.style };
+  const resolvedBorder = resolveBorderConfig(pageCfg, card);
+  const bMeta = getBorderStyleMeta(resolvedBorder.style);
+  const bSup = bMeta.supports;
+  const hasCardBorder = Boolean(card.border && typeof card.border === "object");
+  setVal("pv-border-style", hasCardBorder ? String(resolvedBorder.style) : "");
+  setVal("pv-border-color-mode", resolvedBorder.colorMode);
+  setVal("pv-border-color", resolvedBorder.color);
+  setVal("pv-border-pattern", resolvedBorder.pattern);
+  setVal("pv-border-corner", resolvedBorder.corner);
+  setVal("pv-border-ornament", resolvedBorder.ornament);
+  setVal("pv-border-width", resolvedBorder.width);
+  setVal("pv-border-inset", resolvedBorder.inset);
+  setVal("pv-border-corner-size", resolvedBorder.cornerSize);
+  setVal("pv-border-wear", resolvedBorder.wear);
+  setVal("pv-border-inner", resolvedBorder.inner);
+  if ($("pv-border-width-val")) $("pv-border-width-val").textContent = Number(resolvedBorder.width).toFixed(1);
+  if ($("pv-border-inset-val")) $("pv-border-inset-val").textContent = Number(resolvedBorder.inset).toFixed(1);
+  if ($("pv-border-corner-size-val")) $("pv-border-corner-size-val").textContent = String(resolvedBorder.cornerSize);
+  if ($("pv-border-wear-val")) $("pv-border-wear-val").textContent = `${Math.round(resolvedBorder.wear)}%`;
+  if ($("pv-border-reset")) $("pv-border-reset").hidden = !hasCardBorder;
+  if ($("pv-border-none-note")) $("pv-border-none-note").hidden = bMeta.id !== 15;
+  const showPvGroup = (group, visible) => {
+    document.querySelectorAll(`[data-pv-border-group="${group}"]`).forEach(el => { el.hidden = !visible; });
+  };
+  const isNoneBorder = bMeta.id === 15;
+  showPvGroup("width", !isNoneBorder && bSup.width);
+  showPvGroup("inset", !isNoneBorder && bSup.inset);
+  showPvGroup("color", !isNoneBorder && bSup.color);
+  showPvGroup("customColor", !isNoneBorder && bSup.color && resolvedBorder.colorMode === "custom");
+  showPvGroup("pattern", !isNoneBorder && bSup.pattern);
+  showPvGroup("corner", !isNoneBorder && bSup.corner);
+  showPvGroup("cornerSize", !isNoneBorder && bSup.corner && resolvedBorder.corner !== "square");
+  showPvGroup("ornament", !isNoneBorder && bSup.ornament);
+  showPvGroup("wear", !isNoneBorder && bSup.wear);
+  showPvGroup("inner", !isNoneBorder && bSup.inner);
+
+  // Sync per-card photo mounts and distress marks
+  const effMounts = Array.isArray(card.photoMounts) && card.photoMounts.length ? card.photoMounts : cfg.photoMounts;
+  document.querySelectorAll("[data-pv-mount]").forEach(el => {
+    el.checked = effMounts.includes(Number(el.value));
+  });
+  if ($("pv-mounts-reset")) $("pv-mounts-reset").hidden = !(Array.isArray(card.photoMounts) && card.photoMounts.length);
+  [
+    ["pv-fx-claw", "fxClaw"],
+    ["pv-fx-tear", "fxTear"],
+    ["pv-fx-bullet", "fxBullet"],
+    ["pv-fx-blood", "fxBlood"]
+  ].forEach(([id, key]) => setVal(id, Boolean(card[key] ?? cfg[key])));
+  if ($("pv-fx-reset")) {
+    $("pv-fx-reset").hidden = !["fxClaw", "fxTear", "fxBullet", "fxBlood"].some(key => card[key] !== undefined);
+  }
+  if (!active?.classList?.contains("color-hex") || !$("pv-editor")?.contains(active)) {
+    syncColorHexFields($("pv-editor"));
+  }
+
   const st = resolveCardStamp(previewIndex, 0);
   const rotDeg = Math.round(st.r || 0);
   const scalePct = Math.round((st.mult || 1) * 100);
@@ -2492,6 +2790,13 @@ function syncSidebarRowValues(index) {
   setRowEl("[data-field='loc']", card.loc || "");
   setRowEl("[data-field='year']", card.year || "");
   setRowEl("[data-field='code']", card.code || "");
+  setRowEl("[data-field='role']", card.role ?? "");
+  setRowEl("[data-field='company']", card.company ?? "");
+  setRowEl("[data-field='phone']", card.phone ?? "");
+  setRowEl("[data-field='email']", card.email ?? "");
+  setRowEl("[data-field='website']", card.website ?? "");
+  setRowEl("[data-field='address']", card.address ?? "");
+  setRowEl("[data-field='qrText']", card.qrText ?? "");
   const nameBtn = row.querySelector(".card-name");
   if (nameBtn) nameBtn.textContent = `Card ${index + 1} · ${card.title || "Untitled card"}`;
   setRowEl("[data-adjust='zm']", Math.round((card.zm || 1) * 100));
@@ -2569,8 +2874,14 @@ function bindEvents() {
     studioState.activePage = +event.target.value;
     $("page-theme").value = studioState.pageThemes[studioState.activePage] || "";
     $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${event.target.options.length}`;
+    markActiveSheetClass(studioState.activePage);
     if (historyReady) history.refresh(captureSnapshot());
     scrollStageToPage(studioState.activePage);
+  });
+  $("stage")?.addEventListener("scroll", scheduleStagePageSync, { passive: true });
+  window.addEventListener("scroll", scheduleStagePageSync, { passive: true });
+  ["wheel", "touchstart", "pointerdown"].forEach(evtName => {
+    $("stage")?.addEventListener(evtName, clearProgrammaticScrollGuard, { passive: true });
   });
   $("page-theme")?.addEventListener("change", event => {
     studioState.pageThemes = studioState.pageThemes.map((theme, page) =>
@@ -2616,7 +2927,12 @@ function bindEvents() {
   });
   $("card-search-clear")?.addEventListener("click", () => clearCardSearch(true));
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "nfc", "nfc-yt", "punch", "tpl", "regmarks", "sauto", "corner-hw", "fx-claw", "fx-tear", "fx-bullet", "fx-blood", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id).addEventListener("change", scheduleRender));
+  ["marks", "bleed", "card-back", "nfc", "nfc-yt", "punch", "tpl", "regmarks", "sauto", "corner-hw", "fx-claw", "fx-tear", "fx-bullet", "fx-blood", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id)?.addEventListener("change", scheduleRender));
+  $("card-back")?.addEventListener("change", syncCardBackControls);
+  ["csize", "corient", "vc-badge", "card-back-logo-mode"].forEach(id => $(id)?.addEventListener("change", () => {
+    syncCardBackControls();
+    scheduleRender();
+  }));
   $("style").addEventListener("change", () => {
     studioState.quickColors = undefined;
     syncQuickColorsControls({ rebuildStops: true });
@@ -2957,22 +3273,10 @@ function bindEvents() {
     message(`Deleted border preset "${preset.name}".`);
   });
   ["gdoors", "gside", "gstamp", "gsyear"].forEach(id => $(id).addEventListener("input", scheduleRender));
-  document.querySelectorAll("[data-quick-mount]").forEach(input => {
+  const quickMountInputs = [...document.querySelectorAll("[data-quick-mount]")];
+  quickMountInputs.forEach(input => {
     input.addEventListener("change", () => {
-      if (input.value === "3" && input.checked) {
-        document.querySelectorAll("[data-quick-mount]").forEach(other => {
-          if (other !== input) other.checked = false;
-        });
-      } else if (input.checked) {
-        const none = document.querySelector("[data-quick-mount][value='3']");
-        if (none) none.checked = false;
-      }
-      const checked = [...document.querySelectorAll("[data-quick-mount]:checked")];
-      if (checked.length > 2) {
-        input.checked = false;
-        message("Choose no more than 2 photo mounts.");
-        return;
-      }
+      if (!applyMountCheckboxRule(quickMountInputs, input)) return;
       updateMountStatus();
       scheduleRender();
     });
@@ -3096,10 +3400,65 @@ function bindEvents() {
     printSheet().catch(() => window.print());
   });
   $("mobile-print").addEventListener("click", () => $("print").click());
-  $("mobile-export").addEventListener("click", () => $("svg").click());
+  $("mobile-export").addEventListener("click", () => $("pdf").click());
   $("svg").addEventListener("click", () => exportAllSvgs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("png").addEventListener("click", () => exportAllPngs([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
   $("pdf").addEventListener("click", () => exportPdf([...document.querySelectorAll("#sheets .sheet")], currentLayout.W, currentLayout.H, message));
+  const populateSvgCodeDialog = () => {
+    const list = $("svg-code-list");
+    const summary = $("svg-code-summary");
+    if (!list) return;
+    const sheets = [...document.querySelectorAll("#sheets .sheet")];
+    const embedFonts = Boolean($("svg-code-fonts")?.checked);
+    if (summary) summary.textContent = `${sheets.length} page${sheets.length === 1 ? "" : "s"}`;
+    list.replaceChildren();
+    sheets.forEach((sheetEl, idx) => {
+      const code = serializeSheetSvg(sheetEl, currentLayout.W, currentLayout.H, { embedFonts });
+      const rawName = sheetEl.dataset.name || `ticket-cards-p${idx + 1}`;
+      const label = rawName === "cut-template"
+        ? "Cut Template"
+        : `Page ${idx + 1} (${rawName})`;
+      const sizeKb = (code.length / 1024).toFixed(1);
+      const card = document.createElement("section");
+      card.className = "svg-code-card";
+      card.innerHTML = `
+        <div class="svg-code-head">
+          <strong>${escapeHtml(label)}</strong>
+          <span class="hint">${sizeKb} KB</span>
+          <button class="g sm" type="button" data-copy-svg="${idx}">${iconMarkup("duplicate")} Copy SVG</button>
+        </div>
+        <textarea class="svg-code-textarea" readonly rows="6" aria-label="${escapeHtml(label)} SVG code"></textarea>`;
+      const textarea = card.querySelector("textarea");
+      textarea.value = code;
+      const copyBtn = card.querySelector("[data-copy-svg]");
+      copyBtn.addEventListener("click", async () => {
+        try {
+          if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(code);
+          else {
+            textarea.focus();
+            textarea.select();
+            document.execCommand?.("copy");
+          }
+          copyBtn.innerHTML = `${iconMarkup("duplicate")} Copied!`;
+          message(`Copied ${label} SVG code (${sizeKb} KB).`);
+          setTimeout(() => { copyBtn.innerHTML = `${iconMarkup("duplicate")} Copy SVG`; }, 1600);
+        } catch {
+          textarea.focus();
+          textarea.select();
+          message("Selected SVG text — press Ctrl+C to copy.");
+        }
+      });
+      list.append(card);
+    });
+  };
+  $("svg-code-open")?.addEventListener("click", () => {
+    populateSvgCodeDialog();
+    $("svg-code-dialog")?.showModal();
+  });
+  $("svg-code-fonts")?.addEventListener("change", populateSvgCodeDialog);
+  $("svg-code-dialog")?.addEventListener("click", event => {
+    if (event.target === $("svg-code-dialog")) $("svg-code-dialog").close();
+  });
   $("cut").addEventListener("click", () => {
     triggerDownload(new Blob([cutSvg(currentLayout, $("crad").value, $("regmarks").checked)], { type: "image/svg+xml" }), "cutter-template.svg");
     message("Cutter SVG downloaded (red = cut, blue = punch).");
@@ -3136,6 +3495,7 @@ function bindEvents() {
     clearAllRandomStyling();
   });
   $("smp").addEventListener("click", loadSamples);
+  $("smp-visiting")?.addEventListener("click", loadVisitingSamples);
   $("rst").addEventListener("click", async () => { await clearSession(); resetDefaults(); });
   $("exp").addEventListener("click", () => exportProjectJson(readSettings(), studioState.cards, studioState.count));
   $("data-open").addEventListener("click", () => $("data-dialog").showModal());
@@ -3180,6 +3540,13 @@ function bindEvents() {
     ["pv-loc", "loc", "change card place"],
     ["pv-year", "year", "change card year"],
     ["pv-code", "code", "change card abbreviation"],
+    ["pv-role", "role", "change card job title"],
+    ["pv-company", "company", "change card company"],
+    ["pv-phone", "phone", "change card phone"],
+    ["pv-email", "email", "change card email"],
+    ["pv-website", "website", "change card website"],
+    ["pv-address", "address", "change card address"],
+    ["pv-qrtext", "qrText", "change card QR value"],
     ["pv-stx", "stx", "change card stamp text"]
   ].forEach(([id, field, label]) => {
     const el = $(id);
@@ -3244,6 +3611,137 @@ function bindEvents() {
       buildRows();
       render();
     });
+  });
+  const clearCardOverrideFields = (fields, label) => {
+    if (previewIndex < 0) return;
+    const current = studioState.cards[previewIndex];
+    if (!current) return;
+    const next = { ...current };
+    let changed = false;
+    for (const key of fields) {
+      if (key in next) {
+        delete next[key];
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    cardIds.set(next, cardIdentity(current));
+    studioState.cards = studioState.cards.map((item, idx) => idx === previewIndex ? next : item);
+    recordDiscrete(label);
+    buildRows();
+    render();
+  };
+  const applyPreviewBorderPatch = (patch, label, { continuousKey = "" } = {}) => {
+    if (previewIndex < 0) return;
+    const card = studioState.cards[previewIndex];
+    if (!card) return;
+    const cfg = renderConfig();
+    const page = Math.floor(previewIndex / (currentLayout?.PER || 9));
+    const resolved = resolveBorderConfig({ ...cfg, style: studioState.pageThemes[page] || cfg.style }, card);
+    const nextBorder = sanitizeBorderPatch({
+      style: resolved.style,
+      width: resolved.width,
+      inset: resolved.inset,
+      colorMode: resolved.colorMode,
+      color: resolved.color,
+      pattern: resolved.pattern,
+      corner: resolved.corner,
+      cornerSize: resolved.cornerSize,
+      ornament: resolved.ornament,
+      wear: resolved.wear,
+      inner: resolved.inner,
+      ...patch
+    });
+    updateCard(previewIndex, { border: nextBorder });
+    syncSidebarRowValues(previewIndex);
+    if (continuousKey) {
+      scheduleRender();
+      recordContinuous(label, continuousKey);
+    } else {
+      recordDiscrete(label);
+      buildRows();
+      render();
+    }
+  };
+  $("pv-border-style")?.addEventListener("change", event => {
+    if (previewIndex < 0) return;
+    const raw = event.target.value;
+    if (raw === "") {
+      clearCardOverrideFields(["border"], "use sheet border");
+      return;
+    }
+    const styleId = Number(raw);
+    const meta = getBorderStyleMeta(styleId);
+    const current = studioState.cards[previewIndex];
+    const resolved = resolveBorderConfig(renderConfig(), current);
+    applyPreviewBorderPatch({ ...meta.defaults, wear: resolved.wear, style: styleId }, "change card border");
+  });
+  $("pv-border-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["border"], "use sheet border");
+  });
+  [
+    ["pv-border-color-mode", "colorMode", "change card border colour mode"],
+    ["pv-border-pattern", "pattern", "change card border pattern"],
+    ["pv-border-corner", "corner", "change card border corner"],
+    ["pv-border-ornament", "ornament", "change card corner ornament"]
+  ].forEach(([id, key, label]) => {
+    $(id)?.addEventListener("change", event => {
+      applyPreviewBorderPatch({ [key]: event.target.value }, label);
+    });
+  });
+  $("pv-border-inner")?.addEventListener("change", event => {
+    applyPreviewBorderPatch({ inner: event.target.checked }, "toggle card inner border");
+  });
+  $("pv-border-color")?.addEventListener("input", event => {
+    applyPreviewBorderPatch({ colorMode: "custom", color: event.target.value }, "change card border colour", { continuousKey: "pv:border-color" });
+  });
+  if ($("pv-border-color")) bindContinuousHistory($("pv-border-color"), "change card border colour", "pv:border-color");
+  [
+    ["pv-border-width", "width", "pv-border-width-val", v => Number(v).toFixed(1), "change card border width", "pv:border-width"],
+    ["pv-border-inset", "inset", "pv-border-inset-val", v => Number(v).toFixed(1), "change card border inset", "pv:border-inset"],
+    ["pv-border-corner-size", "cornerSize", "pv-border-corner-size-val", v => String(v), "change card corner size", "pv:border-corner-size"],
+    ["pv-border-wear", "wear", "pv-border-wear-val", v => `${Math.round(Number(v))}%`, "change card border wear", "pv:border-wear"]
+  ].forEach(([id, key, outId, fmt, label, contKey]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", event => {
+      const val = Number(event.target.value);
+      if ($(outId)) $(outId).textContent = fmt(val);
+      applyPreviewBorderPatch({ [key]: val }, label, { continuousKey: contKey });
+    });
+    el.addEventListener("change", () => finishContinuous(label, contKey));
+  });
+  const pvMountInputs = [...document.querySelectorAll("[data-pv-mount]")];
+  pvMountInputs.forEach(input => {
+    input.addEventListener("change", () => {
+      if (previewIndex < 0) return;
+      const mounts = applyMountCheckboxRule(pvMountInputs, input);
+      if (!mounts) return;
+      updateCard(previewIndex, { photoMounts: mounts.length ? mounts : [3] });
+      recordDiscrete("change card photo mounts");
+      buildRows();
+      render();
+    });
+  });
+  $("pv-mounts-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["photoMounts"], "use sheet photo mounts");
+  });
+  [
+    ["pv-fx-claw", "fxClaw", "toggle card claw marks"],
+    ["pv-fx-tear", "fxTear", "toggle card corner tear"],
+    ["pv-fx-bullet", "fxBullet", "toggle card bullet hole"],
+    ["pv-fx-blood", "fxBlood", "toggle card blood spatter"]
+  ].forEach(([id, key, label]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      updateCard(previewIndex, { [key]: event.target.checked });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  $("pv-fx-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["fxClaw", "fxTear", "fxBullet", "fxBlood"], "use sheet distress marks");
   });
   const applyPreviewStampEdit = (patch, label) => {
     if (previewIndex < 0) return;
@@ -3694,10 +4192,14 @@ function syncPageTools(pageCount) {
   if (!select || !themeSelect) return;
   while (studioState.pageThemes.length < pageCount) studioState.pageThemes = [...studioState.pageThemes, ""];
   if (studioState.pageThemes.length > pageCount) studioState.pageThemes = studioState.pageThemes.slice(0, pageCount);
-  studioState.activePage = Math.min(studioState.activePage, pageCount - 1);
-  select.innerHTML = Array.from({ length: pageCount }, (_, page) =>
-    `<option value="${page}"${page === studioState.activePage ? " selected" : ""}>Page ${page + 1}</option>`
-  ).join("");
+  studioState.activePage = Math.max(0, Math.min(studioState.activePage, pageCount - 1));
+  if (select.options.length !== pageCount) {
+    select.innerHTML = Array.from({ length: pageCount }, (_, page) =>
+      `<option value="${page}"${page === studioState.activePage ? " selected" : ""}>Page ${page + 1}</option>`
+    ).join("");
+  } else if (select.value !== String(studioState.activePage)) {
+    select.value = String(studioState.activePage);
+  }
   $("page-count-label").textContent = `Page ${studioState.activePage + 1} of ${pageCount}`;
   if (!themeSelect.options.length || themeSelect.options.length === 1) {
     themeSelect.innerHTML = `<option value="">Use global</option>${getGroupedThemes().map(([lbl, entries]) =>
@@ -3713,6 +4215,7 @@ function syncPageTools(pageCount) {
       pageCount <= 1 ? "Need at least 2 pages to delete a page" : `Delete page ${studioState.activePage + 1}`
     );
   }
+  markActiveSheetClass(studioState.activePage);
 }
 
 function deleteActivePage(perPage) {
@@ -3809,7 +4312,8 @@ async function init() {
     applySettings(saved.settings || {});
     message("Restored your saved sheet.");
   }
-  currentLayout = computeLayout($("paper").value, $("csize").value);
+  syncVisitingControlsUi();
+  currentLayout = layoutFromControls();
   buildRows();
   render();
   historyReady = true;

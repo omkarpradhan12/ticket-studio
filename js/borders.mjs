@@ -193,6 +193,20 @@ export const BORDER_STYLES = [
       pattern: false, corner: false, lineGap: false, inner: false,
       ornament: false, wear: false, glow: false
     }
+  },
+  {
+    id: 16,
+    key: "lattice",
+    name: "Lattice knot",
+    defaults: { ...BASE_DEFAULTS, width: 1.25, inset: 2.8, corner: "square", cornerSize: 9 },
+    supports: { ...FULL_SUPPORTS, corner: false }
+  },
+  {
+    id: 17,
+    key: "keyfret",
+    name: "Key fret",
+    defaults: { ...BASE_DEFAULTS, width: 1.25, inset: 2.8, corner: "square", cornerSize: 9 },
+    supports: { ...FULL_SUPPORTS, corner: false }
   }
 ];
 
@@ -465,6 +479,62 @@ function grungePaths(ins, CW, CH, w, seed) {
   return `<path d="${mainD}" stroke-width="${fmt(w)}" stroke-linejoin="round"/><path d="${innerD}" stroke-width="${fmt(Math.max(0.55, w * 0.4))}" stroke-dasharray="14 5 7 4" opacity=".65"/>`;
 }
 
+function latticeKnotMarkup(ins, w, CW, CH, col, da) {
+  const sc = Math.min(1, Math.min(CW, CH) / 100);
+  const swMain = fmt(Math.max(0.65, w * 0.95));
+  const swWeb = fmt(Math.max(0.55, w * 0.72));
+  const swRail = fmt(Math.max(0.5, w * 0.65));
+  const arm = 24 * sc;
+  const rScroll = 2.1 * sc;
+  const rDot = Math.max(0.55, 0.85 * sc);
+  let out = "";
+  const midStartX = ins + arm + 2.8 * sc;
+  const midEndX = CW - ins - arm - 2.8 * sc;
+  const midStartY = ins + arm + 2.8 * sc;
+  const midEndY = CH - ins - arm - 2.8 * sc;
+  if (midEndX > midStartX) {
+    out += `<path d="M${fmt(midStartX)} ${fmt(ins)}H${fmt(midEndX)}M${fmt(midStartX)} ${fmt(CH - ins)}H${fmt(midEndX)}" stroke-width="${swRail}" opacity=".85"${da}/>`;
+  }
+  if (midEndY > midStartY) {
+    out += `<path d="M${fmt(ins)} ${fmt(midStartY)}V${fmt(midEndY)}M${fmt(CW - ins)} ${fmt(midStartY)}V${fmt(midEndY)}" stroke-width="${swRail}" opacity=".85"${da}/>`;
+  }
+  [[ins, ins, 1, 1], [CW - ins, ins, -1, 1], [ins, CH - ins, 1, -1], [CW - ins, CH - ins, -1, -1]].forEach(([bx, by, dx, dy]) => {
+    const p = (u, v) => `${fmt(bx + dx * u * sc)} ${fmt(by + dy * v * sc)}`;
+    // Outer L-rails terminating in scroll C-hooks with ball finials
+    out += `<path d="M${p(0, 24)}V${p(0, 0).split(" ")[1]}H${p(24, 0).split(" ")[0]}" stroke-width="${swMain}" stroke-linecap="round"${da}/>`;
+    out += `<path d="M${fmt(bx + dx * (arm - 0.5 * sc))} ${fmt(by - dy * rScroll)}A${fmt(rScroll)} ${fmt(rScroll)} 0 1 ${dx * dy > 0 ? 1 : 0} ${fmt(bx + dx * (arm - 0.5 * sc))} ${fmt(by + dy * rScroll)}" stroke-width="${swWeb}" stroke-linecap="round"/>`;
+    out += `<circle cx="${p(23.5, 0).split(" ")[0]}" cy="${by}" r="${fmt(rDot)}" fill="${col}" stroke="none"/>`;
+    out += `<path d="M${fmt(bx - dx * rScroll)} ${fmt(by + dy * (arm - 0.5 * sc))}A${fmt(rScroll)} ${fmt(rScroll)} 0 1 ${dx * dy > 0 ? 0 : 1} ${fmt(bx + dx * rScroll)} ${fmt(by + dy * (arm - 0.5 * sc))}" stroke-width="${swWeb}" stroke-linecap="round"/>`;
+    out += `<circle cx="${bx}" cy="${p(0, 23.5).split(" ")[1]}" r="${fmt(rDot)}" fill="${col}" stroke="none"/>`;
+    // Interlocking 3x3 woven knot inside the corner + inner curved pocket bracket
+    out += `<path d="M${p(0, 11.2)}H${fmt(bx + dx * 11.2 * sc)}V${by}M${p(3.2, 0)}V${fmt(by + dy * 8.6 * sc)}H${fmt(bx + dx * 8.6 * sc)}V${fmt(by + dy * 3.2 * sc)}H${bx}M${p(5.9, 0)}V${fmt(by + dy * 11.2 * sc)}M${p(0, 5.9)}H${fmt(bx + dx * 11.2 * sc)}M${p(8.6, 0)}V${fmt(by + dy * 11.2 * sc)}M${p(0, 8.6)}H${fmt(bx + dx * 11.2 * sc)}" stroke-width="${swWeb}" stroke-linecap="square"/>`;
+    out += `<path d="M${p(13.2, 3.6)}H${fmt(bx + dx * 18.5 * sc)}L${p(13.2, 8.9)}Z M${p(3.6, 13.2)}V${fmt(by + dy * 18.5 * sc)}L${p(8.9, 13.2)}Z" stroke-width="${fmt(Math.max(0.45, w * 0.6))}" stroke-linejoin="round" opacity=".88"/>`;
+  });
+  return out;
+}
+
+function keyFretMarkup(ins, w, CW, CH, col, da) {
+  const sc = Math.min(1, Math.min(CW, CH) / 100);
+  const bw = CW - 2 * ins;
+  const bh = CH - 2 * ins;
+  const innerIns = ins + 2.0 * sc;
+  const swOuter = fmt(w);
+  const swInner = fmt(Math.max(0.5, w * 0.55));
+  const swFret = fmt(Math.max(0.55, w * 0.78));
+  let out = `<rect x="${fmt(ins)}" y="${fmt(ins)}" width="${fmt(bw)}" height="${fmt(bh)}" stroke-width="${swOuter}"${da}/>`;
+  out += `<rect x="${fmt(innerIns)}" y="${fmt(innerIns)}" width="${fmt(CW - 2 * innerIns)}" height="${fmt(CH - 2 * innerIns)}" stroke-width="${swInner}" opacity=".72"${da}/>`;
+  const cornerIn = ins + 3.8 * sc;
+  [[cornerIn, cornerIn, 1, 1], [CW - cornerIn, cornerIn, -1, 1], [cornerIn, CH - cornerIn, 1, -1], [CW - cornerIn, CH - cornerIn, -1, -1]].forEach(([bx, by, dx, dy]) => {
+    const x = u => fmt(bx + dx * u * sc);
+    const y = v => fmt(by + dy * v * sc);
+    // Asymmetric stepped Chinese meander key-fret hooks in all 4 corners
+    out += `<path d="M${x(0)} ${y(15.5)}V${by}H${x(18.5)}V${y(5.5)}H${x(14)}V${y(2.8)}H${x(16.3)}" stroke-width="${swFret}" stroke-linecap="square" stroke-linejoin="miter"/>`;
+    out += `<path d="M${x(5.8)} ${y(0)}V${y(10.8)}H${x(2.6)}V${y(15.5)}H${x(7.4)}V${y(12.6)}H${x(4.9)}" stroke-width="${swFret}" stroke-linecap="square" stroke-linejoin="miter"/>`;
+    out += `<path d="M${x(9.2)} ${y(0)}V${y(6.2)}H${x(11.8)}V${y(2.8)}H${x(9.2)}" stroke-width="${fmt(Math.max(0.45, w * 0.65))}" stroke-linecap="square" opacity=".88"/>`;
+  });
+  return out;
+}
+
 function inkFilterDef(id, seed, wear) {
   if (wear <= 0) return "";
   return `<filter id="${id}" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="2" seed="${seed}" result="w"/><feDisplacementMap in="SourceGraphic" in2="w" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="r"/><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="${seed + 8}" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3.4 0 0 0 -${(0.15 + wear / 100 * 1.1).toFixed(2)}" result="g"/><feComposite in="r" in2="g" operator="in"/></filter>`;
@@ -613,6 +683,10 @@ export function renderBorder({ index = 0, CW = 170, CH = 239, accent = "#ff5a36"
     const coreCol = mixHex(col, "#ffffff", 0.65);
     body += boxShape(ins, ins, bw, bh, corner, cr, ` stroke-width="${fmt(w * 1.35)}"${da}`);
     body += boxShape(ins, ins, bw, bh, corner, cr, ` stroke="${coreCol}" stroke-width="${fmt(Math.max(0.6, w * 0.48))}"${da}`);
+  } else if (bs === 16) {
+    body += latticeKnotMarkup(ins, w, CW, CH, col, da);
+  } else if (bs === 17) {
+    body += keyFretMarkup(ins, w, CW, CH, col, da);
   }
 
   if (b.inner && meta.supports.inner) {
