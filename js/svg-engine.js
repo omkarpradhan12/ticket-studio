@@ -1,10 +1,10 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10c";
-import { hsl } from "./image-utils.js?v=phase10c";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10c";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10c";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10c";
-import { renderQrSvgMarkup } from "./qr.mjs?v=phase10c";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10d";
+import { hsl } from "./image-utils.js?v=phase10d";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10d";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10d";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10d";
+import { renderQrSvgMarkup } from "./qr.mjs?v=phase10d";
 
 export { SKINDS, STAMPS };
 

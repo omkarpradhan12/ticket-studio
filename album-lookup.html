@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Album Lookup — Ticket Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10c">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10d">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
-<link rel="stylesheet" href="css/tokens.css?v=phase10c">
-<link rel="stylesheet" href="css/app.css?v=phase10c">
+<link rel="stylesheet" href="css/tokens.css?v=phase10d">
+<link rel="stylesheet" href="css/app.css?v=phase10d">
 </head>
 <body>
 <header class="topbar">
@@ -56,12 +56,12 @@
 
     <form id="alb-form" class="lookup-form">
       <label class="fld lookup-query-fld">
-        <span>Album name</span>
-        <input id="alb-query" type="search" placeholder="e.g. OK Computer, Random Access Memories, In Rainbows…" autocomplete="off" spellcheck="false">
+        <span>Album name (optional)</span>
+        <input id="alb-query" type="search" placeholder="Leave blank to list all albums by artist, or type an album…" autocomplete="off" spellcheck="false">
       </label>
       <label class="fld lookup-provider-fld">
-        <span>Artist (optional filter)</span>
-        <input id="alb-artist" type="text" placeholder="e.g. Radiohead, Daft Punk" autocomplete="off">
+        <span>Artist / band name</span>
+        <input id="alb-artist" type="text" placeholder="e.g. Skillet, Radiohead, Daft Punk" autocomplete="off">
       </label>
       <label class="fld lookup-provider-fld">
         <span>Source</span>
@@ -88,7 +88,7 @@
     <section class="panel lookup-results-panel" aria-labelledby="alb-results-heading">
       <h2 id="alb-results-heading">Album matches (<span id="alb-match-count">0</span>)</h2>
       <div id="alb-results" class="lookup-results">
-        <p class="hint">Enter an album name above and click Search albums.</p>
+        <p class="hint">Enter an album name, an artist name, or both above and click Search albums.</p>
       </div>
     </section>
 
@@ -172,6 +172,6 @@
   <button class="accent sm" id="alb-open-editor" type="button"><span data-icon="view"></span> Open editor</button>
 </div>
 
-<script type="module" src="js/album-lookup.js?v=phase10c"></script>
+<script type="module" src="js/album-lookup.js?v=phase10d"></script>
 </body>
 </html>

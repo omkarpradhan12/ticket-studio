@@ -1,15 +1,15 @@
-import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10c";
-import { populateThemeSelect } from "./themes.js?v=phase10c";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10c";
-import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10c";
-import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10c";
-import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10c";
-import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10c";
+import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10d";
+import { populateThemeSelect } from "./themes.js?v=phase10d";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10d";
+import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10d";
+import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10d";
+import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10d";
+import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10d";
 import {
   ALBUM_LOOKUP_CONFIG,
   fetchAlbumCoverArt,
   searchOnlineAlbums
-} from "./album-lookup-providers.mjs?v=phase10c";
+} from "./album-lookup-providers.mjs?v=phase10d";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
@@ -121,7 +121,7 @@ function renderResults() {
   if (!activeResults.length) {
     container.innerHTML = lastSearchQuery
       ? `<p class="hint">No album matches found for “${escapeHtml(lastSearchQuery)}”. Edit your query or try Wikipedia fallback.</p>`
-      : `<p class="hint">Enter an album name above and click Search albums.</p>`;
+      : `<p class="hint">Enter an album name, an artist name, or both above and click Search albums.</p>`;
     return;
   }
   container.innerHTML = activeResults.map(item => {
@@ -143,24 +143,29 @@ async function runAlbumSearch(overrideProvider = null) {
   if (!ALBUM_LOOKUP_CONFIG.enabled) return;
   const query = $("alb-query").value.trim();
   const artist = $("alb-artist").value.trim();
-  if (!query) {
-    setStatus("Type an album name before searching.");
-    $("alb-query").focus();
+  if (!query && !artist) {
+    setStatus("Type an album name or artist name before searching.");
+    $("alb-artist").focus();
     return;
   }
   if (overrideProvider) $("alb-provider").value = overrideProvider;
   const provider = $("alb-provider").value || "musicbrainz";
-  lastSearchQuery = query;
+  const displayQuery = query && artist ? `${query} — ${artist}` : (query || artist);
+  lastSearchQuery = displayQuery;
   setBusy(true);
-  setStatus(`Searching ${provider === "wikipedia" ? "Wikipedia" : "MusicBrainz"} albums for “${query}”…`);
+  setStatus(
+    !query && artist
+      ? `Searching ${provider === "wikipedia" ? "Wikipedia" : "MusicBrainz"} albums by “${artist}”…`
+      : `Searching ${provider === "wikipedia" ? "Wikipedia" : "MusicBrainz"} albums for “${displayQuery}”…`
+  );
   try {
     const res = await searchOnlineAlbums(query, { artist, provider });
     activeResults = res.results;
     renderResults();
     if (!res.results.length) {
-      setStatus(`No albums matched “${query}”.`, { showRetry: true });
+      setStatus(`No albums matched “${displayQuery}”.`, { showRetry: true });
     } else {
-      setStatus(`Found ${res.results.length} album candidate${res.results.length === 1 ? "" : "s"}${res.fromCache ? " (cached)" : ""}.`);
+      setStatus(`Found ${res.results.length} album${res.results.length === 1 ? "" : "s"}${!query && artist ? ` by ${artist}` : ""}${res.fromCache ? " (cached)" : ""}.`);
       populateDraftFromAlbum(res.results[0]);
     }
   } catch (err) {

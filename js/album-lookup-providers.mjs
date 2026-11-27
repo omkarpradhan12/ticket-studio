@@ -32,6 +32,12 @@ function escapeLuceneTerm(str) {
   return String(str || "").trim().replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function formatLuceneField(field, value) {
+  const clean = escapeLuceneTerm(value);
+  if (!clean) return "";
+  return clean.includes(" ") ? `${field}:"${clean}"` : `${field}:${clean}`;
+}
+
 export function parseMusicBrainzReleaseGroups(json) {
   const list = Array.isArray(json?.["release-groups"]) ? json["release-groups"] : [];
   return list.map(rg => {
@@ -137,7 +143,7 @@ export async function searchOnlineAlbums(rawAlbumQuery, {
   }
   const albumQuery = String(rawAlbumQuery || "").trim();
   const artistQuery = String(artist || "").trim();
-  if (!albumQuery) return { query: "", artist: artistQuery, provider, results: [], fromCache: false };
+  if (!albumQuery && !artistQuery) return { query: "", artist: "", provider, results: [], fromCache: false };
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     throw new Error("You appear to be offline. Connect to the internet or upload local cover art.");
   }
@@ -147,22 +153,53 @@ export async function searchOnlineAlbums(rawAlbumQuery, {
     return { ...searchCache.get(cacheKey), fromCache: true };
   }
 
+  const artistOnly = !albumQuery && Boolean(artistQuery);
+
   if (provider === "wikipedia") {
-    const qStr = [albumQuery, artistQuery, "album"].filter(Boolean).join(" ");
-    const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(qStr)}&srlimit=8&format=json&origin=*`;
+    const qStr = artistOnly
+      ? `${artistQuery} "studio album"`
+      : [albumQuery, artistQuery, "album"].filter(Boolean).join(" ");
+    const limit = artistOnly ? 16 : 8;
+    const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(qStr)}&srlimit=${limit}&format=json&origin=*`;
     const json = await fetchJsonWithTimeout(url, fetchImpl, timeoutMs);
-    const out = { query: albumQuery, artist: artistQuery, provider: "wikipedia", results: parseWikipediaAlbumSearch(json, artistQuery), fromCache: false };
+    let results = parseWikipediaAlbumSearch(json, artistQuery);
+    if (artistOnly) {
+      results = results.filter(item => !/\((band|musician|singer|songwriter|group|rapper|discography)\)|\bdiscography$/i.test(item.wikiPageTitle || item.albumName));
+    }
+    const out = { query: albumQuery, artist: artistQuery, provider: "wikipedia", results, fromCache: false };
     searchCache.set(cacheKey, out);
     return out;
   }
 
-  const parts = [`releasegroup:${escapeLuceneTerm(albumQuery)}`];
-  if (artistQuery) parts.push(`artist:${escapeLuceneTerm(artistQuery)}`);
+  const parts = [];
+  if (albumQuery) parts.push(`releasegroup:${escapeLuceneTerm(albumQuery)}`);
+  if (artistQuery) parts.push(formatLuceneField("artist", artistQuery));
   parts.push("primarytype:album");
   const lucene = parts.join(" AND ");
-  const mbUrl = `https://musicbrainz.org/ws/2/release-group/?query=${encodeURIComponent(lucene)}&fmt=json&limit=8`;
+  const mbLimit = artistOnly ? 50 : 8;
+  const mbUrl = `https://musicbrainz.org/ws/2/release-group/?query=${encodeURIComponent(lucene)}&fmt=json&limit=${mbLimit}`;
   const json = await enqueueMb(() => fetchJsonWithTimeout(mbUrl, fetchImpl, timeoutMs));
-  const out = { query: albumQuery, artist: artistQuery, provider: "musicbrainz", results: parseMusicBrainzReleaseGroups(json), fromCache: false };
+  let results = parseMusicBrainzReleaseGroups(json);
+  if (artistOnly) {
+    const seen = new Set();
+    results = results
+      .filter(item => {
+        const key = `${item.albumName.toLowerCase()}::${item.year || ""}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => {
+        const aStudio = a.releaseType === "Album" ? 0 : 1;
+        const bStudio = b.releaseType === "Album" ? 0 : 1;
+        if (aStudio !== bStudio) return aStudio - bStudio;
+        const aYear = Number(a.year) || 9999;
+        const bYear = Number(b.year) || 9999;
+        if (aYear !== bYear) return aYear - bYear;
+        return (b.score || 0) - (a.score || 0);
+      });
+  }
+  const out = { query: albumQuery, artist: artistQuery, provider: "musicbrainz", results, fromCache: false };
   searchCache.set(cacheKey, out);
   return out;
 }
