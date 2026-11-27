@@ -2366,7 +2366,8 @@ function randomise() {
   $("tcr").value = Math.random() > .5 ? Math.floor(Math.random() * 50) : 0;
   $("tsc").value = Math.random() > .5 ? Math.floor(Math.random() * 40) : 0;
   $("gspread").value = 25 + Math.floor(Math.random() * 45);
-  studioState.borderStyle = Math.floor(Math.random() * (BORDER_STYLES.length - 1));
+  const randBorders = BORDER_STYLES.filter(s => s.id !== 15);
+  studioState.borderStyle = randBorders[Math.floor(Math.random() * randBorders.length)].id;
   studioState.borderConfig = undefined;
   syncBorderControls();
   syncStampControls();

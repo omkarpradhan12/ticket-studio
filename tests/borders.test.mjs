@@ -11,11 +11,16 @@ import {
   uniquePresetName
 } from "../js/borders.mjs";
 
-// 1. Style catalog continuity: 0..4 preserved, 5..15 appended
-assert.equal(BORDER_STYLES.length, 16);
+// 1. Style catalog continuity: 0..4 preserved, 5..17 appended (15 remains "none")
+assert.equal(BORDER_STYLES.length, 18);
 assert.deepEqual(
   BORDER_STYLES.slice(0, 5).map(s => s.key),
   ["double", "thick", "brackets", "dashed", "rounded"]
+);
+assert.equal(BORDER_STYLES[15].key, "none");
+assert.deepEqual(
+  BORDER_STYLES.slice(16).map(s => s.key),
+  ["lattice", "keyfret"]
 );
 
 // 2. Exact legacy output for styles 0..4 when unmodified
