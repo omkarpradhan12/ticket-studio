@@ -1,9 +1,9 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10f";
-import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase10f";
-import { abbr } from "./svg-engine.js?v=phase10f";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10f";
-import { attachColorHexFields } from "./color-controls.mjs?v=phase10f";
-import { sanitizeCardStyleOverrides } from "./card-styles.mjs?v=phase10f";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10i";
+import { processImageFile, processImageUrl, cleanFilenameToTitle, hslToHex, hexToHS } from "./image-utils.js?v=phase10i";
+import { abbr } from "./svg-engine.js?v=phase10i";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10i";
+import { attachColorHexFields } from "./color-controls.mjs?v=phase10i";
+import { sanitizeCardStyleOverrides } from "./card-styles.mjs?v=phase10i";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;

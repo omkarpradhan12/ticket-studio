@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10f";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10f";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10f";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10f";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10f";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10f";
-import { History } from "./history.mjs?v=phase10f";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10f";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10f";
+import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10i";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10i";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10i";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10i";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10i";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10i";
+import { History } from "./history.mjs?v=phase10i";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10i";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10i";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,7 +18,7 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase10f";
+} from "./borders.mjs?v=phase10i";
 import {
   SKINDS,
   STAMP_OPTIONS,
@@ -37,7 +37,7 @@ import {
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase10f";
+} from "./stamps.mjs?v=phase10i";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +46,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase10f";
+} from "./card-styles.mjs?v=phase10i";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase10f";
+} from "./randomiser.mjs?v=phase10i";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase10f";
+} from "./search.mjs?v=phase10i";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -1467,6 +1467,16 @@ function render() {
     const anyStampOverride = activeCards.some(c => Boolean(c.stampPos || c.stamp2Pos));
     resetAllStampsBtn.hidden = !(moveStampsMode || anyStampOverride);
   }
+  const resetAllCardsBtn = $("reset-all-cards");
+  if (resetAllCardsBtn) {
+    const customCount = activeCards.filter(hasCustomCardStyling).length;
+    resetAllCardsBtn.disabled = customCount === 0;
+    resetAllCardsBtn.classList.toggle("has-custom", customCount > 0);
+    resetAllCardsBtn.innerHTML = `${iconMarkup("reset")} ${customCount ? `Reset cards (${customCount})` : "Reset cards"}`;
+    resetAllCardsBtn.title = customCount
+      ? `Reset custom & Surprise me styling on ${customCount} card${customCount === 1 ? "" : "s"}`
+      : "All cards currently match sheet defaults";
+  }
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
   const applyStBtn = $("st-apply-selected");
@@ -1670,9 +1680,144 @@ function clearCardSearch(refocus = true) {
   applyCardSearchFilter();
 }
 
+let activeStudioTab = "cards";
+let controlSearchEntries = null;
+let flashControlTimer = 0;
+
+function switchStudioTab(tabKey) {
+  const tabsWrap = $("studio-tabs");
+  if (!tabsWrap) return;
+  const targetBtn = tabsWrap.querySelector(`[data-tab="${tabKey}"]`);
+  if (!targetBtn) return;
+  activeStudioTab = tabKey;
+  tabsWrap.querySelectorAll("[data-tab]").forEach(btn => {
+    const selected = btn.dataset.tab === tabKey;
+    btn.setAttribute("aria-selected", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll("[data-tab-panel]").forEach(panel => {
+    panel.hidden = panel.dataset.tabPanel !== tabKey;
+  });
+}
+
+function switchPvTab(tabKey) {
+  const tabsWrap = $("pv-tabs");
+  if (!tabsWrap) return;
+  const targetBtn = tabsWrap.querySelector(`[data-pv-tab="${tabKey}"]`);
+  if (!targetBtn) return;
+  tabsWrap.querySelectorAll("[data-pv-tab]").forEach(btn => {
+    const selected = btn.dataset.pvTab === tabKey;
+    btn.setAttribute("aria-selected", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll("[data-pv-panel]").forEach(panel => {
+    panel.hidden = panel.dataset.pvPanel !== tabKey;
+  });
+}
+
+function buildControlSearchIndex() {
+  if (controlSearchEntries) return controlSearchEntries;
+  const entries = [];
+  const seen = new Set();
+  document.querySelectorAll("[data-tab-panel]").forEach(panel => {
+    const tabKey = panel.dataset.tabPanel;
+    const tabBtn = $("studio-tabs")?.querySelector(`[data-tab="${tabKey}"]`);
+    const tabLabel = tabBtn ? tabBtn.textContent.trim() : tabKey;
+    const controls = panel.querySelectorAll(
+      "input[id], select[id], button[id], .dial[id], #border-picker, #stamp-picker"
+    );
+    controls.forEach(ctrl => {
+      if (ctrl.closest("#rows") || ctrl.id === "card-search-clear" || ctrl.classList.contains("color-hex")) return;
+      if (ctrl.tagName === "SELECT" && ctrl.classList.contains("sr-only")) return;
+      const box = ctrl.closest("label.fld, label.chk, label.swatch-control, fieldset, .gctl, .border-picker-block, .grad-stops-block, .cards-header, .card-search-bar") || ctrl;
+      if (ctrl.id && seen.has(ctrl.id)) return;
+      if (ctrl.id) seen.add(ctrl.id);
+      const rawText = (
+        box.querySelector(":scope > span:first-child, :scope > .lbl-row > span:first-child, :scope > legend, :scope > h2")?.textContent
+        || ctrl.getAttribute("aria-label")
+        || ctrl.textContent
+        || box.textContent
+        || ""
+      ).replace(/\s+/g, " ").trim();
+      if (!rawText) return;
+      const kwParts = [rawText, tabLabel];
+      let cur = ctrl;
+      while (cur && cur !== panel) {
+        if (cur.dataset?.keywords) kwParts.push(cur.dataset.keywords);
+        cur = cur.parentElement;
+      }
+      if (ctrl.placeholder) kwParts.push(ctrl.placeholder);
+      entries.push({
+        id: ctrl.id || "",
+        el: ctrl,
+        flashTarget: box.matches?.("fieldset") ? ctrl.closest("label") || box : box,
+        tab: tabKey,
+        tabLabel,
+        label: rawText,
+        haystack: kwParts.join(" ").toLowerCase()
+      });
+    });
+  });
+  controlSearchEntries = entries;
+  return entries;
+}
+
+function jumpToControlEntry(entry) {
+  if (!entry) return;
+  switchStudioTab(entry.tab);
+  let p = entry.el.parentElement;
+  while (p && !p.classList.contains("panel")) {
+    if (p.tagName === "DETAILS") p.open = true;
+    p = p.parentElement;
+  }
+  const target = entry.flashTarget || entry.el;
+  document.querySelectorAll(".is-control-flash").forEach(n => n.classList.remove("is-control-flash"));
+  if (flashControlTimer) clearTimeout(flashControlTimer);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.classList.add("is-control-flash");
+  flashControlTimer = window.setTimeout(() => target.classList.remove("is-control-flash"), 1400);
+  const focusEl = entry.el.id === "border-picker" || entry.el.id === "stamp-picker"
+    ? entry.el.querySelector("button")
+    : entry.el;
+  focusEl?.focus?.({ preventScroll: true });
+}
+
+function renderControlSearchResults(rawQuery) {
+  const resultsEl = $("ctrl-search-results");
+  const clearBtn = $("ctrl-search-clear");
+  const query = String(rawQuery || "").trim().toLowerCase();
+  if (clearBtn) clearBtn.hidden = !query.length;
+  const tabsWrap = $("studio-tabs");
+  if (!query) {
+    if (resultsEl) {
+      resultsEl.innerHTML = "";
+      resultsEl.hidden = true;
+    }
+    tabsWrap?.querySelectorAll("[data-tab]").forEach(btn => btn.removeAttribute("data-has-match"));
+    return [];
+  }
+  const tokens = query.split(/\s+/).filter(Boolean);
+  const entries = buildControlSearchIndex();
+  const matches = entries.filter(e => tokens.every(tok => e.haystack.includes(tok))).slice(0, 14);
+  const matchedTabs = new Set(matches.map(m => m.tab));
+  tabsWrap?.querySelectorAll("[data-tab]").forEach(btn => {
+    btn.dataset.hasMatch = matchedTabs.has(btn.dataset.tab) ? "true" : "false";
+  });
+  if (resultsEl) {
+    resultsEl.hidden = false;
+    resultsEl.innerHTML = matches.length
+      ? matches.map((m, idx) =>
+          `<button type="button" class="ctrl-search-item" data-ctrl-idx="${idx}"><span>${escapeHtml(m.label)}</span><span class="ctrl-search-tab-pill">${escapeHtml(m.tabLabel)}</span></button>`
+        ).join("")
+      : `<p class="hint">No settings match “${escapeHtml(rawQuery.trim())}”.</p>`;
+  }
+  return matches;
+}
+
 function selectCard(index, scroll = false, scrollPreview = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
+  if (scroll) switchStudioTab("cards");
   syncPreviewPageForCard(index, scrollPreview);
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${index + 1}`;
@@ -1754,7 +1899,10 @@ function buildRows() {
     const compactThemeOpt = `<option value="${escapeHtml(card.theme || "")}" selected>${escapeHtml(curThemeLabel)}</option>`;
     const compactStampOpt = `<option value="${escapeHtml(card.sk || "")}" selected>${escapeHtml(curStampLabel)}</option>`;
     row.innerHTML = `
-      <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
+      <div class="cv-wrap">
+        <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
+        <button class="cv-remove-btn" type="button" data-action="remove-photo"${imgSrc ? "" : " hidden"} aria-label="Remove photo from card ${index + 1}" title="Remove photo"><svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
       <div class="row-content">
         <div class="row-heading">
           <button class="card-name" type="button" data-action="select-card" aria-label="Select card ${index + 1}">Card ${index + 1} · ${escapeHtml(card.title || "Untitled card")}</button>
@@ -1799,7 +1947,7 @@ function buildRows() {
           `}
           <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">${iconMarkup("upload")} Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
           ${card.corsLimited ? '<span class="cors-tag w" tabindex="0" role="note" aria-label="This host blocks canvas access; SVG export works, raster export may not." data-tooltip="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
-          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> <span>Accent sampled from image when available</span><button class="g sm row-remove-photo" type="button" data-action="remove-photo"${imgSrc ? "" : " hidden"} aria-label="Remove photo from card ${index + 1}">Remove photo</button></div>
+          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> <span>Accent sampled from image when available</span></div>
           <details class="w adj"><summary><span>Photo &amp; theme options</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
             <label><span>Zoom</span><input type="range" min="100" max="300" value="${Math.round((card.zm || 1) * 100)}" data-adjust="zm"></label>
             <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
@@ -2639,6 +2787,7 @@ function syncPreviewSelects(force = false) {
   const themeSel = $("pv-theme");
   const stampSel = $("pv-stamp");
   const borderSel = $("pv-border-style");
+  const fontSel = $("pv-title-font");
   if (themeSel && (force || !themeSel.options.length)) {
     populateThemeSelect(themeSel, true);
   }
@@ -2649,6 +2798,11 @@ function syncPreviewSelects(force = false) {
   if (borderSel && (force || !borderSel.options.length)) {
     borderSel.innerHTML = [["", "Same as sheet"], ...BORDER_STYLES.map(s => [String(s.id), s.name])]
       .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
+  }
+  if (fontSel && (force || !fontSel.options.length)) {
+    const tfontOpts = [...($("tfont")?.options || [])].map(opt => [opt.value, opt.textContent]);
+    fontSel.innerHTML = [["", "Same as sheet"], ...tfontOpts]
+      .map(([value, name]) => `<option value="${escapeHtml(value)}">${escapeHtml(name)}</option>`).join("");
   }
 }
 
@@ -2664,6 +2818,7 @@ function syncPreviewControls() {
     if (el.type === "checkbox") el.checked = Boolean(val);
     else el.value = String(val);
   };
+  const triState = val => val === undefined ? "" : (val ? "1" : "0");
   const cfg = renderConfig();
   const isVisitingMode = isVisitingSize($("csize")?.value);
   if ($("pv-title-label")) $("pv-title-label").textContent = isVisitingMode ? "Full name" : "Artist / band name";
@@ -2681,7 +2836,20 @@ function syncPreviewControls() {
   setVal("pv-website", card.website ?? "");
   setVal("pv-address", card.address ?? "");
   setVal("pv-qrtext", card.qrText ?? "");
-  setVal("pv-stx", card.stx || "");
+  setVal("pv-doors", card.doors ?? "");
+  setVal("pv-side", card.side ?? "");
+  setVal("pv-vc-badge", card.vcBadge || "");
+  setVal("pv-nfc", triState(card.nfc));
+  setVal("pv-nfc-yt", triState(card.nfcWithYt));
+  setVal("pv-serial", triState(card.serials));
+  setVal("pv-punch", triState(card.punchHole));
+  const effNfcScale = card.nfcScale ?? cfg.nfcScale ?? 100;
+  setVal("pv-nfc-scale", effNfcScale);
+  if ($("pv-nfc-scale-val")) $("pv-nfc-scale-val").textContent = `${effNfcScale}%`;
+  const hasTicketOverride = ["doors", "side", "vcBadge", "nfc", "nfcWithYt", "nfcScale", "serials", "punchHole"]
+    .some(k => card[k] !== undefined && card[k] !== "");
+  if ($("pv-ticket-reset")) $("pv-ticket-reset").hidden = !hasTicketOverride;
+
   const zmVal = Math.round((card.zm || 1) * 100);
   const pxVal = card.px || 0;
   const pyVal = card.py || 0;
@@ -2693,12 +2861,58 @@ function syncPreviewControls() {
   if ($("pv-py-val")) $("pv-py-val").textContent = String(pyVal);
   setVal("pv-accent", hslToHex(card));
   setVal("pv-theme", card.theme || "");
-  setVal("pv-stamp", card.sk || "");
   setVal("pv-hardware", card.cornerHardware || "");
 
-  // Sync per-card border controls
+  // Typography & photo look
+  setVal("pv-title-font", card.titleFont || "");
+  const effTitleScale = Math.round((card.titleScale ?? (cfg.titleScale || 85) / 100) * 100);
+  setVal("pv-title-scale", effTitleScale);
+  if ($("pv-title-scale-val")) $("pv-title-scale-val").textContent = `${effTitleScale}%`;
+  setVal("pv-center-title", triState(card.centerTitle));
+  setVal("pv-photo-filter", card.photoFilter !== undefined ? String(card.photoFilter) : "");
+  setVal("pv-halftone", triState(card.halftone));
+  setVal("pv-year-badge", card.yearBadge !== undefined ? String(card.yearBadge) : "");
+  setVal("pv-tear-style", card.tearStyle !== undefined ? String(card.tearStyle) : "");
+  const hasLookOverride = ["titleFont", "titleScale", "centerTitle", "photoFilter", "halftone", "yearBadge", "tearStyle"]
+    .some(k => card[k] !== undefined && card[k] !== "");
+  if ($("pv-look-reset")) $("pv-look-reset").hidden = !hasLookOverride;
+
+  // Page config & palette / gradient / wear
   const page = Math.floor(previewIndex / (currentLayout?.PER || 9));
   const pageCfg = { ...cfg, style: studioState.pageThemes[page] || cfg.style };
+  const effTheme = THEMES[card.theme] || THEMES[pageCfg.style] || THEMES.cream || {};
+  const effBg = normalizeHex(card.palette?.bg || effTheme.bg, "#f2eadb");
+  const effInk = normalizeHex(card.palette?.ink || effTheme.ink, "#1b1a19");
+  const effTape = normalizeHex(card.tape || effTheme.tape, "#d8b46b");
+  setVal("pv-pal-bg", effBg);
+  setVal("pv-pal-ink", effInk);
+  setVal("pv-pal-tape", effTape);
+  const effAngle = card.gradientAngle ?? cfg.gradientAngle ?? 180;
+  const effSpread = card.gradientSpread ?? cfg.gradientSpread ?? 32;
+  setVal("pv-grad-angle", effAngle);
+  setVal("pv-grad-spread", effSpread);
+  if ($("pv-grad-angle-val")) $("pv-grad-angle-val").textContent = `${effAngle}°`;
+  if ($("pv-grad-spread-val")) $("pv-grad-spread-val").textContent = `${effSpread}%`;
+  const hasPalOverride = Boolean(card.palette || card.tape || card.gradientAngle !== undefined || card.gradientSpread !== undefined);
+  if ($("pv-pal-reset")) $("pv-pal-reset").hidden = !hasPalOverride;
+
+  const effGrain = card.grain ?? cfg.grain ?? 15;
+  const effEw = card.edgeWear ?? cfg.edgeWear ?? 0;
+  const effCr = card.creases ?? cfg.creases ?? 0;
+  const effSc = card.scuffs ?? cfg.scuffs ?? 0;
+  setVal("pv-grain", effGrain);
+  setVal("pv-edge-wear", effEw);
+  setVal("pv-creases", effCr);
+  setVal("pv-scuffs", effSc);
+  if ($("pv-grain-val")) $("pv-grain-val").textContent = `${effGrain}%`;
+  if ($("pv-edge-wear-val")) $("pv-edge-wear-val").textContent = `${effEw}%`;
+  if ($("pv-creases-val")) $("pv-creases-val").textContent = `${effCr}%`;
+  if ($("pv-scuffs-val")) $("pv-scuffs-val").textContent = `${effSc}%`;
+  if ($("pv-wear-reset")) {
+    $("pv-wear-reset").hidden = !["grain", "edgeWear", "creases", "scuffs"].some(k => card[k] !== undefined);
+  }
+
+  // Sync per-card border controls
   const resolvedBorder = resolveBorderConfig(pageCfg, card);
   const bMeta = getBorderStyleMeta(resolvedBorder.style);
   const bSup = bMeta.supports;
@@ -2711,11 +2925,15 @@ function syncPreviewControls() {
   setVal("pv-border-ornament", resolvedBorder.ornament);
   setVal("pv-border-width", resolvedBorder.width);
   setVal("pv-border-inset", resolvedBorder.inset);
+  setVal("pv-border-opacity", resolvedBorder.opacity);
+  setVal("pv-border-glow", resolvedBorder.glow);
   setVal("pv-border-corner-size", resolvedBorder.cornerSize);
   setVal("pv-border-wear", resolvedBorder.wear);
   setVal("pv-border-inner", resolvedBorder.inner);
   if ($("pv-border-width-val")) $("pv-border-width-val").textContent = Number(resolvedBorder.width).toFixed(1);
   if ($("pv-border-inset-val")) $("pv-border-inset-val").textContent = Number(resolvedBorder.inset).toFixed(1);
+  if ($("pv-border-opacity-val")) $("pv-border-opacity-val").textContent = `${Math.round(resolvedBorder.opacity)}%`;
+  if ($("pv-border-glow-val")) $("pv-border-glow-val").textContent = `${Math.round(resolvedBorder.glow)}%`;
   if ($("pv-border-corner-size-val")) $("pv-border-corner-size-val").textContent = String(resolvedBorder.cornerSize);
   if ($("pv-border-wear-val")) $("pv-border-wear-val").textContent = `${Math.round(resolvedBorder.wear)}%`;
   if ($("pv-border-reset")) $("pv-border-reset").hidden = !hasCardBorder;
@@ -2726,6 +2944,8 @@ function syncPreviewControls() {
   const isNoneBorder = bMeta.id === 15;
   showPvGroup("width", !isNoneBorder && bSup.width);
   showPvGroup("inset", !isNoneBorder && bSup.inset);
+  showPvGroup("opacity", !isNoneBorder && bSup.opacity);
+  showPvGroup("glow", !isNoneBorder && bSup.glow);
   showPvGroup("color", !isNoneBorder && bSup.color);
   showPvGroup("customColor", !isNoneBorder && bSup.color && resolvedBorder.colorMode === "custom");
   showPvGroup("pattern", !isNoneBorder && bSup.pattern);
@@ -2750,6 +2970,25 @@ function syncPreviewControls() {
   if ($("pv-fx-reset")) {
     $("pv-fx-reset").hidden = !["fxClaw", "fxTear", "fxBullet", "fxBlood"].some(key => card[key] !== undefined);
   }
+
+  // Sync per-card stamp styling
+  setVal("pv-stamp", card.sk || "");
+  setVal("pv-stx", card.stx || "");
+  setVal("pv-stamp-year", card.stampYear ?? "");
+  setVal("pv-stamp2", card.stamp2 ?? "");
+  setVal("pv-stamp-auto", triState(card.stampAuto));
+  setVal("pv-stamp-color", normalizeHex(card.stampColor || cfg.stampColor, "#d9322f"));
+  setVal("pv-stamp-fill", card.stampStyle?.fillMode || "");
+  setVal("pv-stamp-pattern", card.stampStyle?.pattern || "");
+  setVal("pv-stamp-inner-ring", triState(card.stampStyle?.innerRing));
+  setVal("pv-stamp-show-year", triState(card.stampStyle?.showYear));
+  const effStampWear = card.stampWear ?? cfg.stampWear ?? 35;
+  setVal("pv-stamp-wear", effStampWear);
+  if ($("pv-stamp-wear-val")) $("pv-stamp-wear-val").textContent = `${effStampWear}%`;
+  const hasStampOverride = ["sk", "stx", "stampYear", "stamp2", "stampAuto", "stampColor", "stampStyle", "stampWear"]
+    .some(k => card[k] !== undefined && card[k] !== "");
+  if ($("pv-stamp-style-reset")) $("pv-stamp-style-reset").hidden = !hasStampOverride;
+
   if (!active?.classList?.contains("color-hex") || !$("pv-editor")?.contains(active)) {
     syncColorHexFields($("pv-editor"));
   }
@@ -3494,6 +3733,65 @@ function bindEvents() {
   $("sp-clear-all")?.addEventListener("click", () => {
     clearAllRandomStyling();
   });
+  $("reset-all-cards")?.addEventListener("click", clearAllRandomStyling);
+  $("studio-tabs")?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-tab]");
+    if (btn) switchStudioTab(btn.dataset.tab);
+  });
+  $("studio-tabs")?.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tabs = [...$("studio-tabs").querySelectorAll("[data-tab]")];
+    const idx = tabs.indexOf(document.activeElement);
+    if (idx < 0) return;
+    event.preventDefault();
+    const next = tabs[(idx + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+    switchStudioTab(next.dataset.tab);
+    next.focus();
+  });
+  let currentCtrlMatches = [];
+  const updateControlSearch = () => {
+    currentCtrlMatches = renderControlSearchResults($("ctrl-search")?.value || "");
+  };
+  $("ctrl-search")?.addEventListener("input", updateControlSearch);
+  $("ctrl-search")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if ($("ctrl-search").value) {
+        event.preventDefault();
+        $("ctrl-search").value = "";
+        updateControlSearch();
+      }
+    } else if (event.key === "Enter" && currentCtrlMatches.length) {
+      event.preventDefault();
+      jumpToControlEntry(currentCtrlMatches[0]);
+    }
+  });
+  $("ctrl-search-clear")?.addEventListener("click", () => {
+    if ($("ctrl-search")) {
+      $("ctrl-search").value = "";
+      updateControlSearch();
+      $("ctrl-search").focus();
+    }
+  });
+  $("ctrl-search-results")?.addEventListener("click", event => {
+    const itemBtn = event.target.closest?.("[data-ctrl-idx]");
+    if (!itemBtn) return;
+    const match = currentCtrlMatches[Number(itemBtn.dataset.ctrlIdx)];
+    if (match) jumpToControlEntry(match);
+  });
+  $("pv-tabs")?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-pv-tab]");
+    if (btn) switchPvTab(btn.dataset.pvTab);
+  });
+  $("pv-tabs")?.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tabs = [...$("pv-tabs").querySelectorAll("[data-pv-tab]")];
+    const idx = tabs.indexOf(document.activeElement);
+    if (idx < 0) return;
+    event.preventDefault();
+    const next = tabs[(idx + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+    switchPvTab(next.dataset.pvTab);
+    next.focus();
+  });
   $("smp").addEventListener("click", loadSamples);
   $("smp-visiting")?.addEventListener("click", loadVisitingSamples);
   $("rst").addEventListener("click", async () => { await clearSession(); resetDefaults(); });
@@ -3547,7 +3845,11 @@ function bindEvents() {
     ["pv-website", "website", "change card website"],
     ["pv-address", "address", "change card address"],
     ["pv-qrtext", "qrText", "change card QR value"],
-    ["pv-stx", "stx", "change card stamp text"]
+    ["pv-stx", "stx", "change card stamp text"],
+    ["pv-doors", "doors", "change card doors text"],
+    ["pv-side", "side", "change card side text"],
+    ["pv-stamp-year", "stampYear", "change card stamp year"],
+    ["pv-stamp2", "stamp2", "change card second stamp"]
   ].forEach(([id, field, label]) => {
     const el = $(id);
     if (!el) return;
@@ -3631,6 +3933,156 @@ function bindEvents() {
     buildRows();
     render();
   };
+  [
+    ["pv-vc-badge", "vcBadge", "change card badge mode", v => v],
+    ["pv-title-font", "titleFont", "change card title font", v => v],
+    ["pv-photo-filter", "photoFilter", "change card photo filter", v => Number(v)],
+    ["pv-year-badge", "yearBadge", "change card year badge", v => Number(v)],
+    ["pv-tear-style", "tearStyle", "change card tear line", v => Number(v)]
+  ].forEach(([id, field, label, parseFn]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      const raw = event.target.value;
+      if (raw === "") {
+        clearCardOverrideFields([field], `reset ${field}`);
+        return;
+      }
+      updateCard(previewIndex, { [field]: parseFn(raw) });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  [
+    ["pv-nfc", "nfc", "change card NFC visibility"],
+    ["pv-nfc-yt", "nfcWithYt", "change card YT Music logo"],
+    ["pv-serial", "serials", "change card serial visibility"],
+    ["pv-punch", "punchHole", "change card punch hole"],
+    ["pv-center-title", "centerTitle", "change card title alignment"],
+    ["pv-halftone", "halftone", "change card halftone"],
+    ["pv-stamp-auto", "stampAuto", "change card stamp colour mode"]
+  ].forEach(([id, field, label]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      const raw = event.target.value;
+      if (raw === "") {
+        clearCardOverrideFields([field], `reset ${field}`);
+        return;
+      }
+      updateCard(previewIndex, { [field]: raw === "1" });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  const bindPvRangeSlider = (id, field, outId, fmt, parseFn, label, contKey) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      const raw = Number(el.value);
+      if ($(outId)) $(outId).textContent = fmt(raw);
+      updateCard(previewIndex, { [field]: parseFn(raw) });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+      recordContinuous(label, contKey);
+    });
+    el.addEventListener("change", () => finishContinuous(label, contKey));
+  };
+  bindPvRangeSlider("pv-nfc-scale", "nfcScale", "pv-nfc-scale-val", v => `${v}%`, v => v, "change card NFC size", "pv:nfc-scale");
+  bindPvRangeSlider("pv-title-scale", "titleScale", "pv-title-scale-val", v => `${v}%`, v => Number((v / 100).toFixed(2)), "change card title size", "pv:title-scale");
+  bindPvRangeSlider("pv-grad-angle", "gradientAngle", "pv-grad-angle-val", v => `${v}°`, v => v, "change card gradient angle", "pv:grad-angle");
+  bindPvRangeSlider("pv-grad-spread", "gradientSpread", "pv-grad-spread-val", v => `${v}%`, v => v, "change card gradient spread", "pv:grad-spread");
+  bindPvRangeSlider("pv-grain", "grain", "pv-grain-val", v => `${v}%`, v => v, "change card paper grain", "pv:grain");
+  bindPvRangeSlider("pv-edge-wear", "edgeWear", "pv-edge-wear-val", v => `${v}%`, v => v, "change card edge wear", "pv:edge-wear");
+  bindPvRangeSlider("pv-creases", "creases", "pv-creases-val", v => `${v}%`, v => v, "change card paper creases", "pv:creases");
+  bindPvRangeSlider("pv-scuffs", "scuffs", "pv-scuffs-val", v => `${v}%`, v => v, "change card surface scuffs", "pv:scuffs");
+  bindPvRangeSlider("pv-stamp-wear", "stampWear", "pv-stamp-wear-val", v => `${v}%`, v => v, "change card stamp wear", "pv:stamp-wear");
+  [
+    ["pv-pal-bg", "bg", "change card paper colour", "pv:pal-bg"],
+    ["pv-pal-ink", "ink", "change card text colour", "pv:pal-ink"]
+  ].forEach(([id, palKey, label, contKey]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      const cur = studioState.cards[previewIndex]?.palette || {};
+      updateCard(previewIndex, { palette: { ...cur, [palKey]: el.value } });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+    });
+    bindContinuousHistory(el, label, contKey);
+  });
+  $("pv-pal-tape")?.addEventListener("input", event => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { tape: event.target.value });
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+  });
+  if ($("pv-pal-tape")) bindContinuousHistory($("pv-pal-tape"), "change card tape colour", "pv:tape");
+  $("pv-stamp-color")?.addEventListener("input", event => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { stampColor: event.target.value, stampAuto: false });
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+  });
+  if ($("pv-stamp-color")) bindContinuousHistory($("pv-stamp-color"), "change card stamp colour", "pv:stamp-color");
+  const applyPreviewStampStylePatch = (patch, label) => {
+    if (previewIndex < 0) return;
+    const cur = studioState.cards[previewIndex];
+    if (!cur) return;
+    const base = resolveStampStyle(renderConfig(), cur);
+    const merged = compactStampStyle({ ...base, ...patch });
+    if (merged) {
+      updateCard(previewIndex, { stampStyle: merged });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    } else {
+      clearCardOverrideFields(["stampStyle"], label);
+    }
+  };
+  [
+    ["pv-stamp-fill", "fillMode", "change card stamp ink style", v => v],
+    ["pv-stamp-pattern", "pattern", "change card stamp pattern", v => v],
+    ["pv-stamp-inner-ring", "innerRing", "change card stamp inner frame", v => v === "1"],
+    ["pv-stamp-show-year", "showYear", "change card stamp year toggle", v => v === "1"]
+  ].forEach(([id, key, label, parseFn]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      const raw = event.target.value;
+      if (raw === "") {
+        const curStyle = { ...(studioState.cards[previewIndex]?.stampStyle || {}) };
+        delete curStyle[key];
+        const nextCompact = compactStampStyle(curStyle);
+        if (nextCompact) {
+          updateCard(previewIndex, { stampStyle: nextCompact });
+          recordDiscrete(label);
+          buildRows();
+          render();
+        } else {
+          clearCardOverrideFields(["stampStyle"], label);
+        }
+        return;
+      }
+      applyPreviewStampStylePatch({ [key]: parseFn(raw) }, label);
+    });
+  });
+  $("pv-ticket-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["doors", "side", "vcBadge", "nfc", "nfcWithYt", "nfcScale", "serials", "punchHole"], "reset card ticket details");
+  });
+  $("pv-look-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["titleFont", "titleScale", "centerTitle", "photoFilter", "halftone", "yearBadge", "tearStyle"], "reset card look & typography");
+  });
+  $("pv-pal-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["palette", "tape", "gradientAngle", "gradientSpread"], "reset card palette");
+  });
+  $("pv-wear-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["grain", "edgeWear", "creases", "scuffs"], "reset card paper wear");
+  });
+  $("pv-stamp-style-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["sk", "stx", "stampYear", "stamp2", "stampAuto", "stampColor", "stampStyle", "stampWear"], "reset card stamp style");
+  });
   const applyPreviewBorderPatch = (patch, label, { continuousKey = "" } = {}) => {
     if (previewIndex < 0) return;
     const card = studioState.cards[previewIndex];
@@ -3642,6 +4094,8 @@ function bindEvents() {
       style: resolved.style,
       width: resolved.width,
       inset: resolved.inset,
+      opacity: resolved.opacity,
+      glow: resolved.glow,
       colorMode: resolved.colorMode,
       color: resolved.color,
       pattern: resolved.pattern,
@@ -3699,6 +4153,8 @@ function bindEvents() {
   [
     ["pv-border-width", "width", "pv-border-width-val", v => Number(v).toFixed(1), "change card border width", "pv:border-width"],
     ["pv-border-inset", "inset", "pv-border-inset-val", v => Number(v).toFixed(1), "change card border inset", "pv:border-inset"],
+    ["pv-border-opacity", "opacity", "pv-border-opacity-val", v => `${Math.round(Number(v))}%`, "change card border opacity", "pv:border-opacity"],
+    ["pv-border-glow", "glow", "pv-border-glow-val", v => `${Math.round(Number(v))}%`, "change card border glow", "pv:border-glow"],
     ["pv-border-corner-size", "cornerSize", "pv-border-corner-size-val", v => String(v), "change card corner size", "pv:border-corner-size"],
     ["pv-border-wear", "wear", "pv-border-wear-val", v => `${Math.round(Number(v))}%`, "change card border wear", "pv:border-wear"]
   ].forEach(([id, key, outId, fmt, label, contKey]) => {

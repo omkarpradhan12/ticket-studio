@@ -1,10 +1,10 @@
 // Core SVG Card, Stamp, Frame, Texture, Cut-Template & Cutter Renderer
-import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10f";
-import { hsl } from "./image-utils.js?v=phase10f";
-import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10f";
-import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10f";
-import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10f";
-import { renderQrSvgMarkup } from "./qr.mjs?v=phase10f";
+import { THEMES, TF, lum, hslLum, mix } from "./themes.js?v=phase10i";
+import { hsl } from "./image-utils.js?v=phase10i";
+import { hasBorderOverrides, renderBorder, resolveBorderConfig } from "./borders.mjs?v=phase10i";
+import { normalizeCornerHardware, renderCornerHardware, renderSurfaceFx } from "./corners.mjs?v=phase10i";
+import { SKINDS, STAMPS, renderStampMarkup, resolveStampStyle, resolveStampTransform } from "./stamps.mjs?v=phase10i";
+import { renderQrSvgMarkup } from "./qr.mjs?v=phase10i";
 
 export { SKINDS, STAMPS };
 
@@ -518,10 +518,20 @@ export function renderCard(c0, i, cfg) {
   const st0Scale = st0.isOverridden ? Number(st0.scale.toFixed(3)) : ss;
   const st1Scale = st1.isOverridden ? Number(st1.scale.toFixed(3)) : ss * 0.85;
 
+  const cardStampYear = c0.stampYear !== undefined ? String(c0.stampYear) : (cfg.stampYear || "2026");
+  const cardStamp2 = c0.stamp2 !== undefined ? String(c0.stamp2) : (cfg.stamp2 || "");
+  const cardSerials = c0.serials !== undefined ? Boolean(c0.serials) : Boolean(cfg.serials);
+  const cardNfc = c0.nfc !== undefined ? Boolean(c0.nfc) : Boolean(cfg.nfc);
+  const cardNfcWithYt = c0.nfcWithYt !== undefined ? Boolean(c0.nfcWithYt) : cfg.nfcWithYt !== false;
+  const cardNfcScale = c0.nfcScale !== undefined ? (Number(c0.nfcScale) || 100) : (Number(cfg.nfcScale ?? 100) || 100);
+  const cardPunchHole = c0.punchHole !== undefined ? Boolean(c0.punchHole) : Boolean(cfg.punchHole);
+  const cardDoors = c0.doors !== undefined ? String(c0.doors) : (cfg.doors || "Doors 7PM");
+  const cardSide = c0.side !== undefined ? String(c0.side) : (cfg.side || "Dope-Amine");
+
   const stamp = skw === "none" ? "" : renderStampMarkup({
     shapeKey: sk,
     text: c0.stx || cfg.stamp || "Soul Fuel",
-    year: cfg.stampYear || "2026",
+    year: cardStampYear,
     scale: st0Scale,
     px: st0.x,
     py: st0.y,
@@ -533,9 +543,9 @@ export function renderCard(c0, i, cfg) {
     style: resolvedStampStyle,
     themeBg: T.bg
   });
-  const stamp2 = cfg.stamp2 ? renderStampMarkup({
+  const stamp2 = cardStamp2 ? renderStampMarkup({
     shapeKey: "rect",
-    text: cfg.stamp2,
+    text: cardStamp2,
     year: "",
     scale: st1Scale,
     px: st1.x,
@@ -561,14 +571,14 @@ export function renderCard(c0, i, cfg) {
     return `<g class="st-ui${isSel ? " is-selected" : ""}" data-ci="${i}" data-si="${si}" transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${st.r.toFixed(1)})"><rect class="st-outline" x="${(-bw / 2).toFixed(1)}" y="${(-bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3"/><line class="st-rot-stem" x1="0" y1="${(-bh / 2).toFixed(1)}" x2="0" y2="${rotY.toFixed(1)}"/><rect class="st-hit" data-ci="${i}" data-si="${si}" tabindex="0" role="slider" aria-label="${label}" aria-valuetext="${vText}" x="${(-hw / 2).toFixed(1)}" y="${(-hh / 2).toFixed(1)}" width="${hw.toFixed(1)}" height="${hh.toFixed(1)}" fill="transparent"/><circle class="st-rot-hit" data-ci="${i}" data-si="${si}" cx="0" cy="${rotY.toFixed(1)}" r="56" fill="transparent"/><circle class="st-rot-knob" cx="0" cy="${rotY.toFixed(1)}" r="4.8"/></g>`;
   };
   const stampUi = cfg.moveStamps && (!cfg.one || cfg.interactive)
-    ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cfg.stamp2 ? mkStUi(1, st1, st1Scale) : ""}`
+    ? `${skw === "none" ? "" : mkStUi(0, st0, st0Scale)}${cardStamp2 ? mkStUi(1, st1, st1Scale) : ""}`
     : "";
 
   const tf = resolved.titleFont;
   const lumB = lum(T.bg), dkp = lumB < 0.45, tcol = dkp ? "#fff" : "#3a2a18";
   const tr = dkp ? 1 : 0.15, tg = dkp ? 1 : 0.1, tb = dkp ? 1 : 0.05;
 
-  const serial = cfg.serials ? `<text x="${CW - 17}" y="${158.5 + D}" text-anchor="end" fill="${mute}" opacity=".85" font-size="3.8" font-weight="700" letter-spacing=".5" ${FT}>№ ${String(i + 1).padStart(4, "0")}</text>` : "";
+  const serial = cardSerials ? `<text x="${CW - 17}" y="${158.5 + D}" text-anchor="end" fill="${mute}" opacity=".85" font-size="3.8" font-weight="700" letter-spacing=".5" ${FT}>№ ${String(i + 1).padStart(4, "0")}</text>` : "";
 
   let cre = "";
   const crVal = resolved.creases;
@@ -591,18 +601,18 @@ export function renderCard(c0, i, cfg) {
     ? `<g clip-path="url(#ck${i})" pointer-events="none">${texDefs ? `<defs>${texDefs}</defs>` : ""}${grVal ? `<rect width="${CW}" height="${CH}" fill="#000" filter="url(#gr${i})" opacity="${(grVal / 100 * 0.55).toFixed(2)}"/>` : ""}${ewVal ? `<rect width="${CW}" height="${CH}" fill="none" stroke="${tcol}" stroke-width="12" filter="url(#ew${i})" opacity="${(ewVal / 100 * 0.55).toFixed(2)}"/>` : ""}${scVal ? `<g transform="rotate(${Math.round(rn(5) * 60 - 30)} ${CW / 2} ${CH / 2})"><rect x="-60" y="-60" width="${CW + 120}" height="${CH + 120}" fill="#000" filter="url(#sc${i})" opacity="${(scVal / 100 * 0.7).toFixed(2)}"/></g>` : ""}${cre}</g>`
     : "";
 
-  let nfc = cfg.nfc
+  let nfc = cardNfc
     ? renderNfcBadge({
         CW,
         D,
         accent: A,
         theme: T,
-        withYt: cfg.nfcWithYt !== false,
-        scale: (Number(cfg.nfcScale ?? 100) || 100) / 100,
+        withYt: cardNfcWithYt,
+        scale: cardNfcScale / 100,
         anchorY: isVisiting ? (CH - 15) : null
       })
     : "";
-  if (cfg.punchHole) {
+  if (cardPunchHole) {
     nfc += `<g aria-label="NFC punch hole" transform="translate(${CW / 2} ${PMY})"><circle r="3.4" fill="#fff" stroke="${T.frame}" stroke-width=".6"/><circle r="1.7" fill="#e7e4dc" stroke="${A}" stroke-width=".35"/></g>`;
   }
 
@@ -660,17 +670,17 @@ export function renderCard(c0, i, cfg) {
     const vcEmail = String(c0.email || "").trim();
     const vcWebsite = String(c0.website || "").trim();
     const vcAddress = String(c0.address || "").trim();
-    const vcBadge = cfg.vcBadge || "qr-nfc";
+    const vcBadge = c0.vcBadge || cfg.vcBadge || "qr-nfc";
     const showQr = vcBadge === "qr-nfc" || vcBadge === "qr";
-    const showNfc = cfg.nfc && (vcBadge === "qr-nfc" || vcBadge === "nfc");
+    const showNfc = cardNfc && (vcBadge === "qr-nfc" || vcBadge === "nfc");
     const vcNfc = showNfc
       ? renderNfcBadge({
           CW,
           D: 0,
           accent: A,
           theme: T,
-          withYt: cfg.nfcWithYt !== false,
-          scale: (Number(cfg.nfcScale ?? 100) || 100) / 100,
+          withYt: cardNfcWithYt,
+          scale: cardNfcScale / 100,
           anchorY: CH - 15
         })
       : "";
@@ -824,9 +834,9 @@ export function renderCard(c0, i, cfg) {
    <g clip-path="url(#ck${i})"><rect x="${-bl}" y="${-bl}" width="${CW + 2 * bl}" height="${CH + 2 * bl}" fill="${bgF}"/></g>
    ${borderRendered.markup}${sc}
    <text x="17" y="11.5" fill="${A}" font-size="5.2" font-weight="800" letter-spacing=".5" ${FT}>★ ADMIT ONE</text>
-   <text x="${CW - 17}" y="11.5" text-anchor="end" fill="${ink}" font-size="5.2" font-weight="800" letter-spacing=".4" ${FT}>${U(cfg.doors || "Doors 7PM")}</text>
+   <text x="${CW - 17}" y="11.5" text-anchor="end" fill="${ink}" font-size="5.2" font-weight="800" letter-spacing=".4" ${FT}>${U(cardDoors)}</text>
    <text transform="translate(13 ${PMY}) rotate(-90)" text-anchor="middle" fill="${mute}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(no)}</text>
-   <text transform="translate(${CW - 13} ${PMY}) rotate(90)" text-anchor="middle" fill="${A}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(cfg.side || "Dope-Amine")}</text>
+   <text transform="translate(${CW - 13} ${PMY}) rotate(90)" text-anchor="middle" fill="${A}" font-size="4.4" font-weight="700" letter-spacing=".6" ${FT}>${U(cardSide)}</text>
    ${ph}${design.halftone ? `<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="url(#ht${i})"/>` : ""}<rect x="${PX}" y="${PY}" width="${PS}" height="${PH}" fill="none" stroke="${T.frame}" stroke-width="1"/>${tp}
    <g transform="translate(0 ${D})">${perf}
    ${badge}

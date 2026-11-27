@@ -1,5 +1,5 @@
 // Seeded per-card "Surprise me" style randomiser with WCAG contrast, print-safe & stamp bounds guard rails
-import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase10f";
+import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase10i";
 import {
   SKINDS,
   STAMP_MAX_SCALE,
@@ -7,7 +7,7 @@ import {
   clampStampNorm,
   compactStampStyle,
   stampNormBounds
-} from "./stamps.mjs?v=phase10f";
+} from "./stamps.mjs?v=phase10i";
 import {
   SURPRISE_MANAGED_STYLE_KEYS,
   blendHex,
@@ -17,7 +17,7 @@ import {
   hslObjectToHex,
   normalizeHex,
   relativeLuminance
-} from "./card-styles.mjs?v=phase10f";
+} from "./card-styles.mjs?v=phase10i";
 
 const FALLBACK_THEMES = Object.freeze({
   cream: { grp: "Light", n: "Cream", bg: "#f2eadb", ink: "#1b1a19", mute: "#3a3733" }

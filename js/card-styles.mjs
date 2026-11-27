@@ -1,6 +1,6 @@
 // Per-card optional style override schema, sanitization & WCAG contrast helpers
-import { sanitizeBorderPatch } from "./borders.mjs?v=phase10f";
-import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase10f";
+import { sanitizeBorderPatch } from "./borders.mjs?v=phase10i";
+import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase10i";
 
 export const MAX_CARDS_LIMIT = 300;
 
@@ -35,7 +35,17 @@ export const CARD_STYLE_OVERRIDE_KEYS = Object.freeze([
   "fxClaw",
   "fxTear",
   "fxBullet",
-  "fxBlood"
+  "fxBlood",
+  "doors",
+  "side",
+  "stampYear",
+  "stamp2",
+  "nfc",
+  "nfcWithYt",
+  "nfcScale",
+  "serials",
+  "punchHole",
+  "vcBadge"
 ]);
 
 export const SURPRISE_MANAGED_STYLE_KEYS = Object.freeze([
@@ -69,7 +79,17 @@ export const SURPRISE_MANAGED_STYLE_KEYS = Object.freeze([
   "fxClaw",
   "fxTear",
   "fxBullet",
-  "fxBlood"
+  "fxBlood",
+  "doors",
+  "side",
+  "stampYear",
+  "stamp2",
+  "nfc",
+  "nfcWithYt",
+  "nfcScale",
+  "serials",
+  "punchHole",
+  "vcBadge"
 ]);
 
 const HEX_RE = /^#[\da-f]{6}$/i;
@@ -260,6 +280,19 @@ export function sanitizeCardStyleOverrides(raw, validThemes = null, validStamps 
   }
   for (const fxKey of ["fxClaw", "fxTear", "fxBullet", "fxBlood"]) {
     if (raw[fxKey] !== undefined) out[fxKey] = Boolean(raw[fxKey]);
+  }
+  if (raw.doors !== undefined) out.doors = String(raw.doors).slice(0, 48);
+  if (raw.side !== undefined) out.side = String(raw.side).slice(0, 48);
+  if (raw.stampYear !== undefined) out.stampYear = String(raw.stampYear).slice(0, 16);
+  if (raw.stamp2 !== undefined) out.stamp2 = String(raw.stamp2).slice(0, 32);
+  for (const boolKey of ["nfc", "nfcWithYt", "serials", "punchHole"]) {
+    if (raw[boolKey] !== undefined) out[boolKey] = Boolean(raw[boolKey]);
+  }
+  if (raw.nfcScale !== undefined && Number.isFinite(Number(raw.nfcScale))) {
+    out.nfcScale = clampInt(raw.nfcScale, 50, 200, 100);
+  }
+  if (typeof raw.vcBadge === "string" && ["qr-nfc", "qr", "nfc", "none"].includes(raw.vcBadge)) {
+    out.vcBadge = raw.vcBadge;
   }
   if (raw.locked) out.locked = true;
   return out;

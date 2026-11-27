@@ -893,3 +893,10 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 - **Band Lookup (`band-lookup.html`, `js/band-lookup-providers.mjs`, `js/band-lookup.js`)**:
   - Added **`TheAudioDB (Fast · origin/year/genre)`** (`theaudiodb`) and **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`) alongside `MusicBrainz` & `Wikipedia`, with `#lookup-fast-fallback-btn` (`Try TheAudioDB (fast)`).
 - **UI Fix (`css/app.css`)**: Added `flex: 0 0 auto; align-items: stretch; justify-content: flex-start; text-transform: none;` on `.lookup-result-card` so multi-item lists (`30+` albums in `.lookup-results`) never shrink or overlap vertically.
+
+---
+
+## Tabbed Studio, Control Search & Full Single-Card Editor (`?v=phase10i`)
+- **8-Tab Sidebar & Control Search (`index.html`, `js/app.js`, `css/app.css`)**: Replaced stacked sidebar accordions with `#studio-tabs` (`Cards`, `Page & backs`, `Theme`, `Borders`, `Stamps`, `Photo & text`, `Wear & FX`, `Ticket & NFC`) and `#ctrl-search` (`#ctrl-search-clear`, `#ctrl-search-results`) so typing any setting or control name jumps directly to its tab and flashes the control.
+- **5-Tab Single Card Editor (`#pv-editor`, `js/card-styles.mjs`, `js/svg-engine.js`)**: Organized `#pv` into `#pv-tabs` (`Details`, `Photo & text`, `Theme & wear`, `Border`, `Stamps`) with per-card overrides for every card-level visual option (`doors`, `side`, `stampYear`, `stamp2`, `nfc`, `nfcWithYt`, `nfcScale`, `serials`, `punchHole`, `vcBadge`, plus theme, border, wear, mounts, and FX) and sticky per-card reset controls.
+- **Clearer Card Reset & Thumbnail Photo Remove (`#reset-all-cards`, `.cv-remove-btn`)**: Added `#reset-all-cards` alongside `#surprise-all` (showing customized card count when active and resetting all random/per-card styles cleanly), and replaced card row text remove buttons with a compact `18px` red circular white-cross badge (`.cv-remove-btn`) pinned to the top-right corner of `.cv-wrap` only when a photo is loaded.

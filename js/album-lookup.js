@@ -1,15 +1,15 @@
-import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10f";
-import { populateThemeSelect } from "./themes.js?v=phase10f";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10f";
-import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10f";
-import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10f";
-import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10f";
-import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10f";
+import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10i";
+import { populateThemeSelect } from "./themes.js?v=phase10i";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10i";
+import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10i";
+import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10i";
+import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10i";
+import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10i";
 import {
   ALBUM_LOOKUP_CONFIG,
   fetchAlbumCoverArt,
   searchOnlineAlbums
-} from "./album-lookup-providers.mjs?v=phase10f";
+} from "./album-lookup-providers.mjs?v=phase10i";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
