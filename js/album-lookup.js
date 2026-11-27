@@ -1,31 +1,23 @@
-import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10e";
-import { populateThemeSelect } from "./themes.js?v=phase10e";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10e";
-import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10e";
-import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10e";
-import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10e";
-import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10e";
+import { DEFAULT_CARDS, SET0, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10f";
+import { populateThemeSelect } from "./themes.js?v=phase10f";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10f";
+import { processImageFile, processImageUrl } from "./image-utils.js?v=phase10f";
+import { CW, abbr, computeLayout, hueOf, renderCard } from "./svg-engine.js?v=phase10f";
+import { rasterizeSvg, triggerDownload } from "./export.js?v=phase10f";
+import { bindTapTooltips, hydrateIcons } from "./icons.mjs?v=phase10f";
 import {
   ALBUM_LOOKUP_CONFIG,
   fetchAlbumCoverArt,
   searchOnlineAlbums
-} from "./album-lookup-providers.mjs?v=phase10e";
+} from "./album-lookup-providers.mjs?v=phase10f";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
-const SPOTIFY_TOKEN_KEY = "ticketgen.spotifyToken.v1";
 const ALBUM_PROVIDER_NAMES = {
   musicbrainz: "MusicBrainz",
   itunes: "iTunes / Apple Music",
-  spotify: "Spotify",
   wikipedia: "Wikipedia"
 };
-
-function syncSpotifyTokenUi() {
-  const wrap = $("alb-spotify-wrap");
-  if (!wrap) return;
-  wrap.hidden = ($("alb-provider")?.value || "") !== "spotify";
-}
 
 let activeResults = [];
 let selectedMatchId = "";
@@ -167,10 +159,8 @@ async function runAlbumSearch(overrideProvider = null) {
     return;
   }
   if (overrideProvider) $("alb-provider").value = overrideProvider;
-  syncSpotifyTokenUi();
   const provider = $("alb-provider").value || "musicbrainz";
   const providerLabel = ALBUM_PROVIDER_NAMES[provider] || provider;
-  const spotifyToken = ($("alb-spotify-token")?.value || "").trim();
   const displayQuery = query && artist ? `${query} — ${artist}` : (query || artist);
   lastSearchQuery = displayQuery;
   setBusy(true);
@@ -180,7 +170,7 @@ async function runAlbumSearch(overrideProvider = null) {
       : `Searching ${providerLabel} albums for “${displayQuery}”…`
   );
   try {
-    const res = await searchOnlineAlbums(query, { artist, provider, spotifyToken });
+    const res = await searchOnlineAlbums(query, { artist, provider });
     activeResults = res.results;
     renderResults();
     if (!res.results.length) {
@@ -376,15 +366,6 @@ function init() {
     event.preventDefault();
     runAlbumSearch();
   });
-  try {
-    const savedToken = sessionStorage.getItem(SPOTIFY_TOKEN_KEY) || "";
-    if (savedToken && $("alb-spotify-token")) $("alb-spotify-token").value = savedToken;
-  } catch {}
-  $("alb-provider")?.addEventListener("change", syncSpotifyTokenUi);
-  $("alb-spotify-token")?.addEventListener("input", event => {
-    try { sessionStorage.setItem(SPOTIFY_TOKEN_KEY, event.target.value.trim()); } catch {}
-  });
-  syncSpotifyTokenUi();
   $("alb-retry-btn").addEventListener("click", () => runAlbumSearch());
   $("alb-fast-fallback-btn")?.addEventListener("click", () => runAlbumSearch("itunes"));
   $("alb-wiki-fallback-btn").addEventListener("click", () => runAlbumSearch("wikipedia"));

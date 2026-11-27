@@ -5,7 +5,6 @@ import {
   fetchAlbumCoverArt,
   parseItunesAlbums,
   parseMusicBrainzReleaseGroups,
-  parseSpotifyAlbums,
   parseWikipediaAlbumSearch,
   searchOnlineAlbums,
   upgradeItunesArtworkUrl
@@ -162,41 +161,6 @@ import {
 
   const directCover = await fetchAlbumCoverArt({ coverUrl: itRes.results[0].coverUrl, source: "iTunes" });
   assert.equal(directCover.coverUrl, "https://is1-ssl.mzstatic.com/image/thumb/c/600x600bb.jpg");
-}
-
-// 7. Spotify option requires token cleanly & parses albums / artist discography
-{
-  clearAlbumLookupCaches();
-  let missingTokenErr = null;
-  try {
-    await searchOnlineAlbums("Comatose", { provider: "spotify", spotifyToken: "" });
-  } catch (e) {
-    missingTokenErr = e;
-  }
-  assert.ok(missingTokenErr?.message.includes("Bearer token"));
-
-  const spRes = await searchOnlineAlbums("", {
-    artist: "Skillet",
-    provider: "spotify",
-    spotifyToken: "Bearer test-token",
-    fetchImpl: async url => {
-      if (url.includes("/v1/search?")) {
-        return { ok: true, status: 200, json: async () => ({ artists: { items: [{ id: "sp1", name: "Skillet" }] } }) };
-      }
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          items: [
-            { id: "alb1", name: "Awake", album_type: "album", release_date: "2009-08-25", total_tracks: 12, artists: [{ name: "Skillet" }], images: [{ url: "https://i.scdn.co/image/awake.jpg" }] }
-          ]
-        })
-      };
-    }
-  });
-  assert.equal(spRes.results[0].albumName, "Awake");
-  assert.equal(spRes.results[0].coverUrl, "https://i.scdn.co/image/awake.jpg");
-  assert.equal(spRes.results[0].code, "SKIL");
 }
 
 console.log("Album lookup provider tests passed.");

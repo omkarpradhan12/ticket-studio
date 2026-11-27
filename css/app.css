@@ -4080,17 +4080,8 @@ details.sec > summary {
   #lookup-transfer-toast[hidden],
   #alb-recovery[hidden],
   #alb-disabled-banner[hidden],
-  #alb-transfer-toast[hidden],
-  .lookup-spotify-wrap[hidden] {
+  #alb-transfer-toast[hidden] {
     display: none !important;
-  }
-
-  .lookup-spotify-wrap {
-    margin-top: 8px;
-    padding: 8px 10px;
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    background: rgba(255, 255, 255, 0.03);
   }
 
   .lookup-query-fld input[type="search"] {
@@ -4215,13 +4206,15 @@ details.sec > summary {
     flex-direction: column;
     gap: 8px;
     margin-top: 8px;
+    padding: 2px;
     max-height: 70vh;
     overflow-y: auto;
   }
 
   .lookup-result-card {
-    text-align: left;
+    flex: 0 0 auto;
     width: 100%;
+    text-align: left;
     padding: 10px 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -4230,7 +4223,14 @@ details.sec > summary {
     cursor: pointer;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     gap: 4px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    text-transform: none;
+    letter-spacing: normal;
+    box-shadow: none;
   }
 
   .lookup-result-card:hover {
@@ -4243,16 +4243,26 @@ details.sec > summary {
   }
 
   .lookup-result-top {
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
+  }
+
+  .lookup-result-top strong {
+    text-align: left;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .lookup-result-sub,
   .lookup-result-meta {
+    text-align: left;
     font-size: 11px;
+    line-height: 1.35;
     color: var(--mute);
+    overflow-wrap: anywhere;
   }
 
   .lookup-pill {

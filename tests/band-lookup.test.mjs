@@ -6,7 +6,6 @@ import {
   mergeCardLookupFields,
   parseItunesArtists,
   parseMusicBrainzArtists,
-  parseSpotifyArtists,
   parseTheAudioDbArtists,
   parseWikipediaSearch,
   searchOnlineBands
@@ -182,26 +181,6 @@ import {
   });
   assert.equal(it.results[0].genre, "Hard Rock");
   assert.equal(it.results[0].code, "SKIL");
-
-  let spErr = null;
-  try {
-    await searchOnlineBands("Skillet", { provider: "spotify", spotifyToken: "" });
-  } catch (e) {
-    spErr = e;
-  }
-  assert.ok(spErr?.message.includes("Bearer token"));
-
-  const sp = await searchOnlineBands("Skillet", {
-    provider: "spotify",
-    spotifyToken: "tok",
-    fetchImpl: async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ artists: { items: [{ id: "1", name: "Skillet", genres: ["christian rock", "post-grunge"], popularity: 72, images: [{ url: "https://i.scdn.co/sk.jpg" }] }] } })
-    })
-  });
-  assert.equal(sp.results[0].genre, "Christian Rock / Post-grunge");
-  assert.equal(sp.results[0].photoUrl, "https://i.scdn.co/sk.jpg");
 }
 
 console.log("Band lookup provider tests passed.");

@@ -1,11 +1,10 @@
 // Isolated Online Album Lookup Provider Module
-// Searches iTunes/Apple Music (fast zero-key + cover art), MusicBrainz release-groups (CC0),
-// Spotify Web API (optional Bearer token from referenced music APIs list), or Wikipedia.
+// Searches iTunes/Apple Music (fast zero-key + cover art), MusicBrainz release-groups (CC0), or Wikipedia.
 // Intentionally excludes studio-album ordinal calculation per owner instruction.
 
 export const ALBUM_LOOKUP_CONFIG = {
   enabled: true,
-  defaultProvider: "musicbrainz", // "musicbrainz" | "itunes" | "spotify" | "wikipedia"
+  defaultProvider: "musicbrainz", // "musicbrainz" | "itunes" | "wikipedia"
   minMbGapMs: 1250,
   requestTimeoutMs: 10000
 };
@@ -146,39 +145,6 @@ export function parseItunesAlbums(json, { artistQuery = "" } = {}) {
   return deduped;
 }
 
-export function parseSpotifyAlbums(json, fallbackArtist = "") {
-  const list = Array.isArray(json?.albums?.items)
-    ? json.albums.items
-    : (Array.isArray(json?.items) ? json.items : []);
-  return list
-    .filter(item => item && item.name)
-    .map(item => {
-      const artistName = (Array.isArray(item.artists) ? item.artists : [])
-        .map(a => a?.name || "")
-        .filter(Boolean)
-        .join(", ") || String(fallbackArtist || "").trim();
-      const images = Array.isArray(item.images) ? item.images : [];
-      const coverUrl = images[0]?.url || images[images.length - 1]?.url || "";
-      const albumName = String(item.name || "").trim();
-      const rawType = String(item.album_type || "album").toLowerCase();
-      const releaseType = rawType ? rawType[0].toUpperCase() + rawType.slice(1) : "Album";
-      return {
-        id: `sp-alb:${item.id || albumName}`,
-        mbid: "",
-        source: "Spotify",
-        albumName,
-        artistName,
-        year: extractReleaseYear(item.release_date),
-        code: makeAlbumAbbr(artistName || albumName),
-        releaseType,
-        coverUrl,
-        score: 100,
-        disambiguation: item.total_tracks ? `${item.total_tracks} tracks` : "",
-        licenseNote: "Metadata & cover: Spotify Web API"
-      };
-    });
-}
-
 async function fetchWithTimeout(url, fetchImpl, timeoutMs, options = {}) {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
@@ -193,13 +159,11 @@ async function fetchJsonWithTimeout(url, fetchImpl, timeoutMs, options = {}) {
   const resp = await fetchWithTimeout(url, fetchImpl, timeoutMs, options);
   if (!resp.ok) {
     const err = new Error(
-      resp.status === 401
-        ? "Authorization failed (HTTP 401). Check your Spotify Bearer token or switch to iTunes / MusicBrainz."
-        : resp.status === 503
-          ? "MusicBrainz is temporarily rate-limiting browser requests (HTTP 503). Wait a moment or switch to iTunes / Wikipedia."
-          : resp.status === 429
-            ? "Rate limit reached (HTTP 429). Please wait or switch source."
-            : `Album lookup failed (HTTP ${resp.status}).`
+      resp.status === 503
+        ? "MusicBrainz is temporarily rate-limiting browser requests (HTTP 503). Wait a moment or switch to iTunes / Wikipedia."
+        : resp.status === 429
+          ? "Rate limit reached (HTTP 429). Please wait or switch source."
+          : `Album lookup failed (HTTP ${resp.status}).`
     );
     err.httpStatus = resp.status;
     throw err;
@@ -221,7 +185,6 @@ function enqueueMb(taskFn, minGapMs = ALBUM_LOOKUP_CONFIG.minMbGapMs) {
 export async function searchOnlineAlbums(rawAlbumQuery, {
   artist = "",
   provider = ALBUM_LOOKUP_CONFIG.defaultProvider,
-  spotifyToken = "",
   fetchImpl = (...args) => fetch(...args),
   timeoutMs = ALBUM_LOOKUP_CONFIG.requestTimeoutMs
 } = {}) {
@@ -233,11 +196,6 @@ export async function searchOnlineAlbums(rawAlbumQuery, {
   if (!albumQuery && !artistQuery) return { query: "", artist: "", provider, results: [], fromCache: false };
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     throw new Error("You appear to be offline. Connect to the internet or upload local cover art.");
-  }
-
-  const cleanToken = String(spotifyToken || "").trim().replace(/^Bearer\s+/i, "");
-  if (provider === "spotify" && !cleanToken) {
-    throw new Error("Spotify Web API requires a Bearer token. Paste a token or switch to iTunes (fast, no key).");
   }
 
   const cacheKey = `${provider}:${albumQuery.toLowerCase()}::${artistQuery.toLowerCase()}`;
@@ -277,45 +235,6 @@ export async function searchOnlineAlbums(rawAlbumQuery, {
     }
     results = results.map(({ _artistMatch, _isStudioLp, ...clean }) => clean);
     const out = { query: albumQuery, artist: artistQuery, provider: "itunes", results, fromCache: false };
-    searchCache.set(cacheKey, out);
-    return out;
-  }
-
-  if (provider === "spotify") {
-    const headers = { Authorization: `Bearer ${cleanToken}` };
-    let results = [];
-    if (artistOnly) {
-      const searchRes = await fetchJsonWithTimeout(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistQuery)}&type=artist&limit=5`,
-        fetchImpl,
-        timeoutMs,
-        { headers }
-      );
-      const artists = Array.isArray(searchRes?.artists?.items) ? searchRes.artists.items : [];
-      const exactArtist = artists.find(a => String(a.name || "").toLowerCase() === artistQuery.toLowerCase()) || artists[0];
-      if (exactArtist?.id) {
-        const albJson = await fetchJsonWithTimeout(
-          `https://api.spotify.com/v1/artists/${encodeURIComponent(exactArtist.id)}/albums?include_groups=album,compilation&limit=50`,
-          fetchImpl,
-          timeoutMs,
-          { headers }
-        );
-        results = parseSpotifyAlbums(albJson, exactArtist.name || artistQuery).sort((a, b) => {
-          const aStd = a.releaseType === "Album" ? 0 : 1;
-          const bStd = b.releaseType === "Album" ? 0 : 1;
-          if (aStd !== bStd) return aStd - bStd;
-          return (Number(a.year) || 9999) - (Number(b.year) || 9999);
-        });
-      }
-    } else {
-      const qParts = [];
-      if (albumQuery) qParts.push(`album:${albumQuery}`);
-      if (artistQuery) qParts.push(`artist:${artistQuery}`);
-      const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(qParts.join(" "))}&type=album&limit=25`;
-      const json = await fetchJsonWithTimeout(url, fetchImpl, timeoutMs, { headers });
-      results = parseSpotifyAlbums(json, artistQuery);
-    }
-    const out = { query: albumQuery, artist: artistQuery, provider: "spotify", results, fromCache: false };
     searchCache.set(cacheKey, out);
     return out;
   }

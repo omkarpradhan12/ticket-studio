@@ -1,30 +1,22 @@
-import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10e";
-import { processImageFile, processImageUrl, hexToHS, hslToHex } from "./image-utils.js?v=phase10e";
-import { abbr } from "./svg-engine.js?v=phase10e";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10e";
+import { DEFAULT_CARDS, blankCard, clearSession, loadSession, persistSession } from "./storage.js?v=phase10f";
+import { processImageFile, processImageUrl, hexToHS, hslToHex } from "./image-utils.js?v=phase10f";
+import { abbr } from "./svg-engine.js?v=phase10f";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10f";
 import {
   LOOKUP_FEATURE_CONFIG,
   fetchWikipediaPhotoForArtist,
   mergeCardLookupFields,
   searchOnlineBands
-} from "./band-lookup-providers.mjs?v=phase10e";
+} from "./band-lookup-providers.mjs?v=phase10f";
 
 const $ = id => document.getElementById(id);
 const MAX_CARDS = 300;
-const SPOTIFY_TOKEN_KEY = "ticketgen.spotifyToken.v1";
 const BAND_PROVIDER_NAMES = {
   musicbrainz: "MusicBrainz",
   theaudiodb: "TheAudioDB",
   itunes: "iTunes / Apple Music",
-  spotify: "Spotify",
   wikipedia: "Wikipedia"
 };
-
-function syncSpotifyTokenUi() {
-  const wrap = $("lookup-spotify-wrap");
-  if (!wrap) return;
-  wrap.hidden = ($("lookup-provider")?.value || "") !== "spotify";
-}
 
 let activeResults = [];
 let selectedMatchId = "";
@@ -117,15 +109,13 @@ async function runSearch(overrideProvider = null) {
     return;
   }
   if (overrideProvider) $("lookup-provider").value = overrideProvider;
-  syncSpotifyTokenUi();
   const provider = $("lookup-provider").value || "musicbrainz";
   const providerLabel = BAND_PROVIDER_NAMES[provider] || provider;
-  const spotifyToken = ($("lookup-spotify-token")?.value || "").trim();
   lastSearchQuery = query;
   setBusy(true);
   setStatus(`Searching ${providerLabel} for “${query}”…`);
   try {
-    const res = await searchOnlineBands(query, { provider, spotifyToken });
+    const res = await searchOnlineBands(query, { provider });
     activeResults = res.results;
     renderResults();
     if (!res.results.length) {
@@ -323,15 +313,6 @@ function init() {
     event.preventDefault();
     runSearch();
   });
-  try {
-    const savedToken = sessionStorage.getItem(SPOTIFY_TOKEN_KEY) || "";
-    if (savedToken && $("lookup-spotify-token")) $("lookup-spotify-token").value = savedToken;
-  } catch {}
-  $("lookup-provider")?.addEventListener("change", syncSpotifyTokenUi);
-  $("lookup-spotify-token")?.addEventListener("input", event => {
-    try { sessionStorage.setItem(SPOTIFY_TOKEN_KEY, event.target.value.trim()); } catch {}
-  });
-  syncSpotifyTokenUi();
   $("lookup-retry-btn").addEventListener("click", () => runSearch());
   $("lookup-fast-fallback-btn")?.addEventListener("click", () => runSearch("theaudiodb"));
   $("lookup-wiki-fallback-btn").addEventListener("click", () => runSearch("wikipedia"));

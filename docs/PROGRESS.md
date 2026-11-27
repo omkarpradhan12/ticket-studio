@@ -886,11 +886,10 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 
 ---
 
-## Alternative Music Search APIs (`?v=phase10e`, Completed)
-- **Reference**: `https://gist.github.com/0xdevalias/eba698730024674ecae7f43f4c650096` (*A collection of music APIs, databases, and related tools*).
+## Alternative Music Search APIs (`?v=phase10f`, Completed)
 - **Album Lookup (`album-lookup.html`, `js/album-lookup-providers.mjs`, `js/album-lookup.js`)**:
   - Added **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`) supporting album, artist-only discography (LP albums prioritized chronologically ahead of EPs/singles), and album+artist searches with direct CORS-safe `600x600bb` artwork.
-  - Added **`Spotify Web API (Token · Gist)`** (`spotify`) supporting optional session-only Bearer tokens (`/v1/search` and `/v1/artists/{id}/albums` for artist-only queries).
   - Kept **`MusicBrainz`** & **`Wikipedia`**, added `#alb-fast-fallback-btn` (`Try iTunes (fast)`) alongside `#alb-wiki-fallback-btn`, and wired auto cover preview + direct `coverUrl` fast path in `fetchAlbumCoverArt()`.
 - **Band Lookup (`band-lookup.html`, `js/band-lookup-providers.mjs`, `js/band-lookup.js`)**:
-  - Added **`TheAudioDB (Fast · origin/year/genre)`** (`theaudiodb`), **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`), and **`Spotify Web API (Token · Gist)`** (`spotify`) alongside `MusicBrainz` & `Wikipedia`, with `#lookup-fast-fallback-btn` (`Try TheAudioDB (fast)`) and shared sessionStorage Spotify token handling.
+  - Added **`TheAudioDB (Fast · origin/year/genre)`** (`theaudiodb`) and **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`) alongside `MusicBrainz` & `Wikipedia`, with `#lookup-fast-fallback-btn` (`Try TheAudioDB (fast)`).
+- **UI Fix (`css/app.css`)**: Added `flex: 0 0 auto; align-items: stretch; justify-content: flex-start; text-transform: none;` on `.lookup-result-card` so multi-item lists (`30+` albums in `.lookup-results`) never shrink or overlap vertically.
