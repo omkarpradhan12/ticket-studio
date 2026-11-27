@@ -883,3 +883,10 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
   - **Single Card Editor (`#pv`) Border & Hardware**: Added per-card `#pv-border-style`, `#pv-border-color-mode`, `#pv-border-color`, `#pv-border-pattern`, `#pv-border-corner`, `#pv-border-corner-size`, `#pv-border-ornament`, `#pv-border-width`, `#pv-border-inset`, `#pv-border-wear`, `#pv-border-inner`, `#pv-border-reset`, `[data-pv-mount]` (reusing shared `applyMountCheckboxRule`), `#pv-mounts-reset`, distress marks (`#pv-fx-claw`, `#pv-fx-tear`, `#pv-fx-bullet`, `#pv-fx-blood`), and `#pv-fx-reset` alongside `#pv-hardware`. Verified `#pvi svg` live updates and reset controls (`0 NaN`).
   - **Prominently Larger Card Back Stamp**: Doubled `centerScale` in `renderCardBack` (`[1.45, 2.85]`, `Math.min(CW, CH) * 0.0162`) with clean vector `wear = 0`, `opacity = 1`. Verified `scale(2.75)` (`95.77 × 95.77` bbox) on `ticket` (`170×239`) and `scale(1.78)` (`87.86 × 87.86` bbox) on `vc_eu` (`85×55`).
   - **Scroll-to-Page Dropdown Sync**: Added rAF-throttled `#stage` / `window` scroll-spy (`detectVisibleStagePage`, `markActiveSheetClass`, programmatic scroll guard) syncing `#page-select`, `#page-count-label`, `#page-theme`, `#delete-page`, and `.sheet.is-active-page` across front and back sheets. Browser-verified Page 2 theme override, `#duplicate-page`, and `#delete-page` after scrolling.
+
+---
+
+## Parked Follow-Up Note (Waiting for User to Resume)
+- **Alternative / Improved Music Search API Option**:
+  - Reference: `https://gist.github.com/0xdevalias/eba698730024674ecae7f43f4c650096` (*A collection of music APIs, databases, and related tools*).
+  - **Status**: Noted only — do not implement until the user returns and asks to continue. Goal will be to add a better API option from that list (CORS-friendly / fast discography & artist/album search + cover art for browser usage without strict ~1 req/sec 503 throttling) to the lookup modes.
