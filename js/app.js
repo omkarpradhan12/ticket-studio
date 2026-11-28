@@ -5,7 +5,7 @@ import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingS
 import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10j";
 import { FONTCSS, injectFonts } from "./fonts.js?v=phase10j";
 import { History } from "./history.mjs?v=phase10j";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10j";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10m";
 import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10j";
 import {
   BORDER_STYLES,
@@ -1652,7 +1652,7 @@ function render() {
     const paperHeight = $("paper").value === "letter" ? "279.4mm" : "297mm";
     printStyle.textContent = `@media print {
       @page { size: ${paperSize} portrait; margin: 0; }
-      .topbar, .panel, .page-tools, #pv, h1, p.subtitle { display: none !important; }
+      .topbar, .panel, .page-tools, .sidebar-edge-handle, #pv, h1, p.subtitle { display: none !important; }
       .app[data-mobile-view] .stage { display: block !important; }
       .mobile-view-toggle, .mobile-actionbar { display: none !important; }
       .sheet { width: ${paperWidth} !important; height: ${paperHeight} !important; }
@@ -3703,6 +3703,27 @@ function bindEvents() {
   $("move-stamps")?.addEventListener("click", toggleMoveStampsMode);
   $("pv-drag-photo")?.addEventListener("click", () => syncDragPhotoMode(!dragPhotoMode));
   $("pv-move-stamps")?.addEventListener("click", toggleMoveStampsMode);
+  $("sidebar-toggle")?.addEventListener("click", () => {
+    const isMobile = window.matchMedia("(max-width: 640px)").matches;
+    if (isMobile) {
+      const nextView = $("app")?.dataset.mobileView === "preview" ? "edit" : "preview";
+      setMobileView(nextView);
+      return;
+    }
+    const nextCollapsed = !$("app")?.classList.contains("is-sidebar-collapsed");
+    setSidebarCollapsed(nextCollapsed);
+  });
+  $("sidebar-collapse")?.addEventListener("click", () => {
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      setMobileView("preview");
+      return;
+    }
+    setSidebarCollapsed(true);
+  });
+  $("sidebar-edge-open")?.addEventListener("click", () => {
+    setSidebarCollapsed(false);
+    $("ctrl-search")?.focus({ preventScroll: true });
+  });
   $("pv-expand")?.addEventListener("click", () => {
     const pv = $("pv");
     if (!pv) return;
@@ -3710,7 +3731,7 @@ function bindEvents() {
     const btn = $("pv-expand");
     if (btn) {
       btn.setAttribute("aria-expanded", String(expanded));
-      btn.textContent = expanded ? "Collapse" : "Expand";
+      btn.textContent = expanded ? "Compact" : "Expand";
     }
   });
   $("extra-stamp-add")?.addEventListener("click", () => {
@@ -4369,14 +4390,41 @@ function bindEvents() {
   document.querySelectorAll(".action-menu").forEach(menu => {
     menu.querySelectorAll("button").forEach(button => button.addEventListener("click", () => { menu.open = false; }));
   });
-  document.querySelectorAll("[data-mobile-view]").forEach(button => button.addEventListener("click", () => {
-    const view = button.dataset.mobileView;
+  function setMobileView(view) {
     $("app").dataset.mobileView = view;
     document.body.dataset.mobileView = view;
     document.querySelectorAll("[data-mobile-view]").forEach(toggle => {
-      toggle.setAttribute("aria-pressed", String(toggle === button));
+      toggle.setAttribute("aria-pressed", String(toggle.dataset.mobileView === view));
     });
+    const toggleBtn = $("sidebar-toggle");
+    if (toggleBtn && window.matchMedia("(max-width: 640px)").matches) {
+      const open = view !== "preview";
+      toggleBtn.setAttribute("aria-expanded", String(open));
+      toggleBtn.setAttribute("aria-label", open ? "Collapse sidebar drawer" : "Open sidebar drawer");
+    }
     updatePreviewZoom(previewZoom);
+  }
+  function setSidebarCollapsed(collapsed) {
+    const app = $("app");
+    if (!app) return;
+    app.classList.toggle("is-sidebar-collapsed", Boolean(collapsed));
+    const toggleBtn = $("sidebar-toggle");
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-expanded", String(!collapsed));
+      toggleBtn.setAttribute("aria-label", collapsed ? "Open sidebar drawer" : "Collapse sidebar drawer");
+    }
+    const edgeBtn = $("sidebar-edge-open");
+    if (edgeBtn) edgeBtn.hidden = !collapsed;
+    try { localStorage.setItem("ticket_sidebar_collapsed", collapsed ? "1" : "0"); } catch {}
+    window.setTimeout(() => updatePreviewZoom(previewZoom), 240);
+  }
+  try {
+    if (!window.matchMedia("(max-width: 640px)").matches && localStorage.getItem("ticket_sidebar_collapsed") === "1") {
+      setSidebarCollapsed(true);
+    }
+  } catch {}
+  document.querySelectorAll("[data-mobile-view]").forEach(button => button.addEventListener("click", () => {
+    setMobileView(button.dataset.mobileView);
   }));
   $("zoom-out").addEventListener("click", () => updatePreviewZoom(previewZoom - .1));
   $("zoom-in").addEventListener("click", () => updatePreviewZoom(previewZoom + .1));

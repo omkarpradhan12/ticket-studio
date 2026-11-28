@@ -26,6 +26,7 @@ const PATHS = Object.freeze({
   palette: '<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.7-3.1 1.9 1.9 0 0 1 1.6-2.9H18a3 3 0 0 0 3-3c0-5-4-9-9-9Z"/><path d="M7.5 10h.01"/><path d="M10 7.5h.01"/><path d="M14 7.5h.01"/><path d="M16.5 10h.01"/>',
   bulkUpload: '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M20 16.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2.5"/><path d="M8 14H4"/><path d="M6 12v4"/>',
   menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+  sidebar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
   logo: '<path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4V5Z"/><path d="M12 8v8"/><path d="M9 10v4"/><path d="M15 10v4"/>'
 });
 

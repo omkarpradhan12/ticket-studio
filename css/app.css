@@ -143,6 +143,7 @@ input, select, textarea {
 input[type="text"],
 input[type="url"],
 input[type="number"],
+input[type="search"],
 select,
 textarea {
   font: inherit;
@@ -1522,6 +1523,7 @@ label.fld span.lbl-row #pg {
 input[type="text"],
 input[type="url"],
 input[type="number"],
+input[type="search"],
 select,
 textarea {
   min-height: 36px;
@@ -4402,6 +4404,40 @@ details.sec > summary {
     margin-bottom: 10px;
   }
 
+  .card-search-slot {
+    position: relative;
+    display: block;
+  }
+
+  .card-search-slot input[type="search"] {
+    background: var(--bg);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 5px 38px 5px 34px;
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .card-search-slot .card-search-clear {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 4px;
+    left: auto;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    margin: 0;
+    border-color: transparent;
+    background: transparent;
+    color: var(--mute);
+    transform: translateY(-50%);
+    box-shadow: none;
+  }
+
   .ctrl-search-results {
     margin-top: 6px;
     display: flex;
@@ -4819,52 +4855,177 @@ details.sec > summary {
     align-items: end;
   }
 
-  /* Expanding Single-Card Side Drawer */
-  #pv.pv-drawer {
-    justify-content: flex-end;
-    align-items: stretch;
+  /* Collapsible Sidebar Drawer */
+  .sidebar-toggle-btn {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
     padding: 0;
-    background: rgba(8, 7, 6, 0.72);
   }
 
-  #pv.pv-drawer .pvbox {
-    width: min(740px, 95vw);
-    height: 100%;
-    max-height: 100%;
-    border-radius: 12px 0 0 12px;
-    border-right: none;
-    transition: width 0.2s ease;
+  .sidebar-drawer-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
   }
 
-  #pv.pv-drawer.is-expanded .pvbox {
-    width: min(1180px, 98vw);
-  }
-
-  #pv.pv-drawer .pv-body {
+  .sidebar-drawer-bar .sheet-title-field {
     flex: 1 1 auto;
-    grid-template-columns: minmax(230px, 1fr) minmax(300px, 380px);
-    height: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .sidebar-collapse-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+
+  .app {
+    transition: grid-template-columns 0.22s ease, gap 0.22s ease;
+  }
+
+  .panel.sidebar-drawer {
+    transition: opacity 0.18s ease, transform 0.22s ease;
+  }
+
+  .app.is-sidebar-collapsed {
+    grid-template-columns: 0px minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .app.is-sidebar-collapsed .panel.sidebar-drawer {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
     overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-18px);
+    max-height: 0;
   }
 
-  #pv.pv-drawer.is-expanded .pv-body {
-    grid-template-columns: minmax(320px, 1.15fr) minmax(360px, 460px);
+  .app.is-sidebar-collapsed .stage {
+    grid-column: 1 / -1;
+    max-width: 100%;
   }
 
-  #pv.pv-drawer #pvi {
+  .sidebar-edge-handle {
+    position: fixed;
+    left: 12px;
+    top: 168px;
+    z-index: 26;
+    padding: 7px 12px;
+    min-height: 36px;
+    border-radius: 999px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.48);
+    border-color: rgba(255, 90, 54, 0.55);
+    background: color-mix(in srgb, var(--panel) 95%, transparent);
+    backdrop-filter: blur(8px);
+  }
+
+  .sidebar-edge-handle[hidden] {
+    display: none !important;
+  }
+
+  @media (max-width: 900px) and (min-width: 641px) {
+    .app.is-sidebar-collapsed {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .app.is-sidebar-collapsed .panel.sidebar-drawer {
+      display: none;
+    }
+
+    .app.is-sidebar-collapsed .stage {
+      min-height: calc(100vh - 96px);
+      max-height: calc(100vh - 96px);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .sidebar-toggle-btn {
+      order: 0;
+    }
+
+    .sidebar-edge-handle {
+      display: none !important;
+    }
+  }
+
+  @media print {
+    .sidebar-edge-handle {
+      display: none !important;
+    }
+  }
+
+  /* Centered Single-Card Editor Modal */
+  #pv.pv-modal {
+    justify-content: center;
+    align-items: center;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: rgba(8, 7, 6, 0.82);
+    backdrop-filter: blur(6px);
+  }
+
+  #pv.pv-modal .pvbox {
+    width: min(1040px, 95vw);
+    max-height: min(90vh, 880px);
+    height: auto;
+    border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    transition: width 0.2s ease, max-height 0.2s ease;
+  }
+
+  #pv.pv-modal.is-expanded .pvbox {
+    width: min(1280px, 97vw);
+    max-height: 95vh;
+  }
+
+  #pv.pv-modal .pv-body {
+    flex: 1 1 auto;
+    grid-template-columns: minmax(260px, 1fr) minmax(320px, 430px);
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  #pv.pv-modal.is-expanded .pv-body {
+    grid-template-columns: minmax(340px, 1.15fr) minmax(360px, 480px);
+  }
+
+  #pv.pv-modal #pvi {
     height: 100%;
-    max-height: 100%;
+    max-height: calc(90vh - 104px);
   }
 
-  #pv.pv-drawer #pvi svg {
-    max-height: calc(100vh - 90px);
+  #pv.pv-modal.is-expanded #pvi {
+    max-height: calc(95vh - 104px);
   }
 
-  #pv.pv-drawer .pv-editor {
+  #pv.pv-modal #pvi svg {
+    max-height: calc(90vh - 116px);
+  }
+
+  #pv.pv-modal.is-expanded #pvi svg {
+    max-height: calc(95vh - 116px);
+  }
+
+  #pv.pv-modal .pv-editor {
     height: 100%;
-    max-height: 100%;
+    max-height: calc(90vh - 104px);
     overflow-y: auto;
     padding-right: 4px;
+  }
+
+  #pv.pv-modal.is-expanded .pv-editor {
+    max-height: calc(95vh - 104px);
   }
 
   .pv-search-wrap {
@@ -4872,29 +5033,37 @@ details.sec > summary {
   }
 
   @media (max-width: 780px) {
-    #pv.pv-drawer .pvbox,
-    #pv.pv-drawer.is-expanded .pvbox {
-      width: 100vw;
-      border-radius: 0;
+    #pv.pv-modal {
+      padding: 8px;
     }
 
-    #pv.pv-drawer .pv-body,
-    #pv.pv-drawer.is-expanded .pv-body {
+    #pv.pv-modal .pvbox,
+    #pv.pv-modal.is-expanded .pvbox {
+      width: 100%;
+      max-height: 94dvh;
+      border-radius: 12px;
+    }
+
+    #pv.pv-modal .pv-body,
+    #pv.pv-modal.is-expanded .pv-body {
       display: flex;
       flex-direction: column;
       overflow-y: auto;
     }
 
-    #pv.pv-drawer #pvi {
+    #pv.pv-modal #pvi,
+    #pv.pv-modal.is-expanded #pvi {
       height: auto;
       max-height: 40vh;
     }
 
-    #pv.pv-drawer #pvi svg {
+    #pv.pv-modal #pvi svg,
+    #pv.pv-modal.is-expanded #pvi svg {
       max-height: 38vh;
     }
 
-    #pv.pv-drawer .pv-editor {
+    #pv.pv-modal .pv-editor,
+    #pv.pv-modal.is-expanded .pv-editor {
       height: auto;
       max-height: none;
       overflow-y: visible;

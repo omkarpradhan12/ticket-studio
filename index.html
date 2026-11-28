@@ -4,15 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10l">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10q">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase10l">
-<link rel="stylesheet" href="css/app.css?v=phase10l">
+<link rel="stylesheet" href="css/tokens.css?v=phase10q">
+<link rel="stylesheet" href="css/app.css?v=phase10q">
 </head>
 <body>
 <header class="topbar">
   <div class="topbar-inner">
+    <button class="g icon-only sidebar-toggle-btn" id="sidebar-toggle" type="button" aria-label="Collapse sidebar drawer" aria-expanded="true" aria-controls="studio-sidebar" data-tooltip="Toggle sidebar drawer"><span data-icon="sidebar"></span></button>
     <a class="brand" href="index.html">
       <span class="brand-badge"><span data-icon="logo"></span></span>
       <span class="brand-title">Ticket Card Studio</span>
@@ -70,12 +71,15 @@
 </div>
 
 <main class="app" id="app" data-mobile-view="edit">
-  <div class="panel">
+  <aside class="panel sidebar-drawer" id="studio-sidebar" aria-label="Studio controls sidebar drawer">
     <h1 class="sr-only">Sheet Editor</h1>
-    <label class="sheet-title-field">
-      <span class="sr-only">Sheet title</span>
-      <input id="sheet-title" type="text" maxlength="80" aria-label="Sheet title" value="Concert Ticket Card Sheet" data-live>
-    </label>
+    <div class="sidebar-drawer-bar">
+      <label class="sheet-title-field">
+        <span class="sr-only">Sheet title</span>
+        <input id="sheet-title" type="text" maxlength="80" aria-label="Sheet title" value="Concert Ticket Card Sheet" data-live>
+      </label>
+      <button class="g icon-only sidebar-collapse-btn" id="sidebar-collapse" type="button" aria-label="Collapse sidebar drawer" data-tooltip="Collapse sidebar drawer"><span data-icon="previous"></span></button>
+    </div>
     <p class="subtitle" id="sub-info">Add a band photo or image URL and the accent colour is picked automatically. 9 tickets fit one A4 page.</p>
 
     <div class="ctrl-search-wrap">
@@ -920,7 +924,9 @@
       </div>
       <div id="rows"></div>
     </section>
-  </div>
+  </aside>
+
+  <button class="g sidebar-edge-handle" id="sidebar-edge-open" type="button" aria-label="Open sidebar drawer" aria-controls="studio-sidebar" data-tooltip="Open sidebar drawer" hidden><span data-icon="next"></span><span>Controls</span></button>
 
   <div class="stage" id="stage">
     <div class="page-tools" id="page-tools" aria-label="Page tools">
@@ -1044,9 +1050,9 @@
   <button class="g sm" id="undo-toast-action" type="button">Undo</button>
 </div>
 
-<!-- EXPANDING SINGLE-CARD SIDE DRAWER -->
-<div id="pv" class="pv-drawer" hidden role="dialog" aria-modal="true" aria-label="Card preview and single card fine tuning drawer">
-  <div class="pvbox" id="pv-drawer-panel">
+<!-- SINGLE-CARD EDITOR MODAL -->
+<div id="pv" class="pv-modal" hidden role="dialog" aria-modal="true" aria-label="Single card editor modal">
+  <div class="pvbox" id="pv-modal-panel">
     <div class="pvbar">
       <button class="g" id="pvp" type="button" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
       <span id="pvt" class="preview-title"></span>
@@ -1054,11 +1060,11 @@
       <span class="preview-spacer" aria-hidden="true"></span>
       <button class="g sm" id="pv-drag-photo" type="button" aria-pressed="false" data-tooltip="Drag or scroll/pinch photo inside card"><span data-icon="move"></span> Drag photo</button>
       <button class="g sm" id="pv-move-stamps" type="button" aria-pressed="false" data-tooltip="Drag or rotate stamp inside card"><span data-icon="move"></span> Move stamps</button>
-      <button class="g sm" id="pv-expand" type="button" aria-expanded="false" data-tooltip="Expand / collapse drawer width">Expand</button>
+      <button class="g sm" id="pv-expand" type="button" aria-expanded="false" data-tooltip="Expand or restore modal width">Expand</button>
       <button class="g" id="pve" type="button">Jump to card</button>
       <button class="g" id="pvpng" type="button">PNG</button>
       <button class="g" id="pvsvg" type="button">SVG</button>
-      <button id="pvx" type="button" aria-label="Close drawer" data-tooltip="Close drawer"><span data-icon="close"></span></button>
+      <button id="pvx" type="button" aria-label="Close modal" data-tooltip="Close modal"><span data-icon="close"></span></button>
     </div>
     <div class="pv-body">
       <div id="pvi" aria-label="Card preview"></div>
@@ -1520,6 +1526,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase10l"></script>
+<script type="module" src="js/app.js?v=phase10q"></script>
 </body>
 </html>
