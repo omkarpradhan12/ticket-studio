@@ -5,6 +5,7 @@ export const STAMP_MAX_NORM = 0.96;
 export const STAMP_MIN_SCALE = 0.4;
 export const STAMP_MAX_SCALE = 2.5;
 export const STAMP_PRESETS_KEY = "ticketgen.stampPresets.v1";
+export const EXTRA_STAMP_MAX = 6;
 
 const star = (n, ro, ri) => {
   const p = [];
@@ -434,6 +435,17 @@ export function autoStampGeometry({ index = 0, stampIndex = 0, CH = 239, stampSi
       scale: ss * 0.85
     };
   }
+  if (stampIndex >= 2) {
+    const slot = (stampIndex - 1) % 4;
+    const tx = slot % 2 === 0 ? PX + 30 + rn(8 + slot) * 34 : PX + PS - 30 - rn(8 + slot) * 34;
+    const ty = slot < 2 ? PB + 32 + rn(9 + slot) * 26 : PY + 26 + rn(9 + slot) * 22;
+    return {
+      x: tx,
+      y: ty,
+      r: (rn(10 + slot) - 0.5) * 30,
+      scale: ss * 0.85
+    };
+  }
   return {
     x: PX + rr * 0.6 + rn(1) * (PS - rr * 1.2),
     y: PB + (rn(2) - 0.5) * 8,
@@ -533,4 +545,47 @@ export function snapStampNorm(nx, ny, { CW = 170, CH = 239, effScale = 1, snapEn
   }
 
   return { nx: outNx, ny: outNy, snappedX, snappedY, snapPxX, snapPxY };
+}
+
+export function normalizeExtraStamp(raw, idx = 0) {
+  if (!raw || typeof raw !== "object") return null;
+  const text = String(raw.text ?? "").slice(0, 32);
+  const shapeRaw = String(raw.shape || "rect").trim();
+  const shape = STAMPS[shapeRaw] ? shapeRaw : "rect";
+  const year = String(raw.year ?? "").slice(0, 16);
+  const fillMode = ["inherit", "outline", "tinted", "solid"].includes(raw.fillMode) ? raw.fillMode : "inherit";
+  const autoColor = raw.autoColor !== undefined ? Boolean(raw.autoColor) : true;
+  const colorRaw = String(raw.color || "").trim().toLowerCase();
+  const color = /^#[\da-f]{6}$/i.test(colorRaw) ? colorRaw : "#d9322f";
+  const scaleRaw = Number(raw.scale);
+  const scale = Number.isFinite(scaleRaw) ? Math.round(clamp(scaleRaw, 40, 200)) : 85;
+  const rRaw = Number(raw.r);
+  const r = Number.isFinite(rRaw) ? normalizeAngle(rRaw) : 0;
+  const hasPos = Number.isFinite(Number(raw.x)) && Number.isFinite(Number(raw.y));
+  const id = String(raw.id || `xs_${idx + 1}`).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) || `xs_${idx + 1}`;
+  return {
+    id,
+    text,
+    shape,
+    year,
+    fillMode,
+    autoColor,
+    color,
+    scale,
+    r,
+    ...(hasPos ? {
+      x: Number(clamp(Number(raw.x), STAMP_MIN_NORM, STAMP_MAX_NORM).toFixed(4)),
+      y: Number(clamp(Number(raw.y), STAMP_MIN_NORM, STAMP_MAX_NORM).toFixed(4))
+    } : {})
+  };
+}
+
+export function sanitizeExtraStamps(rawList) {
+  if (!Array.isArray(rawList)) return [];
+  const out = [];
+  for (let i = 0; i < rawList.length && out.length < EXTRA_STAMP_MAX; i++) {
+    const item = normalizeExtraStamp(rawList[i], i);
+    if (item) out.push(item);
+  }
+  return out;
 }

@@ -5,6 +5,8 @@ import { pickSafeStampNorm, surpriseSingleCard } from "../js/randomiser.mjs";
 import { cardSearchHaystack, filterCardIndices } from "../js/search.mjs";
 import { BORDER_STYLES, renderBorder } from "../js/borders.mjs";
 import { clearCardStylingRecord, hasCustomCardStyling, sanitizeCardStyleOverrides } from "../js/card-styles.mjs";
+import { CORNER_HARDWARE_OPTIONS } from "../js/corners.mjs";
+import { sanitizeExtraStamps } from "../js/stamps.mjs";
 
 // 1. QR matrix structure and SVG generation
 {
@@ -67,25 +69,66 @@ import { clearCardStylingRecord, hasCustomCardStyling, sanitizeCardStyleOverride
   assert.deepEqual(filterCardIndices(cards, 2, "0148").matchedIndices, [0]);
 }
 
-// 5. Per-card border, corner hardware, mounts & distress overrides round-trip and reset cleanly
+// 5. Per-card border, corner hardware, mounts, extra stamps & ticket/NFC overrides round-trip and reset cleanly
 {
   const overrides = sanitizeCardStyleOverrides({
-    border: { style: 17, width: 2.2, corner: "notched", ornament: "diamond", wear: 15, inner: true },
+    border: { style: 17, width: 2.2, corner: "notched", ornament: "diamond", wear: 15, inner: true, opacity: 80, glow: 25 },
     cornerHardware: "rivets",
     photoMounts: [4, 8],
-    fxClaw: true,
-    fxBullet: true
+    doors: "VIP 6PM",
+    side: "Tour 26",
+    leftMargin: "CUSTOM-01",
+    subFont: "bebas",
+    subScale: 1.15,
+    yearBadgeWashed: true,
+    tearNotches: false,
+    scuffs: 30,
+    scuffRotation: -35,
+    gradMode: "wave",
+    nfc: false,
+    nfcStyle: "spotify",
+    nfcScale: 130,
+    punchHole: true,
+    stampYear: "1999",
+    extraStamps: [{ id: "xs_1", text: "VIP", shape: "wax", scale: 95, r: -12 }],
+    vcBadge: "qr"
   });
   assert.equal(overrides.border.style, 17);
   assert.equal(overrides.border.corner, "notched");
+  assert.equal(overrides.border.opacity, 80);
   assert.equal(overrides.cornerHardware, "rivets");
   assert.deepEqual(overrides.photoMounts, [4, 8]);
-  assert.equal(overrides.fxClaw, true);
-  assert.equal(overrides.fxBullet, true);
+  assert.equal(overrides.doors, "VIP 6PM");
+  assert.equal(overrides.leftMargin, "CUSTOM-01");
+  assert.equal(overrides.subFont, "bebas");
+  assert.equal(overrides.subScale, 1.15);
+  assert.equal(overrides.yearBadgeWashed, true);
+  assert.equal(overrides.tearNotches, false);
+  assert.equal(overrides.scuffRotation, -35);
+  assert.equal(overrides.gradMode, "wave");
+  assert.equal(overrides.nfc, false);
+  assert.equal(overrides.nfcStyle, "spotify");
+  assert.equal(overrides.nfcScale, 130);
+  assert.equal(overrides.extraStamps[0].shape, "wax");
+  assert.equal(overrides.vcBadge, "qr");
   assert.equal(hasCustomCardStyling(overrides), true);
   const cleared = clearCardStylingRecord({ title: "Test Band", ...overrides });
   assert.equal(hasCustomCardStyling(cleared), false);
   assert.equal(cleared.title, "Test Band");
+}
+
+// 6. Corner hardware default option order & extra stamps sanitization
+{
+  assert.equal(CORNER_HARDWARE_OPTIONS[0].id, "none", "corner hardware defaults to none first");
+  const xs = sanitizeExtraStamps([
+    { text: "VIP", shape: "wax", scale: 95, r: 15, autoColor: false, color: "#123456" },
+    { text: "BACKSTAGE", shape: "bad_shape", scale: 999, r: -200 }
+  ]);
+  assert.equal(xs.length, 2);
+  assert.equal(xs[0].shape, "wax");
+  assert.equal(xs[0].color, "#123456");
+  assert.equal(xs[1].shape, "rect", "invalid extra stamp shape falls back cleanly to rect");
+  assert.equal(xs[1].scale, 200, "extra stamp scale clamps to max 200");
 }
 
 console.log("Phase 10 visiting card, QR, borders 16-17, and card back prep tests passed.");

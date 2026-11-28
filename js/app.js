@@ -1,12 +1,12 @@
-import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10d";
-import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10d";
-import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10d";
-import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10d";
-import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10d";
-import { FONTCSS, injectFonts } from "./fonts.js?v=phase10d";
-import { History } from "./history.mjs?v=phase10d";
-import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10d";
-import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10d";
+import { DEFAULT_CARDS, SET0, VISITING_SAMPLE_CARDS, blankCard, loadSession, persistSession, clearSession } from "./storage.js?v=phase10j";
+import { BUILTIN_THEMES, CUSTOM, DEFAULT_CUSTOM, THEMES, buildCustom, getGroupedThemes, populateThemeSelect, renderThemeThumbSvg } from "./themes.js?v=phase10j";
+import { processImageFile, processImageUrl, sampleImageColor, hslToHex, hexToHS } from "./image-utils.js?v=phase10j";
+import { CW, SIZES, STAMPS, computeLayout, fitBox, getCardPhotoRect, isVisitingSize, renderCard, renderCardBack, tplSvg, cutSvg, regMarksSvg, abbr, hueOf } from "./svg-engine.js?v=phase10j";
+import { exportAllSvgs, exportAllPngs, exportPdf, exportProjectJson, serializeSheetSvg, triggerDownload, rasterizeSvg } from "./export.js?v=phase10j";
+import { FONTCSS, injectFonts } from "./fonts.js?v=phase10j";
+import { History } from "./history.mjs?v=phase10j";
+import { bindTapTooltips, hydrateIcons, iconMarkup } from "./icons.mjs?v=phase10m";
+import { attachColorHexFields, syncColorHexFields } from "./color-controls.mjs?v=phase10j";
 import {
   BORDER_STYLES,
   compactBorderOverrides,
@@ -18,8 +18,9 @@ import {
   sanitizeBorderPatch,
   saveBorderPresetsList,
   uniquePresetName
-} from "./borders.mjs?v=phase10d";
+} from "./borders.mjs?v=phase10j";
 import {
+  EXTRA_STAMP_MAX,
   SKINDS,
   STAMP_OPTIONS,
   clampStampNorm,
@@ -29,15 +30,17 @@ import {
   getStampShapeName,
   hasStampStyleOverrides,
   normalizeAngle,
+  normalizeExtraStamp,
   renderStampSwatchSvg,
   resolveStampStyle,
   resolveStampTransform,
+  sanitizeExtraStamps,
   sanitizeStampOverride,
   sanitizeStampStyle,
   saveStampPresetsList,
   snapStampNorm,
   uniqueStampPresetName
-} from "./stamps.mjs?v=phase10d";
+} from "./stamps.mjs?v=phase10j";
 import {
   MAX_CARDS_LIMIT,
   blendHex,
@@ -46,19 +49,19 @@ import {
   hslObjectToHex,
   normalizeHex,
   sanitizeCardStyleOverrides
-} from "./card-styles.mjs?v=phase10d";
+} from "./card-styles.mjs?v=phase10j";
 import {
   generateSeed,
   getSurprisePrefs,
   saveSurprisePrefs,
   surpriseCardsBatch
-} from "./randomiser.mjs?v=phase10d";
+} from "./randomiser.mjs?v=phase10j";
 import {
   cardSearchHaystack,
   debounce,
   filterCardIndices,
   formatSearchCount
-} from "./search.mjs?v=phase10d";
+} from "./search.mjs?v=phase10j";
 
 const MOUNT_NAMES = {
   "0": "Tape",
@@ -78,22 +81,27 @@ const SURPRISE_STRENGTH_LABELS = ["Subtle", "Normal", "Wild"];
 const HISTORY_LIMIT = 100;
 const SETTINGS_FIELDS = {
   sheetTitle: "sheet-title",
-  style: "style", titleFont: "tfont", titleScale: "title-size", doors: "gdoors", side: "gside",
+  style: "style", titleFont: "tfont", titleScale: "title-size",
+  subFont: "sfont", subScale: "sub-size",
+  doors: "gdoors", side: "gside", leftMargin: "gleft", admitText: "gadmit", passText: "gpass",
   stamp: "gstamp", stampYear: "gsyear", stampSize: "ssize",
-  stampColor: "scol", stamp2: "gs2", stampWear: "wear", borderWear: "bwear",
-  gradientSpread: "gspread", paper: "paper", cardSize: "csize", cutterCorners: "crad",
-  grain: "tgr", edgeWear: "tew", creases: "tcr", scuffs: "tsc", cornerHardware: "corner-hw",
+  stampColor: "scol", stampWear: "wear", borderWear: "bwear",
+  gradientSpread: "gspread", gradMode: "grad-mode", paper: "paper", cardSize: "csize",
+  cutterCorners: "crad", bleedMm: "bleed-mm",
+  grain: "tgr", edgeWear: "tew", scuffs: "tsc", scuffRotation: "tsc-rot",
+  cornerHardware: "corner-hw",
   yearBadge: "design-badge", tearStyle: "design-tear", photoFilter: "design-filter",
-  nfcScale: "nfc-scale", cardOrientation: "corient", vcBadge: "vc-badge",
+  nfcStyle: "nfc-platform", nfcScale: "nfc-scale",
+  cardOrientation: "corient", vcBadge: "vc-badge",
   cardBackLogoColorMode: "card-back-logo-mode", cardBackLogoColor: "card-back-logo-color"
 };
 const CHECK_FIELDS = {
-  cropMarks: "marks", bleed: "bleed", cardBack: "card-back", nfc: "nfc", nfcWithYt: "nfc-yt", cutTemplate: "tpl",
-  serials: "serial", stampAuto: "sauto", regMarks: "regmarks", punchHole: "punch",
-  centerTitle: "design-center", halftone: "design-halftone",
-  fxClaw: "fx-claw", fxTear: "fx-tear", fxBullet: "fx-bullet", fxBlood: "fx-blood"
+  cropMarks: "marks", bleed: "bleed", cardBack: "card-back", nfc: "nfc", cutTemplate: "tpl",
+  stampAuto: "sauto", regMarks: "regmarks", punchHole: "punch",
+  centerTitle: "design-center", yearBadgeWashed: "design-badge-washed",
+  tearNotches: "design-notches", halftone: "design-halftone"
 };
-const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa"];
+const CUSTOM_FIELDS = ["bg", "ink", "acc", "tape", "pa", "grad"];
 
 const initialCards = DEFAULT_CARDS.map(c => ({ ...c }));
 const studioState = {
@@ -103,10 +111,12 @@ const studioState = {
   activePage: 0,
   pageThemes: [],
   gradientAngle: SET0.gradientAngle,
+  gradStopOffsets: [],
   borderStyle: SET0.borderStyle,
   borderConfig: undefined,
   stampShape: SET0.stampShape,
   stampStyle: undefined,
+  extraStamps: [],
   quickColors: undefined,
   settings: { customTheme: { ...CUSTOM } }
 };
@@ -124,8 +134,10 @@ let pinchState = null;
 let stampDragState = null;
 const activePpPointers = new Map();
 const photoZoomWheelTimers = new Map();
+let dragPhotoMode = false;
 let moveStampsMode = false;
 let selectedStampIndex = 0;
+let activeGradientStopIndex = 0;
 let previewIndex = -1;
 let previousFocus = null;
 let historyReady = false;
@@ -168,15 +180,24 @@ function message(text) {
 function readSettings() {
   const settings = {};
   for (const [key, id] of Object.entries(SETTINGS_FIELDS)) {
-    const value = $(id).value;
+    const el = $(id);
+    if (!el) continue;
+    const value = el.value;
     settings[key] = /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : value;
   }
-  for (const [key, id] of Object.entries(CHECK_FIELDS)) settings[key] = $(id).checked;
+  for (const [key, id] of Object.entries(CHECK_FIELDS)) {
+    const el = $(id);
+    if (el) settings[key] = el.checked;
+  }
   settings.gradientAngle = studioState.gradientAngle;
+  if (Array.isArray(studioState.gradStopOffsets) && studioState.gradStopOffsets.length >= 2) {
+    settings.gradStopOffsets = studioState.gradStopOffsets.slice();
+  }
   settings.borderStyle = studioState.borderStyle;
   if (studioState.borderConfig) settings.border = { ...studioState.borderConfig };
   settings.stampShape = studioState.stampShape;
   if (studioState.stampStyle) settings.stampStyle = { ...studioState.stampStyle };
+  settings.extraStamps = sanitizeExtraStamps(studioState.extraStamps);
   settings.customTheme = { ...studioState.settings.customTheme };
   if (studioState.quickColors) {
     settings.quickColors = {
@@ -186,18 +207,29 @@ function readSettings() {
   }
   settings.pageThemes = readPageThemes();
   settings.photoMounts = [...document.querySelectorAll("[data-quick-mount]:checked")].map(input => Number(input.value)).slice(0, 2);
-  $("title-size-value").textContent = `${settings.titleScale}%`;
-  $("title-size").setAttribute("aria-valuetext", `${settings.titleScale}%`);
+
+  if ($("title-size-value")) $("title-size-value").textContent = `${settings.titleScale}%`;
+  if ($("title-size")) $("title-size").setAttribute("aria-valuetext", `${settings.titleScale}%`);
+  if ($("sub-size-val")) $("sub-size-val").textContent = `${settings.subScale ?? 100}%`;
+  const bleedMm = settings.bleedMm ?? 3;
+  if ($("bleed-mm-val")) $("bleed-mm-val").textContent = `${Number(bleedMm).toFixed(1)} mm`;
+  if ($("bleed-mm")) $("bleed-mm").disabled = !settings.bleed;
+  $("bleed-mm-wrap")?.classList.toggle("is-disabled", !settings.bleed);
+  if ($("tgr-val")) $("tgr-val").textContent = `${settings.grain ?? 15}%`;
+  if ($("tew-val")) $("tew-val").textContent = `${settings.edgeWear ?? 0}%`;
+  if ($("tsc-val")) $("tsc-val").textContent = `${settings.scuffs ?? 0}%`;
+  if ($("tsc-rot-val")) $("tsc-rot-val").textContent = `${settings.scuffRotation ?? 0}°`;
+
   const nfcScaleVal = settings.nfcScale ?? 100;
   if ($("nfc-scale-val")) $("nfc-scale-val").textContent = `${nfcScaleVal}%`;
   if ($("nfc-scale")) {
     $("nfc-scale").setAttribute("aria-valuetext", `${nfcScaleVal}%`);
     $("nfc-scale").disabled = !settings.nfc;
   }
-  if ($("nfc-yt")) $("nfc-yt").disabled = !settings.nfc;
-  $("nfc-yt-wrap")?.classList.toggle("is-disabled", !settings.nfc);
-  $("nfc-scale-wrap")?.classList.toggle("is-disabled", !settings.nfc);
-  settings.nfcWithYt = settings.nfcWithYt !== false;
+  if ($("nfc-platform")) $("nfc-platform").disabled = !settings.nfc;
+  $("nfc-controls-wrap")?.classList.toggle("is-disabled", !settings.nfc);
+  settings.nfcStyle = settings.nfcStyle || "ytmusic";
+  settings.nfcWithYt = settings.nfcStyle === "ytmusic";
   settings.cardOrientation = settings.cardOrientation === "portrait" ? "portrait" : "landscape";
   settings.vcBadge = settings.vcBadge || "qr-nfc";
   studioState.settings = settings;
@@ -213,9 +245,13 @@ function syncCardBackControls() {
   if (!wrap) return;
   const enabled = Boolean($("card-back")?.checked);
   const mode = $("card-back-logo-mode")?.value || "theme";
-  wrap.hidden = !enabled;
+  wrap.hidden = false;
+  wrap.classList.toggle("is-disabled", !enabled);
   const customWrap = $("card-back-logo-color-wrap");
-  if (customWrap) customWrap.hidden = !(enabled && mode === "custom");
+  if (customWrap) customWrap.hidden = mode !== "custom";
+  wrap.querySelectorAll("select, input, button").forEach(el => {
+    el.disabled = !enabled;
+  });
   const activeEl = document.activeElement;
   if (!activeEl?.classList?.contains("color-hex") || !wrap.contains(activeEl)) {
     syncColorHexFields(wrap);
@@ -231,27 +267,33 @@ function syncVisitingControlsUi() {
 
 function applySettings(settings = {}) {
   const allThemes = { ...THEMES, ...BUILTIN_THEMES };
+  const normalizedSettings = { ...settings };
+  if (!normalizedSettings.nfcStyle && normalizedSettings.nfcWithYt !== undefined) {
+    normalizedSettings.nfcStyle = normalizedSettings.nfcWithYt ? "ytmusic" : "nfc";
+  }
   for (const [key, id] of Object.entries(SETTINGS_FIELDS)) {
-    if (settings[key] === undefined) continue;
-    const value = String(settings[key]);
+    if (normalizedSettings[key] === undefined) continue;
+    const value = String(normalizedSettings[key]);
     const element = $(id);
+    if (!element) continue;
     if (element.tagName !== "SELECT" || [...element.options].some(option => option.value === value)) element.value = value;
   }
   for (const [key, id] of Object.entries(CHECK_FIELDS)) {
-    if (typeof settings[key] === "boolean") $(id).checked = settings[key];
+    const el = $(id);
+    if (el && typeof normalizedSettings[key] === "boolean") el.checked = normalizedSettings[key];
   }
-  if (Array.isArray(settings.photoMounts)) {
-    const savedMounts = settings.photoMounts.slice(0, 2).map(Number);
+  if (Array.isArray(normalizedSettings.photoMounts)) {
+    const savedMounts = normalizedSettings.photoMounts.slice(0, 2).map(Number);
     const selectedMounts = savedMounts.includes(3) ? [3] : savedMounts;
     document.querySelectorAll("[data-quick-mount]").forEach(input => {
       input.checked = selectedMounts.includes(Number(input.value));
     });
     updateMountStatus();
   }
-  if (settings.customTheme && typeof settings.customTheme === "object") {
+  if (normalizedSettings.customTheme && typeof normalizedSettings.customTheme === "object") {
     studioState.settings = {
       ...studioState.settings,
-      customTheme: { ...settings.customTheme }
+      customTheme: { ...normalizedSettings.customTheme }
     };
     Object.assign(CUSTOM, studioState.settings.customTheme);
     for (const key of CUSTOM_FIELDS) {
@@ -262,41 +304,60 @@ function applySettings(settings = {}) {
     }
     buildCustom();
   }
-  if (settings.gradientAngle !== undefined && Number.isFinite(+settings.gradientAngle)) {
-    studioState.gradientAngle = ((+settings.gradientAngle % 360) + 360) % 360;
+  if (normalizedSettings.gradientAngle !== undefined && Number.isFinite(+normalizedSettings.gradientAngle)) {
+    studioState.gradientAngle = ((+normalizedSettings.gradientAngle % 360) + 360) % 360;
   }
-  if (settings.borderStyle !== undefined) {
-    const styleId = Number.parseInt(settings.borderStyle, 10);
+  studioState.gradStopOffsets = Array.isArray(normalizedSettings.gradStopOffsets)
+    ? normalizedSettings.gradStopOffsets.map(n => Math.max(0, Math.min(100, Math.round(Number(n) || 0))))
+    : [];
+  if (normalizedSettings.borderStyle !== undefined) {
+    const styleId = Number.parseInt(normalizedSettings.borderStyle, 10);
     studioState.borderStyle = Number.isInteger(styleId) && styleId >= 0 && styleId < BORDER_STYLES.length ? styleId : 0;
   }
-  studioState.borderConfig = settings.border && typeof settings.border === "object"
-    ? compactBorderOverrides(studioState.borderStyle, settings.border)
+  studioState.borderConfig = normalizedSettings.border && typeof normalizedSettings.border === "object"
+    ? compactBorderOverrides(studioState.borderStyle, normalizedSettings.border)
     : undefined;
-  if (settings.stampShape !== undefined) {
-    const shapeId = String(settings.stampShape || "round");
+  if (normalizedSettings.stampShape !== undefined) {
+    const shapeId = String(normalizedSettings.stampShape || "round");
     studioState.stampShape = STAMP_OPTIONS.some(o => o.id === shapeId) ? shapeId : "round";
   }
-  studioState.stampStyle = settings.stampStyle && typeof settings.stampStyle === "object"
-    ? compactStampStyle(settings.stampStyle)
+  studioState.stampStyle = normalizedSettings.stampStyle && typeof normalizedSettings.stampStyle === "object"
+    ? compactStampStyle(normalizedSettings.stampStyle)
     : undefined;
-  if (Array.isArray(settings.pageThemes)) studioState.pageThemes = settings.pageThemes.map(theme => String(theme || ""));
-  studioState.quickColors = settings.quickColors && typeof settings.quickColors === "object"
+  if (Array.isArray(normalizedSettings.extraStamps)) {
+    studioState.extraStamps = sanitizeExtraStamps(normalizedSettings.extraStamps);
+  } else if (typeof normalizedSettings.stamp2 === "string" && normalizedSettings.stamp2.trim()) {
+    studioState.extraStamps = sanitizeExtraStamps([{
+      id: "xs_1",
+      text: normalizedSettings.stamp2.trim(),
+      shape: "rect",
+      fillMode: "inherit",
+      autoColor: true,
+      scale: 85,
+      r: 0
+    }]);
+  } else {
+    studioState.extraStamps = [];
+  }
+  if (Array.isArray(normalizedSettings.pageThemes)) studioState.pageThemes = normalizedSettings.pageThemes.map(theme => String(theme || ""));
+  studioState.quickColors = normalizedSettings.quickColors && typeof normalizedSettings.quickColors === "object"
     ? {
-      ...settings.quickColors,
-      ...(Array.isArray(settings.quickColors.gradStops) ? { gradStops: settings.quickColors.gradStops.slice() } : {})
+      ...normalizedSettings.quickColors,
+      ...(Array.isArray(normalizedSettings.quickColors.gradStops) ? { gradStops: normalizedSettings.quickColors.gradStops.slice() } : {})
     }
     : undefined;
   $("needle").style.transform = `rotate(${studioState.gradientAngle}deg)`;
   $("dial").setAttribute("aria-valuenow", studioState.gradientAngle);
   $("gav").textContent = studioState.gradientAngle + "°";
-  if (settings.style && !allThemes[settings.style]) {
-    const found = Object.keys(THEMES).find(key => THEMES[key].n.toLowerCase() === String(settings.style).toLowerCase());
+  if (normalizedSettings.style && !allThemes[normalizedSettings.style]) {
+    const found = Object.keys(THEMES).find(key => THEMES[key].n.toLowerCase() === String(normalizedSettings.style).toLowerCase());
     if (found) $("style").value = found;
   }
   syncBorderControls();
   syncStampControls();
-  syncQuickColorsControls();
+  syncQuickColorsControls({ rebuildStops: true });
   syncThemeDropdown();
+  renderGlobalExtraStampsEditor();
   syncVisitingControlsUi();
   studioState.settings = readSettings();
   syncColorHexFields();
@@ -310,6 +371,7 @@ function renderConfig(one = false, interactive = false) {
     one,
     interactive,
     bleed: settings.bleed,
+    bleedMm: settings.bleedMm ?? 3,
     cropMarks: settings.cropMarks,
     regMarks: settings.regMarks,
     stampWear: settings.stampWear,
@@ -321,17 +383,21 @@ function renderConfig(one = false, interactive = false) {
     stampYear: settings.stampYear,
     stampColor: settings.stampColor,
     stampAuto: settings.stampAuto,
-    stamp2: settings.stamp2.trim(),
+    extraStamps: settings.extraStamps,
     titleFont: settings.titleFont,
     titleScale: settings.titleScale / 100,
+    subFont: settings.subFont || "mont",
+    subScale: settings.subScale ?? 100,
+    gradMode: settings.gradMode || "",
+    gradStopOffsets: settings.gradStopOffsets,
     gradientAngle: settings.gradientAngle,
     gradientSpread: settings.gradientSpread,
     grain: settings.grain,
     edgeWear: settings.edgeWear,
-    creases: settings.creases,
     scuffs: settings.scuffs,
-    serials: settings.serials,
+    scuffRotation: settings.scuffRotation ?? 0,
     nfc: settings.nfc,
+    nfcStyle: settings.nfcStyle || "ytmusic",
     nfcWithYt: settings.nfcWithYt !== false,
     nfcScale: settings.nfcScale ?? 100,
     vcBadge: settings.vcBadge || "qr-nfc",
@@ -344,20 +410,21 @@ function renderConfig(one = false, interactive = false) {
     borderScope: one ? "pv" : "",
     quickColors: settings.quickColors,
     yearBadge: settings.yearBadge,
+    yearBadgeWashed: Boolean(settings.yearBadgeWashed),
     tearStyle: settings.tearStyle,
+    tearNotches: Boolean(settings.tearNotches),
     photoFilter: settings.photoFilter,
     photoMounts: settings.photoMounts,
     centerTitle: settings.centerTitle,
     halftone: settings.halftone,
-    cornerHardware: settings.cornerHardware,
-    fxClaw: settings.fxClaw,
-    fxTear: settings.fxTear,
-    fxBullet: settings.fxBullet,
-    fxBlood: settings.fxBlood,
+    cornerHardware: settings.cornerHardware || "none",
     pageThemes: settings.pageThemes,
     doors: settings.doors,
     side: settings.side,
-    drag: $("drag").checked && (!one || interactive),
+    leftMargin: settings.leftMargin ?? "",
+    admitText: settings.admitText ?? "★ ADMIT ONE",
+    passText: settings.passText ?? "",
+    drag: Boolean(dragPhotoMode && one && interactive),
     moveStamps: moveStampsMode && (!one || interactive),
     selectedCard: studioState.selectedCard,
     selectedStamp: selectedStampIndex
@@ -615,22 +682,27 @@ function syncQuickColorsControls({ rebuildStops = true } = {}) {
   if ($("ct_acc")) $("ct_acc").value = accVal;
   if ($("ct_tape")) $("ct_tape").value = tapeVal;
   if ($("ct_pa")) $("ct_pa").checked = paVal;
+  const effectiveGradEnabled = Boolean(theme.grad || qc.grad);
+  if ($("ct_grad")) $("ct_grad").checked = effectiveGradEnabled;
 
   const legend = $("quick-colours-legend");
   if (legend) {
     legend.textContent = isCustomTheme
-      ? "Quick colours · My theme"
-      : (studioState.quickColors ? `Quick colours · ${theme.n} (customised)` : `Quick colours · ${theme.n}`);
+      ? "Color options · My theme"
+      : (studioState.quickColors ? `Color options · ${theme.n} (customised)` : `Color options · ${theme.n}`);
   }
   if ($("ct_reset")) {
     const customDirty = isCustomTheme && JSON.stringify(studioState.settings.customTheme) !== JSON.stringify(DEFAULT_CUSTOM);
     $("ct_reset").disabled = !(isCustomTheme ? customDirty : Boolean(studioState.quickColors));
   }
 
+  if ($("single-theme-select") && !theme.grad) $("single-theme-select").value = themeKey;
+  if ($("grad-theme-select") && theme.grad) $("grad-theme-select").value = themeKey;
+
   const gradBlock = $("grad-stops-block");
   const gradRow = $("grad-stops-row");
   if (gradBlock && gradRow) {
-    const showGradStops = Boolean(theme.grad);
+    const showGradStops = effectiveGradEnabled;
     gradBlock.hidden = !showGradStops;
     if (showGradStops) {
       const stops = resolveActiveThemeStops(theme, isCustomTheme ? CUSTOM : studioState.quickColors);
@@ -647,13 +719,153 @@ function syncQuickColorsControls({ rebuildStops = true } = {}) {
       }
       if ($("grad-stop-add")) $("grad-stop-add").disabled = stops.length >= 4;
       if ($("grad-stop-remove")) $("grad-stop-remove").disabled = stops.length <= 2;
+      syncGradSliderBar(stops);
     } else if (gradRow.children.length) {
       gradRow.replaceChildren();
     }
   }
 
-  const quickScope = $("ct_bg")?.closest(".sec");
+  const quickScope = $("ct_bg")?.closest("[data-crumb-panel], .studio-tab-panel");
   if (quickScope) syncColorHexFields(quickScope);
+}
+
+function resolveEffectiveGradOffsets(count) {
+  const saved = studioState.gradStopOffsets;
+  if (Array.isArray(saved) && saved.length === count) return saved.slice();
+  return Array.from({ length: count }, (_, idx) => Math.round((idx / Math.max(1, count - 1)) * 100));
+}
+
+function syncGradSliderBar(stops = null) {
+  const bar = $("grad-slider-bar");
+  if (!bar) return;
+  const themeKey = $("style")?.value || "cream";
+  const theme = THEMES[themeKey] || THEMES.cream;
+  const activeStops = Array.isArray(stops) && stops.length >= 2
+    ? stops
+    : resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+  const offsets = resolveEffectiveGradOffsets(activeStops.length);
+  const cssStops = activeStops.map((hex, idx) => `${hex} ${offsets[idx]}%`).join(", ");
+  bar.style.background = `linear-gradient(90deg, ${cssStops})`;
+  bar.replaceChildren();
+  activeStops.forEach((hex, idx) => {
+    const thumb = document.createElement("button");
+    thumb.type = "button";
+    thumb.className = `grad-stop-thumb${idx === activeGradientStopIndex ? " is-active" : ""}`;
+    thumb.dataset.gradThumb = String(idx);
+    thumb.style.left = `${offsets[idx]}%`;
+    thumb.style.backgroundColor = hex;
+    thumb.setAttribute("aria-label", `Gradient stop ${idx + 1} (${offsets[idx]}%)`);
+    bar.append(thumb);
+  });
+}
+
+function populateFilteredThemeSelects() {
+  const singleSel = $("single-theme-select");
+  const gradSel = $("grad-theme-select");
+  const grouped = getGroupedThemes();
+  if (singleSel) {
+    singleSel.innerHTML = `<option value="">Choose a single-colour theme…</option>` + grouped
+      .map(([lbl, entries]) => {
+        const items = entries.filter(([, t]) => !t.grad);
+        return items.length ? `<optgroup label="${escapeHtml(lbl)}">${items.map(([k, v]) => `<option value="${k}">${escapeHtml(v.n)}</option>`).join("")}</optgroup>` : "";
+      }).join("");
+  }
+  if (gradSel) {
+    gradSel.innerHTML = `<option value="">Choose a gradient theme…</option>` + grouped
+      .map(([lbl, entries]) => {
+        const items = entries.filter(([, t]) => Boolean(t.grad));
+        return items.length ? `<optgroup label="${escapeHtml(lbl)}">${items.map(([k, v]) => `<option value="${k}">${escapeHtml(v.n)}</option>`).join("")}</optgroup>` : "";
+      }).join("");
+  }
+}
+
+function renderExtraStampsEditor({ containerId, getList, setList, labelPrefix = "Extra stamp" }) {
+  const container = $(containerId);
+  if (!container) return;
+  const list = getList() || [];
+  container.replaceChildren();
+  if (!list.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint";
+    empty.textContent = "No extra stamps yet. Click “+ Add stamp” to add a VIP or custom badge.";
+    container.append(empty);
+    return;
+  }
+  const shapeOptsHtml = SKINDS.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(STAMPS[k]?.name || k)}</option>`).join("");
+  list.forEach((rawItem, idx) => {
+    const item = normalizeExtraStamp(rawItem, idx);
+    const cardEl = document.createElement("div");
+    cardEl.className = "extra-stamp-card";
+    cardEl.innerHTML = `
+      <div class="extra-stamp-head">
+        <input type="text" data-xs-field="text" placeholder="Stamp label (e.g. VIP)" value="${escapeHtml(item.text || "")}" aria-label="${labelPrefix} ${idx + 1} text">
+        <button class="danger sm" type="button" data-xs-remove="${idx}" aria-label="Remove ${labelPrefix} ${idx + 1}" title="Remove stamp">${iconMarkup("close")}</button>
+      </div>
+      <div class="extra-stamp-grid">
+        <label class="fld"><span>Shape</span><select data-xs-field="shape">${shapeOptsHtml}</select></label>
+        <label class="fld"><span>Ink style</span><select data-xs-field="fillMode"><option value="inherit">Inherit main</option><option value="outline">Outline</option><option value="tinted">Tinted wash</option><option value="solid">Solid badge</option></select></label>
+        <label class="fld"><span>Year (opt)</span><input type="text" data-xs-field="year" placeholder="Blank" value="${escapeHtml(item.year || "")}"></label>
+        <label class="fld"><span class="lbl-row"><span>Size</span><output data-xs-out="scale">${item.scale}%</output></span><input type="range" data-xs-field="scale" min="40" max="200" step="5" value="${item.scale}"></label>
+        <label class="fld"><span class="lbl-row"><span>Angle</span><output data-xs-out="r">${Math.round(item.r || 0)}°</output></span><input type="range" data-xs-field="r" min="-180" max="180" step="5" value="${Math.round(item.r || 0)}"></label>
+        <label class="fld"><span>Custom hex</span><input type="color" data-xs-field="color" value="${escapeHtml(item.color || "#d9322f")}"${item.autoColor ? " disabled" : ""}></label>
+        <label class="switch-row" style="grid-column:1 / -1">
+          <input type="checkbox" role="switch" class="switch-input" data-xs-field="autoColor"${item.autoColor ? " checked" : ""}>
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="switch-text">Use card accent colour</span>
+        </label>
+      </div>`;
+    cardEl.querySelector("[data-xs-field='shape']").value = item.shape;
+    cardEl.querySelector("[data-xs-field='fillMode']").value = item.fillMode;
+    hydrateIcons(cardEl);
+    attachColorHexFields(cardEl);
+
+    cardEl.querySelector("[data-xs-remove]").addEventListener("click", () => {
+      const next = getList().filter((_, i) => i !== idx);
+      setList(next, `remove ${labelPrefix.toLowerCase()}`, true);
+    });
+    cardEl.querySelectorAll("[data-xs-field]").forEach(ctrl => {
+      const field = ctrl.dataset.xsField;
+      const updateItem = (commit = false) => {
+        const curList = getList().slice();
+        const cur = normalizeExtraStamp(curList[idx] || {}, idx);
+        const val = ctrl.type === "checkbox"
+          ? ctrl.checked
+          : (field === "scale" || field === "r" ? Number(ctrl.value) : ctrl.value);
+        cur[field] = val;
+        if (field === "color") cur.autoColor = false;
+        curList[idx] = normalizeExtraStamp(cur, idx);
+        if (field === "scale") cardEl.querySelector("[data-xs-out='scale']").textContent = `${curList[idx].scale}%`;
+        if (field === "r") cardEl.querySelector("[data-xs-out='r']").textContent = `${Math.round(curList[idx].r)}°`;
+        if (field === "autoColor") {
+          const colorIn = cardEl.querySelector("[data-xs-field='color']");
+          if (colorIn) colorIn.disabled = Boolean(curList[idx].autoColor);
+        }
+        setList(curList, `edit ${labelPrefix.toLowerCase()} ${field}`, commit);
+      };
+      ctrl.addEventListener("input", () => updateItem(false));
+      ctrl.addEventListener("change", () => updateItem(true));
+    });
+    container.append(cardEl);
+  });
+}
+
+function renderGlobalExtraStampsEditor() {
+  renderExtraStampsEditor({
+    containerId: "extra-stamps-list",
+    getList: () => studioState.extraStamps,
+    setList: (next, label, discrete) => {
+      studioState.extraStamps = sanitizeExtraStamps(next);
+      if (discrete) {
+        renderGlobalExtraStampsEditor();
+        recordDiscrete(label);
+        render();
+      } else {
+        scheduleRender();
+      }
+    },
+    labelPrefix: "Extra stamp"
+  });
+  if ($("extra-stamp-add")) $("extra-stamp-add").disabled = (studioState.extraStamps?.length || 0) >= EXTRA_STAMP_MAX;
 }
 
 function themeTagLabel(theme) {
@@ -754,48 +966,51 @@ function bindHistoryControlEvents() {
     style: "change theme",
     titleFont: "change title font",
     titleScale: "change card title size",
+    subFont: "change subtitle font",
+    subScale: "change subtitle size",
     doors: "change doors text",
-    side: "change side text",
+    side: "change right margin text",
+    leftMargin: "change left margin text",
+    admitText: "change top-left badge text",
+    passText: "change pass badge text",
     stamp: "change stamp text",
     stampYear: "change stamp year",
     stampSize: "change stamp size",
     stampColor: "change stamp colour",
-    stamp2: "change second stamp",
     stampWear: "change stamp wear",
     borderWear: "change border wear",
     gradientSpread: "change gradient spread",
+    gradMode: "change gradient style",
     paper: "change paper size",
     cardSize: "change card size",
     cardOrientation: "change card orientation",
     vcBadge: "change visiting card badge",
     cutterCorners: "change cutter corner radius",
     grain: "change paper grain",
-    edgeWear: "change edge wear",
-    creases: "change paper creases",
+    edgeWear: "change vignette",
     scuffs: "change surface scuffs",
+    scuffRotation: "change scuff rotation",
     yearBadge: "change year badge",
+    yearBadgeWashed: "toggle washed year badge",
     tearStyle: "change tear line",
+    tearNotches: "toggle tear line notches",
     photoFilter: "change photo filter",
     cropMarks: "toggle crop marks",
     bleed: "toggle bleed",
+    bleedMm: "change bleed size",
     cardBack: "toggle mirrored card backs",
-    cardBackLogoColorMode: "change card back logo colour mode",
-    cardBackLogoColor: "change card back logo colour",
-    nfc: "toggle NFC icon",
-    nfcWithYt: "toggle YT Music in NFC logo",
-    nfcScale: "change NFC logo size",
+    cardBackLogoColorMode: "change card back border & stamp colour",
+    cardBackLogoColor: "change card back custom colour",
+    nfc: "toggle NFC badge",
+    nfcStyle: "change NFC platform logo",
+    nfcScale: "change NFC badge size",
     cutTemplate: "toggle cut template",
-    serials: "toggle serial number",
     stampAuto: "toggle stamp accent",
     regMarks: "toggle registration marks",
     punchHole: "toggle punch hole",
     centerTitle: "toggle centered title",
     halftone: "toggle photo halftone",
-    cornerHardware: "change corner hardware",
-    fxClaw: "toggle claw marks",
-    fxTear: "toggle corner tear",
-    fxBullet: "toggle bullet hole",
-    fxBlood: "toggle blood spatter"
+    cornerHardware: "change border hardware"
   };
   const controls = new Map();
   for (const [field, id] of Object.entries(SETTINGS_FIELDS)) controls.set(id, labels[field]);
@@ -958,8 +1173,9 @@ function syncBorderControls() {
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
   const activeEl = document.activeElement;
-  if (!activeEl?.classList?.contains("color-hex") || !$("border-customise")?.contains(activeEl)) {
-    syncColorHexFields($("border-customise"));
+  const borderScope = $("border-controls-grid");
+  if (borderScope && (!activeEl?.classList?.contains("color-hex") || !borderScope.contains(activeEl))) {
+    syncColorHexFields(borderScope);
   }
 }
 
@@ -1209,12 +1425,19 @@ function resolveCardStamp(index, stampIndex = 0) {
   });
 }
 
+function cardHasExtraStamp(index) {
+  const card = studioState.cards[index];
+  const cardExtra = Array.isArray(card?.extraStamps) && card.extraStamps.length ? card.extraStamps : null;
+  const src = cardExtra || studioState.extraStamps || [];
+  return Boolean(src.some(x => String(x?.text || "").trim()) || String(card?.stamp2 || "").trim());
+}
+
 function syncCardStampRow(index) {
   const row = getCardRowEl(index);
   if (!row) return;
   const box = row.querySelector(".card-stamp-pos");
   if (!box) return;
-  const hasSecond = Boolean($("gs2")?.value.trim());
+  const hasSecond = cardHasExtraStamp(index);
   const targetSelect = box.querySelector("[data-stamp-target]");
   const targetWrap = box.querySelector("[data-stamp-target-wrap]");
   if (!hasSecond && selectedStampIndex === 1) selectedStampIndex = 0;
@@ -1361,7 +1584,7 @@ function copyStampPlacement(sourceIndex, targetIndices, label) {
   const stampPos = src.stampPos
     ? sanitizeStampOverride(src.stampPos)
     : sanitizeStampOverride({ x: st0.nx, y: st0.ny, r: st0.r, scale: 1 });
-  const hasSecond = Boolean($("gs2")?.value.trim());
+  const hasSecond = cardHasExtraStamp(sourceIndex);
   const st1 = hasSecond ? resolveCardStamp(sourceIndex, 1) : null;
   const stamp2Pos = src.stamp2Pos
     ? sanitizeStampOverride(src.stamp2Pos)
@@ -1429,7 +1652,7 @@ function render() {
     const paperHeight = $("paper").value === "letter" ? "279.4mm" : "297mm";
     printStyle.textContent = `@media print {
       @page { size: ${paperSize} portrait; margin: 0; }
-      .topbar, .panel, .page-tools, #pv, h1, p.subtitle { display: none !important; }
+      .topbar, .panel, .page-tools, .sidebar-edge-handle, #pv, h1, p.subtitle { display: none !important; }
       .app[data-mobile-view] .stage { display: block !important; }
       .mobile-view-toggle, .mobile-actionbar { display: none !important; }
       .sheet { width: ${paperWidth} !important; height: ${paperHeight} !important; }
@@ -1444,16 +1667,17 @@ function render() {
   $("card-count-lbl").textContent = studioState.count;
   $("ssv").textContent = cfg.stampSize + "%";
   $("gsv").textContent = cfg.gradientSpread + "%";
-  const gradientEnabled = Boolean(active.grad);
+  const gradientEnabled = Boolean(active.grad || studioState.quickColors?.grad);
   $("dial").setAttribute("aria-disabled", String(!gradientEnabled));
   $("dial").tabIndex = gradientEnabled ? 0 : -1;
   $("dial").classList.toggle("disabled", !gradientEnabled);
   if ($("grad-angle-reset")) {
     $("grad-angle-reset").disabled = !gradientEnabled || studioState.gradientAngle === 180;
   }
+  const activeGradMode = cfg.gradMode || active.gradType || "";
   $("gradient-hint").textContent = gradientEnabled
-    ? (active.gradType === "radial" ? "Drag dial to shift spotlight; edit stops below." : "Drag the dial or edit gradient colours below.")
-    : "Choose a gradient theme to enable the angle control.";
+    ? (activeGradMode === "radial" ? "Drag dial to shift spotlight; drag stops on bar above." : "Drag dial, style or stop handles on the gradient bar.")
+    : "Enable gradient or choose a gradient theme to customise stops and angle.";
   syncPageTools(pages);
   refreshBorderSwatches();
   refreshStampSwatches();
@@ -1466,6 +1690,16 @@ function render() {
   if (resetAllStampsBtn) {
     const anyStampOverride = activeCards.some(c => Boolean(c.stampPos || c.stamp2Pos));
     resetAllStampsBtn.hidden = !(moveStampsMode || anyStampOverride);
+  }
+  const resetAllCardsBtn = $("reset-all-cards");
+  if (resetAllCardsBtn) {
+    const customCount = activeCards.filter(hasCustomCardStyling).length;
+    resetAllCardsBtn.disabled = customCount === 0;
+    resetAllCardsBtn.classList.toggle("has-custom", customCount > 0);
+    resetAllCardsBtn.innerHTML = `${iconMarkup("reset")} ${customCount ? `Reset cards (${customCount})` : "Reset cards"}`;
+    resetAllCardsBtn.title = customCount
+      ? `Reset custom & Surprise me styling on ${customCount} card${customCount === 1 ? "" : "s"}`
+      : "All cards currently match sheet defaults";
   }
   const applySelBtn = $("bd-apply-selected");
   if (applySelBtn) applySelBtn.textContent = `Apply to card #${studioState.selectedCard + 1}`;
@@ -1670,6 +1904,273 @@ function clearCardSearch(refocus = true) {
   applyCardSearchFilter();
 }
 
+let activeStudioTab = "page";
+let controlSearchEntries = null;
+let pvControlSearchEntries = null;
+let flashControlTimer = 0;
+
+function switchCrumb(tabKey, crumbKey) {
+  const bar = document.querySelector(`[data-crumb-bar="${tabKey}"]`);
+  const panel = document.querySelector(`[data-tab-panel="${tabKey}"]`);
+  if (!bar || !panel || !crumbKey) return;
+  const targetPanel = panel.querySelector(`[data-crumb-panel="${tabKey}:${crumbKey}"]`);
+  if (!targetPanel) return;
+  bar.querySelectorAll(`[data-crumb-for="${tabKey}"]`).forEach(btn => {
+    const selected = btn.dataset.crumb === crumbKey;
+    btn.setAttribute("aria-selected", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+  panel.querySelectorAll(`[data-crumb-panel^="${tabKey}:"]`).forEach(cp => {
+    cp.hidden = cp.dataset.crumbPanel !== `${tabKey}:${crumbKey}`;
+  });
+  const activeLbl = bar.querySelector(`[data-crumb-active-label="${tabKey}"]`);
+  if (activeLbl) activeLbl.textContent = targetPanel.dataset.crumbLabel || crumbKey;
+}
+
+function switchStudioTab(tabKey) {
+  const tabsWrap = $("studio-tabs");
+  if (!tabsWrap) return;
+  const targetBtn = tabsWrap.querySelector(`[data-tab="${tabKey}"]`);
+  if (!targetBtn) return;
+  activeStudioTab = tabKey;
+  tabsWrap.querySelectorAll("[data-tab]").forEach(btn => {
+    const selected = btn.dataset.tab === tabKey;
+    btn.setAttribute("aria-selected", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll("[data-tab-panel]").forEach(panel => {
+    panel.hidden = panel.dataset.tabPanel !== tabKey;
+  });
+}
+
+function switchPvTab(tabKey) {
+  const tabsWrap = $("pv-tabs");
+  if (!tabsWrap) return;
+  const targetBtn = tabsWrap.querySelector(`[data-pv-tab="${tabKey}"]`);
+  if (!targetBtn) return;
+  tabsWrap.querySelectorAll("[data-pv-tab]").forEach(btn => {
+    const selected = btn.dataset.pvTab === tabKey;
+    btn.setAttribute("aria-selected", String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll("[data-pv-panel]").forEach(panel => {
+    panel.hidden = panel.dataset.pvPanel !== tabKey;
+  });
+}
+
+function buildControlSearchIndex() {
+  if (controlSearchEntries) return controlSearchEntries;
+  const entries = [];
+  const seen = new Set();
+  document.querySelectorAll("[data-tab-panel]").forEach(panel => {
+    const tabKey = panel.dataset.tabPanel;
+    const tabBtn = $("studio-tabs")?.querySelector(`[data-tab="${tabKey}"]`);
+    const tabLabel = tabBtn ? tabBtn.textContent.trim() : tabKey;
+    const controls = panel.querySelectorAll(
+      "input[id], select[id], button[id], .dial[id], #border-picker, #stamp-picker, #grad-slider-bar, #extra-stamps-list"
+    );
+    controls.forEach(ctrl => {
+      if (ctrl.classList.contains("color-hex")) return;
+      if (ctrl.tagName === "SELECT" && ctrl.classList.contains("sr-only")) return;
+      if (ctrl.classList.contains("crumb-btn")) return;
+      const box = ctrl.closest("label.fld, label.switch-row, label.chk, label.swatch-control, fieldset, .gctl, .border-picker-block, .grad-slider-wrap, .cards-header") || ctrl;
+      if (ctrl.id && seen.has(ctrl.id)) return;
+      if (ctrl.id) seen.add(ctrl.id);
+      const crumbPanel = ctrl.closest("[data-crumb-panel]");
+      let crumbKey = "";
+      let crumbLabel = "";
+      if (crumbPanel?.dataset?.crumbPanel) {
+        const parts = crumbPanel.dataset.crumbPanel.split(":");
+        crumbKey = parts[1] || "";
+        crumbLabel = crumbPanel.dataset.crumbLabel || crumbKey;
+      }
+      const labelNode =
+        box.querySelector(":scope > .lbl-row > span:first-child")
+        || box.querySelector(":scope > .switch-text")
+        || box.querySelector(":scope > span:first-child:not(.lbl-row)")
+        || box.querySelector(":scope > legend, :scope > h2");
+      const rawText = (
+        labelNode?.textContent
+        || ctrl.getAttribute("aria-label")
+        || ctrl.textContent
+        || box.textContent
+        || ""
+      ).replace(/\s+/g, " ").trim();
+      if (!rawText) return;
+      const trailLabel = crumbLabel ? `${tabLabel} › ${crumbLabel}` : tabLabel;
+      const kwParts = [rawText, tabLabel, crumbLabel];
+      let cur = ctrl;
+      while (cur && cur !== panel) {
+        if (cur.dataset?.keywords) kwParts.push(cur.dataset.keywords);
+        cur = cur.parentElement;
+      }
+      if (ctrl.placeholder) kwParts.push(ctrl.placeholder);
+      entries.push({
+        id: ctrl.id || "",
+        el: ctrl,
+        flashTarget: box.matches?.("fieldset") ? ctrl.closest("label") || box : box,
+        tab: tabKey,
+        crumb: crumbKey,
+        tabLabel: trailLabel,
+        label: rawText,
+        haystack: kwParts.join(" ").toLowerCase()
+      });
+    });
+  });
+  controlSearchEntries = entries;
+  return entries;
+}
+
+function jumpToControlEntry(entry) {
+  if (!entry) return;
+  switchStudioTab(entry.tab);
+  if (entry.crumb) switchCrumb(entry.tab, entry.crumb);
+  let p = entry.el.parentElement;
+  while (p && !p.classList.contains("panel")) {
+    if (p.tagName === "DETAILS") p.open = true;
+    p = p.parentElement;
+  }
+  const target = entry.flashTarget || entry.el;
+  document.querySelectorAll(".is-control-flash").forEach(n => n.classList.remove("is-control-flash"));
+  if (flashControlTimer) clearTimeout(flashControlTimer);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.classList.add("is-control-flash");
+  flashControlTimer = window.setTimeout(() => target.classList.remove("is-control-flash"), 1400);
+  const focusEl = entry.el.id === "border-picker" || entry.el.id === "stamp-picker"
+    ? entry.el.querySelector("button")
+    : entry.el;
+  focusEl?.focus?.({ preventScroll: true });
+}
+
+function renderControlSearchResults(rawQuery) {
+  const resultsEl = $("ctrl-search-results");
+  const clearBtn = $("ctrl-search-clear");
+  const query = String(rawQuery || "").trim().toLowerCase();
+  if (clearBtn) clearBtn.hidden = !query.length;
+  const tabsWrap = $("studio-tabs");
+  if (!query) {
+    if (resultsEl) {
+      resultsEl.innerHTML = "";
+      resultsEl.hidden = true;
+    }
+    tabsWrap?.querySelectorAll("[data-tab]").forEach(btn => btn.removeAttribute("data-has-match"));
+    document.querySelectorAll(".crumb-btn").forEach(btn => btn.removeAttribute("data-has-match"));
+    return [];
+  }
+  const tokens = query.split(/\s+/).filter(Boolean);
+  const entries = buildControlSearchIndex();
+  const matches = entries.filter(e => tokens.every(tok => e.haystack.includes(tok))).slice(0, 14);
+  const matchedTabs = new Set(matches.map(m => m.tab));
+  const matchedCrumbs = new Set(matches.filter(m => m.crumb).map(m => `${m.tab}:${m.crumb}`));
+  tabsWrap?.querySelectorAll("[data-tab]").forEach(btn => {
+    btn.dataset.hasMatch = matchedTabs.has(btn.dataset.tab) ? "true" : "false";
+  });
+  document.querySelectorAll(".crumb-btn").forEach(btn => {
+    const key = `${btn.dataset.crumbFor}:${btn.dataset.crumb}`;
+    btn.dataset.hasMatch = matchedCrumbs.has(key) ? "true" : "false";
+  });
+  if (resultsEl) {
+    resultsEl.hidden = false;
+    resultsEl.innerHTML = matches.length
+      ? matches.map((m, idx) =>
+          `<button type="button" class="ctrl-search-item" data-ctrl-idx="${idx}"><span>${escapeHtml(m.label)}</span><span class="ctrl-search-tab-pill">${escapeHtml(m.tabLabel)}</span></button>`
+        ).join("")
+      : `<p class="hint">No settings match “${escapeHtml(rawQuery.trim())}”.</p>`;
+  }
+  return matches;
+}
+
+function buildPvControlSearchIndex() {
+  if (pvControlSearchEntries) return pvControlSearchEntries;
+  const entries = [];
+  const seen = new Set();
+  document.querySelectorAll("[data-pv-panel]").forEach(panel => {
+    const tabKey = panel.dataset.pvPanel;
+    const tabBtn = $("pv-tabs")?.querySelector(`[data-pv-tab="${tabKey}"]`);
+    const tabLabel = tabBtn ? tabBtn.textContent.trim() : tabKey;
+    panel.querySelectorAll("input[id], select[id], button[id]").forEach(ctrl => {
+      if (ctrl.classList.contains("color-hex") || !ctrl.id) return;
+      if (seen.has(ctrl.id)) return;
+      seen.add(ctrl.id);
+      const box = ctrl.closest("label.fld, label.pv-slider-fld, label.switch-row, label.chk, fieldset, .pv-ed-group") || ctrl;
+      const labelNode =
+        box.querySelector(":scope > .lbl-row > span:first-child")
+        || box.querySelector(":scope > .switch-text")
+        || box.querySelector(":scope > span:first-child:not(.lbl-row)")
+        || box.querySelector(":scope > legend > span:first-child, :scope > .pv-ed-subheader > span");
+      const rawText = (
+        labelNode?.textContent
+        || ctrl.getAttribute("aria-label")
+        || ctrl.textContent
+        || ""
+      ).replace(/\s+/g, " ").trim();
+      if (!rawText) return;
+      const kwParts = [rawText, tabLabel];
+      let cur = ctrl;
+      while (cur && cur !== panel) {
+        if (cur.dataset?.keywords) kwParts.push(cur.dataset.keywords);
+        cur = cur.parentElement;
+      }
+      if (ctrl.placeholder) kwParts.push(ctrl.placeholder);
+      entries.push({
+        id: ctrl.id,
+        el: ctrl,
+        flashTarget: box,
+        tab: tabKey,
+        tabLabel,
+        label: rawText,
+        haystack: kwParts.join(" ").toLowerCase()
+      });
+    });
+  });
+  pvControlSearchEntries = entries;
+  return entries;
+}
+
+function jumpToPvControlEntry(entry) {
+  if (!entry) return;
+  switchPvTab(entry.tab);
+  const target = entry.flashTarget || entry.el;
+  document.querySelectorAll("#pv-editor .is-control-flash").forEach(n => n.classList.remove("is-control-flash"));
+  if (flashControlTimer) clearTimeout(flashControlTimer);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.classList.add("is-control-flash");
+  flashControlTimer = window.setTimeout(() => target.classList.remove("is-control-flash"), 1400);
+  entry.el?.focus?.({ preventScroll: true });
+}
+
+function renderPvControlSearchResults(rawQuery) {
+  const resultsEl = $("pv-ctrl-search-results");
+  const clearBtn = $("pv-ctrl-search-clear");
+  const query = String(rawQuery || "").trim().toLowerCase();
+  if (clearBtn) clearBtn.hidden = !query.length;
+  const tabsWrap = $("pv-tabs");
+  if (!query) {
+    if (resultsEl) {
+      resultsEl.innerHTML = "";
+      resultsEl.hidden = true;
+    }
+    tabsWrap?.querySelectorAll("[data-pv-tab]").forEach(btn => btn.removeAttribute("data-has-match"));
+    return [];
+  }
+  const tokens = query.split(/\s+/).filter(Boolean);
+  const entries = buildPvControlSearchIndex();
+  const matches = entries.filter(e => tokens.every(tok => e.haystack.includes(tok))).slice(0, 12);
+  const matchedTabs = new Set(matches.map(m => m.tab));
+  tabsWrap?.querySelectorAll("[data-pv-tab]").forEach(btn => {
+    btn.dataset.hasMatch = matchedTabs.has(btn.dataset.pvTab) ? "true" : "false";
+  });
+  if (resultsEl) {
+    resultsEl.hidden = false;
+    resultsEl.innerHTML = matches.length
+      ? matches.map((m, idx) =>
+          `<button type="button" class="ctrl-search-item" data-pv-ctrl-idx="${idx}"><span>${escapeHtml(m.label)}</span><span class="ctrl-search-tab-pill">${escapeHtml(m.tabLabel)}</span></button>`
+        ).join("")
+      : `<p class="hint">No card settings match “${escapeHtml(rawQuery.trim())}”.</p>`;
+  }
+  return matches;
+}
+
 function selectCard(index, scroll = false, scrollPreview = false) {
   if (index < 0 || index >= studioState.count) return;
   studioState.selectedCard = index;
@@ -1754,7 +2255,10 @@ function buildRows() {
     const compactThemeOpt = `<option value="${escapeHtml(card.theme || "")}" selected>${escapeHtml(curThemeLabel)}</option>`;
     const compactStampOpt = `<option value="${escapeHtml(card.sk || "")}" selected>${escapeHtml(curStampLabel)}</option>`;
     row.innerHTML = `
-      <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
+      <div class="cv-wrap">
+        <div class="cv" tabindex="0" role="button" aria-label="Choose photo for card ${index + 1}">${imgSrc ? "" : `${iconMarkup("upload")} Photo`}</div>
+        <button class="cv-remove-btn" type="button" data-action="remove-photo"${imgSrc ? "" : " hidden"} aria-label="Remove photo from card ${index + 1}" title="Remove photo"><svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
       <div class="row-content">
         <div class="row-heading">
           <button class="card-name" type="button" data-action="select-card" aria-label="Select card ${index + 1}">Card ${index + 1} · ${escapeHtml(card.title || "Untitled card")}</button>
@@ -1799,7 +2303,7 @@ function buildRows() {
           `}
           <label class="fld w"><span>Image URL</span><div class="url-row"><input type="url" data-url aria-label="Image URL" placeholder="https://…" value="${escapeHtml(imageUrl)}"><button class="g" type="button" data-action="load-url">${iconMarkup("upload")} Load</button></div><output class="field-value" data-field-value="url"${imageUrl.length > 32 ? "" : " hidden"}>${escapeHtml(imageUrl)}</output></label>
           ${card.corsLimited ? '<span class="cors-tag w" tabindex="0" role="note" aria-label="This host blocks canvas access; SVG export works, raster export may not." data-tooltip="This host blocks canvas access; SVG export works, raster export may not.">CORS-limited image</span>' : ""}
-          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> <span>Accent sampled from image when available</span><button class="g sm row-remove-photo" type="button" data-action="remove-photo"${imgSrc ? "" : " hidden"} aria-label="Remove photo from card ${index + 1}">Remove photo</button></div>
+          <div class="c-row w"><input type="color" data-accent aria-label="Accent colour" value="${hslToHex(card)}"> <span>Accent sampled from image when available</span></div>
           <details class="w adj"><summary><span>Photo &amp; theme options</span><span class="disclosure-icon" data-icon="chevron"></span></summary>
             <label><span>Zoom</span><input type="range" min="100" max="300" value="${Math.round((card.zm || 1) * 100)}" data-adjust="zm"></label>
             <label><span>Horizontal</span><input type="range" min="-100" max="100" value="${card.px || 0}" data-adjust="px"></label>
@@ -2582,8 +3086,8 @@ function randomise() {
   $("ssize").value = 50 + 25 * Math.floor(Math.random() * 9);
   $("tgr").value = Math.floor(Math.random() * 40);
   $("tew").value = Math.floor(Math.random() * 50);
-  $("tcr").value = Math.random() > .5 ? Math.floor(Math.random() * 50) : 0;
   $("tsc").value = Math.random() > .5 ? Math.floor(Math.random() * 40) : 0;
+  if ($("tsc-rot")) $("tsc-rot").value = Math.round((Math.random() * 2 - 1) * 45);
   $("gspread").value = 25 + Math.floor(Math.random() * 45);
   const randBorders = BORDER_STYLES.filter(s => s.id !== 15);
   studioState.borderStyle = randBorders[Math.floor(Math.random() * randBorders.length)].id;
@@ -2635,10 +3139,65 @@ function scopePreviewSvgIds(markup, prefix = "pv-") {
     .replace(/\burl\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
 }
 
+function populateSubtitleFontSelect() {
+  const sfontSel = $("sfont");
+  const tfontSel = $("tfont");
+  if (!sfontSel || !tfontSel || sfontSel.options.length) return;
+  const opts = [...tfontSel.options]
+    .filter(opt => opt.value !== "theme")
+    .map(opt => `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.textContent)}</option>`)
+    .join("");
+  sfontSel.innerHTML = opts;
+  sfontSel.value = "mont";
+}
+
+function renderPvExtraStampsEditor() {
+  if (previewIndex < 0) return;
+  const card = studioState.cards[previewIndex];
+  const cfg = renderConfig();
+  const baseList = Array.isArray(card?.extraStamps) && card.extraStamps.length
+    ? card.extraStamps
+    : (Array.isArray(cfg.extraStamps) ? cfg.extraStamps : []);
+  renderExtraStampsEditor({
+    containerId: "pv-extra-stamps-list",
+    getList: () => baseList,
+    setList: (next, label, discrete) => {
+      if (previewIndex < 0) return;
+      const clean = sanitizeExtraStamps(next);
+      if (clean.length) {
+        updateCard(previewIndex, { extraStamps: clean });
+      } else {
+        const cur = studioState.cards[previewIndex];
+        if (cur) {
+          const { extraStamps: _rm, ...rest } = cur;
+          const updated = { ...rest };
+          cardIds.set(updated, cardIdentity(cur));
+          studioState.cards = studioState.cards.map((c, idx) => idx === previewIndex ? updated : c);
+        }
+      }
+      syncSidebarRowValues(previewIndex);
+      if (discrete) {
+        renderPvExtraStampsEditor();
+        recordDiscrete(label);
+        buildRows();
+        render();
+      } else {
+        scheduleRender();
+      }
+    },
+    labelPrefix: "Card extra stamp"
+  });
+  if ($("pv-extra-stamp-add")) {
+    $("pv-extra-stamp-add").disabled = baseList.length >= EXTRA_STAMP_MAX;
+  }
+}
+
 function syncPreviewSelects(force = false) {
   const themeSel = $("pv-theme");
   const stampSel = $("pv-stamp");
   const borderSel = $("pv-border-style");
+  const fontSel = $("pv-title-font");
+  const subFontSel = $("pv-sub-font");
   if (themeSel && (force || !themeSel.options.length)) {
     populateThemeSelect(themeSel, true);
   }
@@ -2649,6 +3208,16 @@ function syncPreviewSelects(force = false) {
   if (borderSel && (force || !borderSel.options.length)) {
     borderSel.innerHTML = [["", "Same as sheet"], ...BORDER_STYLES.map(s => [String(s.id), s.name])]
       .map(([value, name]) => `<option value="${value}">${escapeHtml(name)}</option>`).join("");
+  }
+  if (fontSel && (force || !fontSel.options.length)) {
+    const tfontOpts = [...($("tfont")?.options || [])].map(opt => [opt.value, opt.textContent]);
+    fontSel.innerHTML = [["", "Same as sheet"], ...tfontOpts]
+      .map(([value, name]) => `<option value="${escapeHtml(value)}">${escapeHtml(name)}</option>`).join("");
+  }
+  if (subFontSel && (force || !subFontSel.options.length)) {
+    const sfontOpts = [...($("sfont")?.options || [])].map(opt => [opt.value, opt.textContent]);
+    subFontSel.innerHTML = [["", "Same as sheet"], ...sfontOpts]
+      .map(([value, name]) => `<option value="${escapeHtml(value)}">${escapeHtml(name)}</option>`).join("");
   }
 }
 
@@ -2664,6 +3233,7 @@ function syncPreviewControls() {
     if (el.type === "checkbox") el.checked = Boolean(val);
     else el.value = String(val);
   };
+  const triState = val => val === undefined ? "" : (val ? "1" : "0");
   const cfg = renderConfig();
   const isVisitingMode = isVisitingSize($("csize")?.value);
   if ($("pv-title-label")) $("pv-title-label").textContent = isVisitingMode ? "Full name" : "Artist / band name";
@@ -2681,7 +3251,22 @@ function syncPreviewControls() {
   setVal("pv-website", card.website ?? "");
   setVal("pv-address", card.address ?? "");
   setVal("pv-qrtext", card.qrText ?? "");
-  setVal("pv-stx", card.stx || "");
+  setVal("pv-left-margin", card.leftMargin ?? "");
+  setVal("pv-doors", card.doors ?? "");
+  setVal("pv-side", card.side ?? "");
+  setVal("pv-admit", card.admitText ?? "");
+  setVal("pv-pass", card.passText ?? "");
+  setVal("pv-vc-badge", card.vcBadge || "");
+  setVal("pv-nfc", triState(card.nfc));
+  setVal("pv-nfc-platform", card.nfcStyle || "");
+  setVal("pv-punch", triState(card.punchHole));
+  const effNfcScale = card.nfcScale ?? cfg.nfcScale ?? 100;
+  setVal("pv-nfc-scale", effNfcScale);
+  if ($("pv-nfc-scale-val")) $("pv-nfc-scale-val").textContent = `${effNfcScale}%`;
+  const hasTicketOverride = ["leftMargin", "doors", "side", "admitText", "passText", "vcBadge", "nfc", "nfcStyle", "nfcScale", "punchHole"]
+    .some(k => card[k] !== undefined && card[k] !== "");
+  if ($("pv-ticket-reset")) $("pv-ticket-reset").hidden = !hasTicketOverride;
+
   const zmVal = Math.round((card.zm || 1) * 100);
   const pxVal = card.px || 0;
   const pyVal = card.py || 0;
@@ -2693,12 +3278,67 @@ function syncPreviewControls() {
   if ($("pv-py-val")) $("pv-py-val").textContent = String(pyVal);
   setVal("pv-accent", hslToHex(card));
   setVal("pv-theme", card.theme || "");
-  setVal("pv-stamp", card.sk || "");
   setVal("pv-hardware", card.cornerHardware || "");
 
-  // Sync per-card border controls
+  // Typography & photo look
+  setVal("pv-title-font", card.titleFont || "");
+  const effTitleScale = Math.round((card.titleScale ?? (cfg.titleScale || 85) / 100) * 100);
+  setVal("pv-title-scale", effTitleScale);
+  if ($("pv-title-scale-val")) $("pv-title-scale-val").textContent = `${effTitleScale}%`;
+  setVal("pv-sub-font", card.subFont || "");
+  const effSubScale = Math.round((card.subScale ?? cfg.subScale ?? 100) > 3
+    ? (card.subScale ?? cfg.subScale ?? 100)
+    : (card.subScale ?? 1) * 100);
+  setVal("pv-sub-scale", effSubScale);
+  if ($("pv-sub-scale-val")) $("pv-sub-scale-val").textContent = `${effSubScale}%`;
+  setVal("pv-center-title", triState(card.centerTitle));
+  setVal("pv-photo-filter", card.photoFilter !== undefined ? String(card.photoFilter) : "");
+  setVal("pv-halftone", triState(card.halftone));
+  setVal("pv-year-badge", card.yearBadge !== undefined ? String(card.yearBadge) : "");
+  setVal("pv-badge-washed", triState(card.yearBadgeWashed));
+  setVal("pv-tear-style", card.tearStyle !== undefined ? String(card.tearStyle) : "");
+  setVal("pv-tear-notches", triState(card.tearNotches));
+  const hasLookOverride = ["titleFont", "titleScale", "subFont", "subScale", "centerTitle", "photoFilter", "halftone", "yearBadge", "yearBadgeWashed", "tearStyle", "tearNotches"]
+    .some(k => card[k] !== undefined && card[k] !== "");
+  if ($("pv-look-reset")) $("pv-look-reset").hidden = !hasLookOverride;
+
+  // Page config & palette / gradient / wear
   const page = Math.floor(previewIndex / (currentLayout?.PER || 9));
   const pageCfg = { ...cfg, style: studioState.pageThemes[page] || cfg.style };
+  const effTheme = THEMES[card.theme] || THEMES[pageCfg.style] || THEMES.cream || {};
+  const effBg = normalizeHex(card.palette?.bg || effTheme.bg, "#f2eadb");
+  const effInk = normalizeHex(card.palette?.ink || effTheme.ink, "#1b1a19");
+  const effTape = normalizeHex(card.tape || effTheme.tape, "#d8b46b");
+  setVal("pv-pal-bg", effBg);
+  setVal("pv-pal-ink", effInk);
+  setVal("pv-pal-tape", effTape);
+  setVal("pv-grad-mode", card.gradMode || "");
+  const effAngle = card.gradientAngle ?? cfg.gradientAngle ?? 180;
+  const effSpread = card.gradientSpread ?? cfg.gradientSpread ?? 32;
+  setVal("pv-grad-angle", effAngle);
+  setVal("pv-grad-spread", effSpread);
+  if ($("pv-grad-angle-val")) $("pv-grad-angle-val").textContent = `${effAngle}°`;
+  if ($("pv-grad-spread-val")) $("pv-grad-spread-val").textContent = `${effSpread}%`;
+  const hasPalOverride = Boolean(card.palette || card.tape || card.gradMode || card.gradientAngle !== undefined || card.gradientSpread !== undefined);
+  if ($("pv-pal-reset")) $("pv-pal-reset").hidden = !hasPalOverride;
+
+  const effGrain = card.grain ?? cfg.grain ?? 15;
+  const effEw = card.edgeWear ?? cfg.edgeWear ?? 0;
+  const effSc = card.scuffs ?? cfg.scuffs ?? 0;
+  const effScRot = card.scuffRotation ?? cfg.scuffRotation ?? 0;
+  setVal("pv-grain", effGrain);
+  setVal("pv-edge-wear", effEw);
+  setVal("pv-scuffs", effSc);
+  setVal("pv-scuff-rot", effScRot);
+  if ($("pv-grain-val")) $("pv-grain-val").textContent = `${effGrain}%`;
+  if ($("pv-edge-wear-val")) $("pv-edge-wear-val").textContent = `${effEw}%`;
+  if ($("pv-scuffs-val")) $("pv-scuffs-val").textContent = `${effSc}%`;
+  if ($("pv-scuff-rot-val")) $("pv-scuff-rot-val").textContent = `${effScRot}°`;
+  if ($("pv-wear-reset")) {
+    $("pv-wear-reset").hidden = !["grain", "edgeWear", "scuffs", "scuffRotation"].some(k => card[k] !== undefined);
+  }
+
+  // Sync per-card border controls
   const resolvedBorder = resolveBorderConfig(pageCfg, card);
   const bMeta = getBorderStyleMeta(resolvedBorder.style);
   const bSup = bMeta.supports;
@@ -2711,11 +3351,15 @@ function syncPreviewControls() {
   setVal("pv-border-ornament", resolvedBorder.ornament);
   setVal("pv-border-width", resolvedBorder.width);
   setVal("pv-border-inset", resolvedBorder.inset);
+  setVal("pv-border-opacity", resolvedBorder.opacity);
+  setVal("pv-border-glow", resolvedBorder.glow);
   setVal("pv-border-corner-size", resolvedBorder.cornerSize);
   setVal("pv-border-wear", resolvedBorder.wear);
   setVal("pv-border-inner", resolvedBorder.inner);
   if ($("pv-border-width-val")) $("pv-border-width-val").textContent = Number(resolvedBorder.width).toFixed(1);
   if ($("pv-border-inset-val")) $("pv-border-inset-val").textContent = Number(resolvedBorder.inset).toFixed(1);
+  if ($("pv-border-opacity-val")) $("pv-border-opacity-val").textContent = `${Math.round(resolvedBorder.opacity)}%`;
+  if ($("pv-border-glow-val")) $("pv-border-glow-val").textContent = `${Math.round(resolvedBorder.glow)}%`;
   if ($("pv-border-corner-size-val")) $("pv-border-corner-size-val").textContent = String(resolvedBorder.cornerSize);
   if ($("pv-border-wear-val")) $("pv-border-wear-val").textContent = `${Math.round(resolvedBorder.wear)}%`;
   if ($("pv-border-reset")) $("pv-border-reset").hidden = !hasCardBorder;
@@ -2726,6 +3370,8 @@ function syncPreviewControls() {
   const isNoneBorder = bMeta.id === 15;
   showPvGroup("width", !isNoneBorder && bSup.width);
   showPvGroup("inset", !isNoneBorder && bSup.inset);
+  showPvGroup("opacity", !isNoneBorder && bSup.opacity);
+  showPvGroup("glow", !isNoneBorder && bSup.glow);
   showPvGroup("color", !isNoneBorder && bSup.color);
   showPvGroup("customColor", !isNoneBorder && bSup.color && resolvedBorder.colorMode === "custom");
   showPvGroup("pattern", !isNoneBorder && bSup.pattern);
@@ -2735,21 +3381,34 @@ function syncPreviewControls() {
   showPvGroup("wear", !isNoneBorder && bSup.wear);
   showPvGroup("inner", !isNoneBorder && bSup.inner);
 
-  // Sync per-card photo mounts and distress marks
+  // Sync per-card photo mounts
   const effMounts = Array.isArray(card.photoMounts) && card.photoMounts.length ? card.photoMounts : cfg.photoMounts;
   document.querySelectorAll("[data-pv-mount]").forEach(el => {
     el.checked = effMounts.includes(Number(el.value));
   });
   if ($("pv-mounts-reset")) $("pv-mounts-reset").hidden = !(Array.isArray(card.photoMounts) && card.photoMounts.length);
-  [
-    ["pv-fx-claw", "fxClaw"],
-    ["pv-fx-tear", "fxTear"],
-    ["pv-fx-bullet", "fxBullet"],
-    ["pv-fx-blood", "fxBlood"]
-  ].forEach(([id, key]) => setVal(id, Boolean(card[key] ?? cfg[key])));
-  if ($("pv-fx-reset")) {
-    $("pv-fx-reset").hidden = !["fxClaw", "fxTear", "fxBullet", "fxBlood"].some(key => card[key] !== undefined);
+
+  // Sync per-card stamp styling & extra stamps
+  setVal("pv-stamp", card.sk || "");
+  setVal("pv-stx", card.stx || "");
+  setVal("pv-stamp-year", card.stampYear ?? "");
+  setVal("pv-stamp-auto", triState(card.stampAuto));
+  setVal("pv-stamp-color", normalizeHex(card.stampColor || cfg.stampColor, "#d9322f"));
+  setVal("pv-stamp-fill", card.stampStyle?.fillMode || "");
+  setVal("pv-stamp-pattern", card.stampStyle?.pattern || "");
+  setVal("pv-stamp-inner-ring", triState(card.stampStyle?.innerRing));
+  setVal("pv-stamp-show-year", triState(card.stampStyle?.showYear));
+  const effStampWear = card.stampWear ?? cfg.stampWear ?? 35;
+  setVal("pv-stamp-wear", effStampWear);
+  if ($("pv-stamp-wear-val")) $("pv-stamp-wear-val").textContent = `${effStampWear}%`;
+  const hasStampOverride = ["sk", "stx", "stampYear", "extraStamps", "stampAuto", "stampColor", "stampStyle", "stampWear"]
+    .some(k => card[k] !== undefined && card[k] !== "" && (!Array.isArray(card[k]) || card[k].length));
+  if ($("pv-stamp-style-reset")) $("pv-stamp-style-reset").hidden = !hasStampOverride;
+
+  if (!active?.closest?.("#pv-extra-stamps-list")) {
+    renderPvExtraStampsEditor();
   }
+
   if (!active?.classList?.contains("color-hex") || !$("pv-editor")?.contains(active)) {
     syncColorHexFields($("pv-editor"));
   }
@@ -2770,7 +3429,7 @@ function syncPreviewControls() {
   const removePhotoBtn = $("pv-photo-remove");
   if (removePhotoBtn) removePhotoBtn.disabled = !(card.img || card.imgUrl);
   const pvDragBtn = $("pv-drag-photo");
-  if (pvDragBtn) pvDragBtn.setAttribute("aria-pressed", String(Boolean($("drag")?.checked)));
+  if (pvDragBtn) pvDragBtn.setAttribute("aria-pressed", String(Boolean(dragPhotoMode)));
   const pvMoveBtn = $("pv-move-stamps");
   if (pvMoveBtn) pvMoveBtn.setAttribute("aria-pressed", String(moveStampsMode));
   const resetStyleBtn = $("pv-reset-style");
@@ -2827,6 +3486,7 @@ function openPreview(index) {
 
 function closePreview() {
   $("pv").hidden = true;
+  dragPhotoMode = false;
   previewIndex = -1;
   $("pvi").replaceChildren();
   if (previousFocus?.isConnected) previousFocus.focus();
@@ -2927,14 +3587,62 @@ function bindEvents() {
   });
   $("card-search-clear")?.addEventListener("click", () => clearCardSearch(true));
   document.querySelectorAll("[data-live]").forEach(input => input.addEventListener("input", scheduleRender));
-  ["marks", "bleed", "card-back", "nfc", "nfc-yt", "punch", "tpl", "regmarks", "sauto", "corner-hw", "fx-claw", "fx-tear", "fx-bullet", "fx-blood", "design-badge", "design-tear", "design-filter", "design-center", "design-halftone"].forEach(id => $(id)?.addEventListener("change", scheduleRender));
+  ["marks", "bleed", "card-back", "nfc", "punch", "tpl", "regmarks", "sauto", "corner-hw", "design-badge", "design-badge-washed", "design-tear", "design-notches", "design-filter", "design-center", "design-halftone", "nfc-platform", "grad-mode", "sfont"].forEach(id => $(id)?.addEventListener("change", scheduleRender));
   $("card-back")?.addEventListener("change", syncCardBackControls);
   ["csize", "corient", "vc-badge", "card-back-logo-mode"].forEach(id => $(id)?.addEventListener("change", () => {
     syncCardBackControls();
     scheduleRender();
   }));
+  $("single-theme-select")?.addEventListener("change", event => {
+    if (event.target.value) selectThemeKey(event.target.value);
+  });
+  $("grad-theme-select")?.addEventListener("change", event => {
+    if (event.target.value) selectThemeKey(event.target.value);
+  });
+  $("grad-slider-bar")?.addEventListener("pointerdown", event => {
+    const bar = $("grad-slider-bar");
+    const themeKey = $("style")?.value || "cream";
+    const theme = THEMES[themeKey] || THEMES.cream;
+    const stops = resolveActiveThemeStops(theme, themeKey === "custom" ? CUSTOM : studioState.quickColors);
+    if (!stops.length) return;
+    const offsets = resolveEffectiveGradOffsets(stops.length);
+    const thumb = event.target.closest?.("[data-grad-thumb]");
+    const rect = bar.getBoundingClientRect();
+    let idx = thumb ? Number(thumb.dataset.gradThumb) : 0;
+    if (!thumb) {
+      const clickPct = Math.max(0, Math.min(100, Math.round(((event.clientX - rect.left) / Math.max(1, rect.width)) * 100)));
+      let bestDist = Infinity;
+      offsets.forEach((p, i) => {
+        const d = Math.abs(p - clickPct);
+        if (d < bestDist) { bestDist = d; idx = i; }
+      });
+    }
+    activeGradientStopIndex = idx;
+    studioState.gradStopOffsets = offsets;
+    syncGradSliderBar(stops);
+    const updatePos = clientX => {
+      const pct = Math.max(0, Math.min(100, Math.round(((clientX - rect.left) / Math.max(1, rect.width)) * 100)));
+      studioState.gradStopOffsets[idx] = pct;
+      syncGradSliderBar(stops);
+      scheduleRender();
+      recordContinuous("adjust gradient stop position", "setting:grad-offset");
+    };
+    bar.setPointerCapture?.(event.pointerId);
+    updatePos(event.clientX);
+    const onMove = ev => updatePos(ev.clientX);
+    const onUp = () => {
+      bar.removeEventListener("pointermove", onMove);
+      bar.removeEventListener("pointerup", onUp);
+      bar.removeEventListener("pointercancel", onUp);
+      finishContinuous("adjust gradient stop position", "setting:grad-offset");
+    };
+    bar.addEventListener("pointermove", onMove);
+    bar.addEventListener("pointerup", onUp);
+    bar.addEventListener("pointercancel", onUp);
+  });
   $("style").addEventListener("change", () => {
     studioState.quickColors = undefined;
+    studioState.gradStopOffsets = [];
     syncQuickColorsControls({ rebuildStops: true });
     syncThemeDropdown();
     scheduleRender();
@@ -2973,29 +3681,87 @@ function bindEvents() {
     }
   });
   const syncDragPhotoMode = checked => {
-    $("drag").checked = checked;
-    if (checked && moveStampsMode) {
+    dragPhotoMode = Boolean(checked);
+    if (dragPhotoMode && moveStampsMode) {
       moveStampsMode = false;
-      message("Drag photos on (turned off Move stamps).");
+      message("Drag photo on (turned off Move stamps).");
     } else {
-      message(checked ? "Drag photos on: drag or scroll/pinch inside a photo to zoom." : "Drag photos off.");
+      message(dragPhotoMode ? "Drag photo on: drag or scroll/pinch photo inside this card preview." : "Drag photo off.");
     }
     render();
   };
   const toggleMoveStampsMode = () => {
     moveStampsMode = !moveStampsMode;
-    if (moveStampsMode && $("drag").checked) {
-      $("drag").checked = false;
+    if (moveStampsMode && dragPhotoMode) {
+      dragPhotoMode = false;
       message("Move stamps on (turned off photo drag).");
     } else {
       message(moveStampsMode ? "Move stamps on: drag or use arrow keys on a stamp." : "Move stamps off.");
     }
     render();
   };
-  $("drag").addEventListener("change", () => syncDragPhotoMode($("drag").checked));
   $("move-stamps")?.addEventListener("click", toggleMoveStampsMode);
-  $("pv-drag-photo")?.addEventListener("click", () => syncDragPhotoMode(!$("drag").checked));
+  $("pv-drag-photo")?.addEventListener("click", () => syncDragPhotoMode(!dragPhotoMode));
   $("pv-move-stamps")?.addEventListener("click", toggleMoveStampsMode);
+  $("sidebar-toggle")?.addEventListener("click", () => {
+    const isMobile = window.matchMedia("(max-width: 640px)").matches;
+    if (isMobile) {
+      const nextView = $("app")?.dataset.mobileView === "preview" ? "edit" : "preview";
+      setMobileView(nextView);
+      return;
+    }
+    const nextCollapsed = !$("app")?.classList.contains("is-sidebar-collapsed");
+    setSidebarCollapsed(nextCollapsed);
+  });
+  $("sidebar-collapse")?.addEventListener("click", () => {
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      setMobileView("preview");
+      return;
+    }
+    setSidebarCollapsed(true);
+  });
+  $("sidebar-edge-open")?.addEventListener("click", () => {
+    setSidebarCollapsed(false);
+    $("ctrl-search")?.focus({ preventScroll: true });
+  });
+  $("pv-expand")?.addEventListener("click", () => {
+    const pv = $("pv");
+    if (!pv) return;
+    const expanded = pv.classList.toggle("is-expanded");
+    const btn = $("pv-expand");
+    if (btn) {
+      btn.setAttribute("aria-expanded", String(expanded));
+      btn.textContent = expanded ? "Compact" : "Expand";
+    }
+  });
+  $("extra-stamp-add")?.addEventListener("click", () => {
+    if ((studioState.extraStamps?.length || 0) >= EXTRA_STAMP_MAX) return;
+    const idx = studioState.extraStamps.length + 1;
+    studioState.extraStamps = [
+      ...studioState.extraStamps,
+      normalizeExtraStamp({ id: `xs_${Date.now().toString(36)}`, text: idx === 1 ? "VIP" : `STAMP ${idx}`, shape: "rect", fillMode: "inherit", autoColor: true, scale: 85, r: 0 }, idx - 1)
+    ];
+    renderGlobalExtraStampsEditor();
+    recordDiscrete("add extra stamp");
+    render();
+  });
+  $("pv-extra-stamp-add")?.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    const card = studioState.cards[previewIndex];
+    const base = Array.isArray(card?.extraStamps) && card.extraStamps.length
+      ? card.extraStamps.slice()
+      : (studioState.extraStamps || []).slice();
+    if (base.length >= EXTRA_STAMP_MAX) return;
+    const nextList = sanitizeExtraStamps([
+      ...base,
+      normalizeExtraStamp({ id: `cxs_${Date.now().toString(36)}`, text: base.length === 0 ? "VIP" : `STAMP ${base.length + 1}`, shape: "rect", fillMode: "inherit", autoColor: true, scale: 85, r: 0 }, base.length)
+    ]);
+    updateCard(previewIndex, { extraStamps: nextList });
+    renderPvExtraStampsEditor();
+    recordDiscrete("add card extra stamp");
+    buildRows();
+    render();
+  });
   $("reset-all-stamps")?.addEventListener("click", () => {
     let changed = false;
     studioState.cards = studioState.cards.map(card => {
@@ -3015,7 +3781,7 @@ function bindEvents() {
     render();
     showUndoToast("All stamp positions reset.");
   });
-  ["ssize", "gspread", "tgr", "tew", "tcr", "tsc"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  ["ssize", "gspread", "tgr", "tew", "tsc", "tsc-rot", "bleed-mm", "sub-size", "nfc-scale"].forEach(id => $(id)?.addEventListener("input", scheduleRender));
   $("wear").addEventListener("input", () => {
     syncStampControls();
     scheduleRender();
@@ -3272,7 +4038,23 @@ function bindEvents() {
     populateBorderPresets();
     message(`Deleted border preset "${preset.name}".`);
   });
-  ["gdoors", "gside", "gstamp", "gsyear"].forEach(id => $(id).addEventListener("input", scheduleRender));
+  ["gdoors", "gside", "gleft", "gadmit", "gpass", "gstamp", "gsyear"].forEach(id => $(id)?.addEventListener("input", scheduleRender));
+  $("ct_grad")?.addEventListener("change", event => {
+    const checked = Boolean(event.target.checked);
+    if ($("style").value === "custom") {
+      studioState.settings = {
+        ...studioState.settings,
+        customTheme: { ...studioState.settings.customTheme, grad: checked }
+      };
+      Object.assign(CUSTOM, studioState.settings.customTheme);
+      buildCustom();
+    } else {
+      studioState.quickColors = { ...(studioState.quickColors || {}), grad: checked };
+    }
+    syncQuickColorsControls({ rebuildStops: true });
+    recordDiscrete("toggle gradient background");
+    render();
+  });
   const quickMountInputs = [...document.querySelectorAll("[data-quick-mount]")];
   quickMountInputs.forEach(input => {
     input.addEventListener("change", () => {
@@ -3494,6 +4276,112 @@ function bindEvents() {
   $("sp-clear-all")?.addEventListener("click", () => {
     clearAllRandomStyling();
   });
+  $("reset-all-cards")?.addEventListener("click", clearAllRandomStyling);
+  $("studio-tabs")?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-tab]");
+    if (btn) switchStudioTab(btn.dataset.tab);
+  });
+  $("studio-tabs")?.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tabs = [...$("studio-tabs").querySelectorAll("[data-tab]")];
+    const idx = tabs.indexOf(document.activeElement);
+    if (idx < 0) return;
+    event.preventDefault();
+    const next = tabs[(idx + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+    switchStudioTab(next.dataset.tab);
+    next.focus();
+  });
+  let currentCtrlMatches = [];
+  const updateControlSearch = () => {
+    currentCtrlMatches = renderControlSearchResults($("ctrl-search")?.value || "");
+  };
+  $("ctrl-search")?.addEventListener("input", updateControlSearch);
+  $("ctrl-search")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if ($("ctrl-search").value) {
+        event.preventDefault();
+        $("ctrl-search").value = "";
+        updateControlSearch();
+      }
+    } else if (event.key === "Enter" && currentCtrlMatches.length) {
+      event.preventDefault();
+      jumpToControlEntry(currentCtrlMatches[0]);
+    }
+  });
+  $("ctrl-search-clear")?.addEventListener("click", () => {
+    if ($("ctrl-search")) {
+      $("ctrl-search").value = "";
+      updateControlSearch();
+      $("ctrl-search").focus();
+    }
+  });
+  $("ctrl-search-results")?.addEventListener("click", event => {
+    const itemBtn = event.target.closest?.("[data-ctrl-idx]");
+    if (!itemBtn) return;
+    const match = currentCtrlMatches[Number(itemBtn.dataset.ctrlIdx)];
+    if (match) jumpToControlEntry(match);
+  });
+  $("pv-tabs")?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-pv-tab]");
+    if (btn) switchPvTab(btn.dataset.pvTab);
+  });
+  $("pv-tabs")?.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tabs = [...$("pv-tabs").querySelectorAll("[data-pv-tab]")];
+    const idx = tabs.indexOf(document.activeElement);
+    if (idx < 0) return;
+    event.preventDefault();
+    const next = tabs[(idx + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+    switchPvTab(next.dataset.pvTab);
+    next.focus();
+  });
+  document.querySelectorAll(".crumb-pills").forEach(pillBar => {
+    pillBar.addEventListener("click", event => {
+      const btn = event.target.closest?.("[data-crumb-for]");
+      if (btn) switchCrumb(btn.dataset.crumbFor, btn.dataset.crumb);
+    });
+    pillBar.addEventListener("keydown", event => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const pills = [...pillBar.querySelectorAll("[data-crumb-for]")];
+      const idx = pills.indexOf(document.activeElement);
+      if (idx < 0) return;
+      event.preventDefault();
+      const next = pills[(idx + (event.key === "ArrowRight" ? 1 : -1) + pills.length) % pills.length];
+      switchCrumb(next.dataset.crumbFor, next.dataset.crumb);
+      next.focus();
+    });
+  });
+  let currentPvCtrlMatches = [];
+  const updatePvControlSearch = () => {
+    currentPvCtrlMatches = renderPvControlSearchResults($("pv-ctrl-search")?.value || "");
+  };
+  $("pv-ctrl-search")?.addEventListener("input", updatePvControlSearch);
+  $("pv-ctrl-search")?.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if ($("pv-ctrl-search").value) {
+        event.preventDefault();
+        event.stopPropagation();
+        $("pv-ctrl-search").value = "";
+        updatePvControlSearch();
+      }
+    } else if (event.key === "Enter" && currentPvCtrlMatches.length) {
+      event.preventDefault();
+      jumpToPvControlEntry(currentPvCtrlMatches[0]);
+    }
+  });
+  $("pv-ctrl-search-clear")?.addEventListener("click", () => {
+    if ($("pv-ctrl-search")) {
+      $("pv-ctrl-search").value = "";
+      updatePvControlSearch();
+      $("pv-ctrl-search").focus();
+    }
+  });
+  $("pv-ctrl-search-results")?.addEventListener("click", event => {
+    const itemBtn = event.target.closest?.("[data-pv-ctrl-idx]");
+    if (!itemBtn) return;
+    const match = currentPvCtrlMatches[Number(itemBtn.dataset.pvCtrlIdx)];
+    if (match) jumpToPvControlEntry(match);
+  });
   $("smp").addEventListener("click", loadSamples);
   $("smp-visiting")?.addEventListener("click", loadVisitingSamples);
   $("rst").addEventListener("click", async () => { await clearSession(); resetDefaults(); });
@@ -3502,14 +4390,41 @@ function bindEvents() {
   document.querySelectorAll(".action-menu").forEach(menu => {
     menu.querySelectorAll("button").forEach(button => button.addEventListener("click", () => { menu.open = false; }));
   });
-  document.querySelectorAll("[data-mobile-view]").forEach(button => button.addEventListener("click", () => {
-    const view = button.dataset.mobileView;
+  function setMobileView(view) {
     $("app").dataset.mobileView = view;
     document.body.dataset.mobileView = view;
     document.querySelectorAll("[data-mobile-view]").forEach(toggle => {
-      toggle.setAttribute("aria-pressed", String(toggle === button));
+      toggle.setAttribute("aria-pressed", String(toggle.dataset.mobileView === view));
     });
+    const toggleBtn = $("sidebar-toggle");
+    if (toggleBtn && window.matchMedia("(max-width: 640px)").matches) {
+      const open = view !== "preview";
+      toggleBtn.setAttribute("aria-expanded", String(open));
+      toggleBtn.setAttribute("aria-label", open ? "Collapse sidebar drawer" : "Open sidebar drawer");
+    }
     updatePreviewZoom(previewZoom);
+  }
+  function setSidebarCollapsed(collapsed) {
+    const app = $("app");
+    if (!app) return;
+    app.classList.toggle("is-sidebar-collapsed", Boolean(collapsed));
+    const toggleBtn = $("sidebar-toggle");
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-expanded", String(!collapsed));
+      toggleBtn.setAttribute("aria-label", collapsed ? "Open sidebar drawer" : "Collapse sidebar drawer");
+    }
+    const edgeBtn = $("sidebar-edge-open");
+    if (edgeBtn) edgeBtn.hidden = !collapsed;
+    try { localStorage.setItem("ticket_sidebar_collapsed", collapsed ? "1" : "0"); } catch {}
+    window.setTimeout(() => updatePreviewZoom(previewZoom), 240);
+  }
+  try {
+    if (!window.matchMedia("(max-width: 640px)").matches && localStorage.getItem("ticket_sidebar_collapsed") === "1") {
+      setSidebarCollapsed(true);
+    }
+  } catch {}
+  document.querySelectorAll("[data-mobile-view]").forEach(button => button.addEventListener("click", () => {
+    setMobileView(button.dataset.mobileView);
   }));
   $("zoom-out").addEventListener("click", () => updatePreviewZoom(previewZoom - .1));
   $("zoom-in").addEventListener("click", () => updatePreviewZoom(previewZoom + .1));
@@ -3547,7 +4462,13 @@ function bindEvents() {
     ["pv-website", "website", "change card website"],
     ["pv-address", "address", "change card address"],
     ["pv-qrtext", "qrText", "change card QR value"],
-    ["pv-stx", "stx", "change card stamp text"]
+    ["pv-stx", "stx", "change card stamp text"],
+    ["pv-left-margin", "leftMargin", "change card left margin text"],
+    ["pv-doors", "doors", "change card doors text"],
+    ["pv-side", "side", "change card right margin text"],
+    ["pv-admit", "admitText", "change card top-left badge text"],
+    ["pv-pass", "passText", "change card pass label text"],
+    ["pv-stamp-year", "stampYear", "change card stamp year"]
   ].forEach(([id, field, label]) => {
     const el = $(id);
     if (!el) return;
@@ -3631,6 +4552,160 @@ function bindEvents() {
     buildRows();
     render();
   };
+  [
+    ["pv-vc-badge", "vcBadge", "change card badge mode", v => v],
+    ["pv-nfc-platform", "nfcStyle", "change card NFC platform", v => v],
+    ["pv-title-font", "titleFont", "change card title font", v => v],
+    ["pv-sub-font", "subFont", "change card subtitle font", v => v],
+    ["pv-grad-mode", "gradMode", "change card gradient style", v => v],
+    ["pv-photo-filter", "photoFilter", "change card photo filter", v => Number(v)],
+    ["pv-year-badge", "yearBadge", "change card year badge", v => Number(v)],
+    ["pv-tear-style", "tearStyle", "change card tear line", v => Number(v)]
+  ].forEach(([id, field, label, parseFn]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      const raw = event.target.value;
+      if (raw === "") {
+        clearCardOverrideFields([field], `reset ${field}`);
+        return;
+      }
+      updateCard(previewIndex, { [field]: parseFn(raw) });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  [
+    ["pv-nfc", "nfc", "change card NFC visibility"],
+    ["pv-punch", "punchHole", "change card punch hole"],
+    ["pv-center-title", "centerTitle", "change card title alignment"],
+    ["pv-badge-washed", "yearBadgeWashed", "change card washed year badge"],
+    ["pv-tear-notches", "tearNotches", "change card tear notches"],
+    ["pv-halftone", "halftone", "change card halftone"],
+    ["pv-stamp-auto", "stampAuto", "change card stamp colour mode"]
+  ].forEach(([id, field, label]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      const raw = event.target.value;
+      if (raw === "") {
+        clearCardOverrideFields([field], `reset ${field}`);
+        return;
+      }
+      updateCard(previewIndex, { [field]: raw === "1" });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    });
+  });
+  const bindPvRangeSlider = (id, field, outId, fmt, parseFn, label, contKey) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      const raw = Number(el.value);
+      if ($(outId)) $(outId).textContent = fmt(raw);
+      updateCard(previewIndex, { [field]: parseFn(raw) });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+      recordContinuous(label, contKey);
+    });
+    el.addEventListener("change", () => finishContinuous(label, contKey));
+  };
+  bindPvRangeSlider("pv-nfc-scale", "nfcScale", "pv-nfc-scale-val", v => `${v}%`, v => v, "change card NFC size", "pv:nfc-scale");
+  bindPvRangeSlider("pv-title-scale", "titleScale", "pv-title-scale-val", v => `${v}%`, v => Number((v / 100).toFixed(2)), "change card title size", "pv:title-scale");
+  bindPvRangeSlider("pv-sub-scale", "subScale", "pv-sub-scale-val", v => `${v}%`, v => v, "change card subtitle size", "pv:sub-scale");
+  bindPvRangeSlider("pv-grad-angle", "gradientAngle", "pv-grad-angle-val", v => `${v}°`, v => v, "change card gradient angle", "pv:grad-angle");
+  bindPvRangeSlider("pv-grad-spread", "gradientSpread", "pv-grad-spread-val", v => `${v}%`, v => v, "change card gradient spread", "pv:grad-spread");
+  bindPvRangeSlider("pv-grain", "grain", "pv-grain-val", v => `${v}%`, v => v, "change card paper grain", "pv:grain");
+  bindPvRangeSlider("pv-edge-wear", "edgeWear", "pv-edge-wear-val", v => `${v}%`, v => v, "change card vignette", "pv:edge-wear");
+  bindPvRangeSlider("pv-scuffs", "scuffs", "pv-scuffs-val", v => `${v}%`, v => v, "change card surface scuffs", "pv:scuffs");
+  bindPvRangeSlider("pv-scuff-rot", "scuffRotation", "pv-scuff-rot-val", v => `${v}°`, v => v, "change card scuff rotation", "pv:scuff-rot");
+  bindPvRangeSlider("pv-stamp-wear", "stampWear", "pv-stamp-wear-val", v => `${v}%`, v => v, "change card stamp wear", "pv:stamp-wear");
+  [
+    ["pv-pal-bg", "bg", "change card paper colour", "pv:pal-bg"],
+    ["pv-pal-ink", "ink", "change card text colour", "pv:pal-ink"]
+  ].forEach(([id, palKey, label, contKey]) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (previewIndex < 0) return;
+      const cur = studioState.cards[previewIndex]?.palette || {};
+      updateCard(previewIndex, { palette: { ...cur, [palKey]: el.value } });
+      syncSidebarRowValues(previewIndex);
+      scheduleRender();
+    });
+    bindContinuousHistory(el, label, contKey);
+  });
+  $("pv-pal-tape")?.addEventListener("input", event => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { tape: event.target.value });
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+  });
+  if ($("pv-pal-tape")) bindContinuousHistory($("pv-pal-tape"), "change card tape colour", "pv:tape");
+  $("pv-stamp-color")?.addEventListener("input", event => {
+    if (previewIndex < 0) return;
+    updateCard(previewIndex, { stampColor: event.target.value, stampAuto: false });
+    syncSidebarRowValues(previewIndex);
+    scheduleRender();
+  });
+  if ($("pv-stamp-color")) bindContinuousHistory($("pv-stamp-color"), "change card stamp colour", "pv:stamp-color");
+  const applyPreviewStampStylePatch = (patch, label) => {
+    if (previewIndex < 0) return;
+    const cur = studioState.cards[previewIndex];
+    if (!cur) return;
+    const base = resolveStampStyle(renderConfig(), cur);
+    const merged = compactStampStyle({ ...base, ...patch });
+    if (merged) {
+      updateCard(previewIndex, { stampStyle: merged });
+      recordDiscrete(label);
+      buildRows();
+      render();
+    } else {
+      clearCardOverrideFields(["stampStyle"], label);
+    }
+  };
+  [
+    ["pv-stamp-fill", "fillMode", "change card stamp ink style", v => v],
+    ["pv-stamp-pattern", "pattern", "change card stamp pattern", v => v],
+    ["pv-stamp-inner-ring", "innerRing", "change card stamp inner frame", v => v === "1"],
+    ["pv-stamp-show-year", "showYear", "change card stamp year toggle", v => v === "1"]
+  ].forEach(([id, key, label, parseFn]) => {
+    $(id)?.addEventListener("change", event => {
+      if (previewIndex < 0) return;
+      const raw = event.target.value;
+      if (raw === "") {
+        const curStyle = { ...(studioState.cards[previewIndex]?.stampStyle || {}) };
+        delete curStyle[key];
+        const nextCompact = compactStampStyle(curStyle);
+        if (nextCompact) {
+          updateCard(previewIndex, { stampStyle: nextCompact });
+          recordDiscrete(label);
+          buildRows();
+          render();
+        } else {
+          clearCardOverrideFields(["stampStyle"], label);
+        }
+        return;
+      }
+      applyPreviewStampStylePatch({ [key]: parseFn(raw) }, label);
+    });
+  });
+  $("pv-ticket-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["leftMargin", "doors", "side", "admitText", "passText", "vcBadge", "nfc", "nfcStyle", "nfcScale", "punchHole"], "reset card ticket details");
+  });
+  $("pv-look-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["titleFont", "titleScale", "subFont", "subScale", "centerTitle", "photoFilter", "halftone", "yearBadge", "yearBadgeWashed", "tearStyle", "tearNotches"], "reset card look & typography");
+  });
+  $("pv-pal-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["palette", "tape", "gradMode", "gradientAngle", "gradientSpread"], "reset card palette");
+  });
+  $("pv-wear-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["grain", "edgeWear", "scuffs", "scuffRotation"], "reset card paper wear");
+  });
+  $("pv-stamp-style-reset")?.addEventListener("click", () => {
+    clearCardOverrideFields(["sk", "stx", "stampYear", "extraStamps", "stampAuto", "stampColor", "stampStyle", "stampWear"], "reset card stamp style");
+  });
   const applyPreviewBorderPatch = (patch, label, { continuousKey = "" } = {}) => {
     if (previewIndex < 0) return;
     const card = studioState.cards[previewIndex];
@@ -3642,6 +4717,8 @@ function bindEvents() {
       style: resolved.style,
       width: resolved.width,
       inset: resolved.inset,
+      opacity: resolved.opacity,
+      glow: resolved.glow,
       colorMode: resolved.colorMode,
       color: resolved.color,
       pattern: resolved.pattern,
@@ -3699,6 +4776,8 @@ function bindEvents() {
   [
     ["pv-border-width", "width", "pv-border-width-val", v => Number(v).toFixed(1), "change card border width", "pv:border-width"],
     ["pv-border-inset", "inset", "pv-border-inset-val", v => Number(v).toFixed(1), "change card border inset", "pv:border-inset"],
+    ["pv-border-opacity", "opacity", "pv-border-opacity-val", v => `${Math.round(Number(v))}%`, "change card border opacity", "pv:border-opacity"],
+    ["pv-border-glow", "glow", "pv-border-glow-val", v => `${Math.round(Number(v))}%`, "change card border glow", "pv:border-glow"],
     ["pv-border-corner-size", "cornerSize", "pv-border-corner-size-val", v => String(v), "change card corner size", "pv:border-corner-size"],
     ["pv-border-wear", "wear", "pv-border-wear-val", v => `${Math.round(Number(v))}%`, "change card border wear", "pv:border-wear"]
   ].forEach(([id, key, outId, fmt, label, contKey]) => {
@@ -3725,23 +4804,6 @@ function bindEvents() {
   });
   $("pv-mounts-reset")?.addEventListener("click", () => {
     clearCardOverrideFields(["photoMounts"], "use sheet photo mounts");
-  });
-  [
-    ["pv-fx-claw", "fxClaw", "toggle card claw marks"],
-    ["pv-fx-tear", "fxTear", "toggle card corner tear"],
-    ["pv-fx-bullet", "fxBullet", "toggle card bullet hole"],
-    ["pv-fx-blood", "fxBlood", "toggle card blood spatter"]
-  ].forEach(([id, key, label]) => {
-    $(id)?.addEventListener("change", event => {
-      if (previewIndex < 0) return;
-      updateCard(previewIndex, { [key]: event.target.checked });
-      recordDiscrete(label);
-      buildRows();
-      render();
-    });
-  });
-  $("pv-fx-reset")?.addEventListener("click", () => {
-    clearCardOverrideFields(["fxClaw", "fxTear", "fxBullet", "fxBlood"], "use sheet distress marks");
   });
   const applyPreviewStampEdit = (patch, label) => {
     if (previewIndex < 0) return;
@@ -3900,7 +4962,7 @@ function bindEvents() {
         const dKnob = Math.hypot(event.clientX - knobPt.x, event.clientY - knobPt.y);
         const dCenter = Math.hypot(event.clientX - pt.x, event.clientY - pt.y);
         if (dCenter < dKnob) {
-          if ($("gs2")?.value.trim()) {
+          if (cardHasExtraStamp(index)) {
             const s0 = resolveCardStamp(index, 0);
             const s1 = resolveCardStamp(index, 1);
             const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
@@ -3938,7 +5000,7 @@ function bindEvents() {
         const cardGroup = stTarget.closest("g[data-ci]:not(.st-ui)");
         const ctm = cardGroup.getScreenCTM();
         let si = Number(stTarget.dataset.si) === 1 ? 1 : 0;
-        if ($("gs2")?.value.trim()) {
+        if (cardHasExtraStamp(index)) {
           const s0 = resolveCardStamp(index, 0);
           const s1 = resolveCardStamp(index, 1);
           const p0 = new DOMPoint(s0.x, s0.y).matrixTransform(ctm);
@@ -4005,7 +5067,7 @@ function bindEvents() {
     });
     container.addEventListener("wheel", event => {
       const target = event.target.closest(".pp");
-      if (!target || !$("drag")?.checked) return;
+      if (!target || !dragPhotoMode || container.id !== "pvi") return;
       const index = +target.dataset.ci, card = studioState.cards[index];
       if (!card?.img || !card.iw) return;
       event.preventDefault();
@@ -4288,7 +5350,9 @@ async function init() {
   hydrateIcons();
   bindTapTooltips();
   attachColorHexFields();
+  populateSubtitleFontSelect();
   populateThemeSelect($("style"));
+  populateFilteredThemeSelects();
   buildThemeDropdown();
   syncThemeDropdown();
   buildBorderPicker();
@@ -4297,6 +5361,7 @@ async function init() {
   buildStampPicker();
   populateStampPresets();
   syncStampControls();
+  renderGlobalExtraStampsEditor();
   syncCustomControls();
   updatePreviewZoom(1);
   const printStyle = document.createElement("style");

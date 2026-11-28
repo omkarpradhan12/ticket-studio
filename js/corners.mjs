@@ -2,11 +2,11 @@
 // and optional surface distress effects (claw marks, corner tear, bullet hole, blood spatter).
 
 export const CORNER_HARDWARE_OPTIONS = [
-  { id: "bolts", name: "Bolts (Default)" },
+  { id: "none", name: "None (Clean corners)" },
+  { id: "bolts", name: "Bolts" },
   { id: "pins", name: "Push pins" },
   { id: "staples", name: "Corner staples" },
-  { id: "rivets", name: "Eyelet rivets" },
-  { id: "none", name: "None (Clean corners)" }
+  { id: "rivets", name: "Eyelet rivets" }
 ];
 
 const VALID_HARDWARE = new Set(CORNER_HARDWARE_OPTIONS.map(o => o.id));

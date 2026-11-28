@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Album Lookup — Ticket Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10d">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10j">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
-<link rel="stylesheet" href="css/tokens.css?v=phase10d">
-<link rel="stylesheet" href="css/app.css?v=phase10d">
+<link rel="stylesheet" href="css/tokens.css?v=phase10j">
+<link rel="stylesheet" href="css/app.css?v=phase10j">
 </head>
 <body>
 <header class="topbar">
@@ -47,7 +47,7 @@
     </div>
 
     <div class="lookup-disclosure" role="note">
-      <strong>How album lookups work:</strong> Searches run only when you click <strong>Search albums</strong>. Queries go directly to <code>musicbrainz.org</code> release groups (CC0 metadata; browser anonymous pool ~1 req/sec) and cover artwork checks <code>coverartarchive.org</code> / <code>en.wikipedia.org</code>. Results are cached for this session.
+      <strong>How lookups work:</strong> Searches run only when you click <strong>Search albums</strong>. Choose <strong>iTunes / Apple Music</strong> (fast zero-key search + high-res cover art), <strong>MusicBrainz</strong> (CC0 release groups; ~1 req/sec), or <strong>Wikipedia</strong>. Results are cached for this session.
     </div>
 
     <div id="alb-disabled-banner" class="lookup-warning" hidden>
@@ -67,6 +67,7 @@
         <span>Source</span>
         <select id="alb-provider">
           <option value="musicbrainz">MusicBrainz Albums (CC0)</option>
+          <option value="itunes">iTunes / Apple Music (Fast · zero-key)</option>
           <option value="wikipedia">Wikipedia Album search</option>
         </select>
       </label>
@@ -79,7 +80,8 @@
       <div id="alb-status" class="hint" role="status" aria-live="polite"></div>
       <div id="alb-recovery" class="ctrl-flex" hidden>
         <button class="g sm" id="alb-retry-btn" type="button"><span data-icon="reset"></span> Retry</button>
-        <button class="g sm" id="alb-wiki-fallback-btn" type="button">Try Wikipedia search instead</button>
+        <button class="g sm" id="alb-fast-fallback-btn" type="button">Try iTunes (fast)</button>
+        <button class="g sm" id="alb-wiki-fallback-btn" type="button">Try Wikipedia search</button>
       </div>
     </div>
   </section>
@@ -172,6 +174,6 @@
   <button class="accent sm" id="alb-open-editor" type="button"><span data-icon="view"></span> Open editor</button>
 </div>
 
-<script type="module" src="js/album-lookup.js?v=phase10d"></script>
+<script type="module" src="js/album-lookup.js?v=phase10j"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Seeded per-card "Surprise me" style randomiser with WCAG contrast, print-safe & stamp bounds guard rails
-import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase10d";
+import { BORDER_STYLES, compactBorderOverrides } from "./borders.mjs?v=phase10j";
 import {
   SKINDS,
   STAMP_MAX_SCALE,
@@ -7,7 +7,7 @@ import {
   clampStampNorm,
   compactStampStyle,
   stampNormBounds
-} from "./stamps.mjs?v=phase10d";
+} from "./stamps.mjs?v=phase10j";
 import {
   SURPRISE_MANAGED_STYLE_KEYS,
   blendHex,
@@ -17,7 +17,7 @@ import {
   hslObjectToHex,
   normalizeHex,
   relativeLuminance
-} from "./card-styles.mjs?v=phase10d";
+} from "./card-styles.mjs?v=phase10j";
 
 const FALLBACK_THEMES = Object.freeze({
   cream: { grp: "Light", n: "Cream", bg: "#f2eadb", ink: "#1b1a19", mute: "#3a3733" }
@@ -404,8 +404,8 @@ export function surpriseSingleCard({
     const maxWear = strength === 0 ? 25 : (strength === 1 ? 45 : 75);
     next.grain = Math.round(randRange(rng, 5, maxWear));
     next.edgeWear = rng() < 0.65 ? Math.round(randRange(rng, 0, maxWear)) : 0;
-    next.creases = rng() < (strength === 2 ? 0.65 : 0.3) ? Math.round(randRange(rng, 10, maxWear)) : 0;
     next.scuffs = rng() < (strength === 2 ? 0.55 : 0.25) ? Math.round(randRange(rng, 10, maxWear)) : 0;
+    if (next.scuffs > 0) next.scuffRotation = Math.round(randRange(rng, -45, 45));
     next.stampWear = Math.round(randRange(rng, 10, Math.min(75, maxWear + 15)));
     const borderWear = Math.round(randRange(rng, 10, Math.min(75, maxWear + 15)));
     next.border = { ...(next.border || { style: cfg.borderStyle ?? 0 }), wear: borderWear };
@@ -417,6 +417,7 @@ export function surpriseSingleCard({
       : [m1];
 
     next.yearBadge = pickFrom(rng, [0, 1, 2]);
+    next.yearBadgeWashed = strength > 0 && rng() < 0.3;
     next.tearStyle = pickFrom(rng, [0, 1, 2]);
     next.halftone = strength > 0 && rng() < (strength === 2 ? 0.35 : 0.15);
     next.photoFilter = strength === 2 && rng() < 0.45 ? pickFrom(rng, [0, 1, 2]) : (strength === 1 && rng() < 0.2 ? pickFrom(rng, [1, 2]) : 0);

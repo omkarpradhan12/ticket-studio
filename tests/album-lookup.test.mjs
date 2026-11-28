@@ -3,9 +3,11 @@ import {
   clearAlbumLookupCaches,
   extractReleaseYear,
   fetchAlbumCoverArt,
+  parseItunesAlbums,
   parseMusicBrainzReleaseGroups,
   parseWikipediaAlbumSearch,
-  searchOnlineAlbums
+  searchOnlineAlbums,
+  upgradeItunesArtworkUrl
 } from "../js/album-lookup-providers.mjs";
 
 // 1. MusicBrainz release-group parsing (Album Name, Artist Name, Release Year, no ordinal)
@@ -127,6 +129,38 @@ import {
     })
   });
   assert.deepEqual(wikiArtistOnly.results.map(r => r.albumName), ["Awake"]);
+}
+
+// 6. iTunes artist-only search, 600x600 cover upgrade & direct cover fast-path
+{
+  clearAlbumLookupCaches();
+  const seenUrls = [];
+  const itRes = await searchOnlineAlbums("", {
+    artist: "Skillet",
+    provider: "itunes",
+    fetchImpl: async url => {
+      seenUrls.push(url);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          results: [
+            { wrapperType: "collection", collectionId: 2, artistName: "Skillet", collectionName: "After The Storm - EP", releaseDate: "2008-05-01T07:00:00Z", primaryGenreName: "Rock", collectionType: "Album", trackCount: 4, artworkUrl100: "https://is1-ssl.mzstatic.com/image/thumb/a/100x100bb.jpg" },
+            { wrapperType: "collection", collectionId: 3, artistName: "Skillet", collectionName: "Awake", releaseDate: "2009-08-25T07:00:00Z", primaryGenreName: "Hard Rock", collectionType: "Album", trackCount: 12, artworkUrl100: "https://is1-ssl.mzstatic.com/image/thumb/b/100x100bb.jpg" },
+            { wrapperType: "collection", collectionId: 1, artistName: "Skillet", collectionName: "Comatose", releaseDate: "2006-10-03T07:00:00Z", primaryGenreName: "Hard Rock", collectionType: "Album", trackCount: 11, artworkUrl100: "https://is1-ssl.mzstatic.com/image/thumb/c/100x100bb.jpg" }
+          ]
+        })
+      };
+    }
+  });
+  assert.ok(seenUrls[0].includes("itunes.apple.com/search"));
+  assert.ok(seenUrls[0].includes("attribute=artistTerm"));
+  assert.deepEqual(itRes.results.map(r => r.albumName), ["Comatose", "Awake", "After The Storm - EP"]);
+  assert.equal(itRes.results[0].coverUrl, "https://is1-ssl.mzstatic.com/image/thumb/c/600x600bb.jpg");
+  assert.equal(upgradeItunesArtworkUrl("https://ex.com/img/100x100bb.png"), "https://ex.com/img/600x600bb.png");
+
+  const directCover = await fetchAlbumCoverArt({ coverUrl: itRes.results[0].coverUrl, source: "iTunes" });
+  assert.equal(directCover.coverUrl, "https://is1-ssl.mzstatic.com/image/thumb/c/600x600bb.jpg");
 }
 
 console.log("Album lookup provider tests passed.");

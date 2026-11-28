@@ -4,7 +4,9 @@ import {
   extractYear,
   fetchWikipediaPhotoForArtist,
   mergeCardLookupFields,
+  parseItunesArtists,
   parseMusicBrainzArtists,
+  parseTheAudioDbArtists,
   parseWikipediaSearch,
   searchOnlineBands
 } from "../js/band-lookup-providers.mjs";
@@ -142,6 +144,43 @@ import {
   }, { overwrite: true });
   assert.equal(replaced.title, "Radiohead");
   assert.equal(replaced.loc, "Abingdon");
+}
+
+// 6. Fast zero-key TheAudioDB / iTunes & optional-token Spotify providers
+{
+  clearLookupCaches();
+  const tadb = await searchOnlineBands("Skillet", {
+    provider: "theaudiodb",
+    fetchImpl: async url => {
+      assert.ok(url.includes("theaudiodb.com/api/v1/json/123/search.php?s=Skillet"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          artists: [{ idArtist: "111902", strArtist: "Skillet", strGenre: "Hard Rock", strStyle: "Rock", strCountry: "Memphis, USA", intFormedYear: "1996", strArtistThumb: "https://r2.theaudiodb.com/thumb.jpg", strLabel: "Atlantic" }]
+        })
+      };
+    }
+  });
+  assert.equal(tadb.results[0].name, "Skillet");
+  assert.equal(tadb.results[0].loc, "Memphis, USA");
+  assert.equal(tadb.results[0].year, "1996");
+  assert.equal(tadb.results[0].code, "SKIL");
+  assert.equal(tadb.results[0].photoUrl, "https://r2.theaudiodb.com/thumb.jpg");
+
+  const it = await searchOnlineBands("Skillet", {
+    provider: "itunes",
+    fetchImpl: async url => {
+      assert.ok(url.includes("itunes.apple.com/search"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ results: [{ wrapperType: "artist", artistId: 1750802, artistName: "Skillet", primaryGenreName: "Hard Rock", artistType: "Artist" }] })
+      };
+    }
+  });
+  assert.equal(it.results[0].genre, "Hard Rock");
+  assert.equal(it.results[0].code, "SKIL");
 }
 
 console.log("Band lookup provider tests passed.");

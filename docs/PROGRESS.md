@@ -886,7 +886,26 @@ Tested cross-origin from `http://127.0.0.1:8090` in real Chromium (`0` console e
 
 ---
 
-## Parked Follow-Up Note (Waiting for User to Resume)
-- **Alternative / Improved Music Search API Option**:
-  - Reference: `https://gist.github.com/0xdevalias/eba698730024674ecae7f43f4c650096` (*A collection of music APIs, databases, and related tools*).
-  - **Status**: Noted only — do not implement until the user returns and asks to continue. Goal will be to add a better API option from that list (CORS-friendly / fast discography & artist/album search + cover art for browser usage without strict ~1 req/sec 503 throttling) to the lookup modes.
+## Alternative Music Search APIs (`?v=phase10f`, Completed)
+- **Album Lookup (`album-lookup.html`, `js/album-lookup-providers.mjs`, `js/album-lookup.js`)**:
+  - Added **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`) supporting album, artist-only discography (LP albums prioritized chronologically ahead of EPs/singles), and album+artist searches with direct CORS-safe `600x600bb` artwork.
+  - Kept **`MusicBrainz`** & **`Wikipedia`**, added `#alb-fast-fallback-btn` (`Try iTunes (fast)`) alongside `#alb-wiki-fallback-btn`, and wired auto cover preview + direct `coverUrl` fast path in `fetchAlbumCoverArt()`.
+- **Band Lookup (`band-lookup.html`, `js/band-lookup-providers.mjs`, `js/band-lookup.js`)**:
+  - Added **`TheAudioDB (Fast · origin/year/genre)`** (`theaudiodb`) and **`iTunes / Apple Music (Fast · zero-key)`** (`itunes`) alongside `MusicBrainz` & `Wikipedia`, with `#lookup-fast-fallback-btn` (`Try TheAudioDB (fast)`).
+- **UI Fix (`css/app.css`)**: Added `flex: 0 0 auto; align-items: stretch; justify-content: flex-start; text-transform: none;` on `.lookup-result-card` so multi-item lists (`30+` albums in `.lookup-results`) never shrink or overlap vertically.
+
+---
+
+## Tabbed Studio, Breadcrumb Layers, Constant Cards View & Expanding Side Drawer (`?v=phase10j`)
+- **Constant Cards View & Switches (`index.html`, `js/app.js`, `css/app.css`)**: Moved `#cards-section` (Cards list, Search, `#surprise-all`, `#reset-all-cards`) permanently outside tabs so card editing stays constantly visible below the 8 settings tabs (`Page`, `Paper`, `Text`, `Backs`, `Themes`, `Borders`, `Hardware`, `Stamps`). Removed global sidebar photo-drag toggle (`#drag` removed from sidebar; photo dragging kept inside Single Card View `#pv-drag-photo`), converted all single-value toggles into pill switches (`.switch-row`), and moved `.cv-remove-btn` into `@layer app` (`18×18px` top-right red circle cross, shown only when a photo is loaded).
+- **Breadcrumb Sub-Navigation & Regrouped Settings**:
+  - `Page`: `bleed-mm` slider (`0.5–6 mm`), `Crop marks`, `Bleed`, `Registration marks`, `Cut template page` switches.
+  - `Paper`: removed `creases`; added `scuffRotation` (`#tsc-rot`, `-180°..180°`) and `Photo finish` crumb (`Photo filter`, `Halftone photo`).
+  - `Text`: crumbs `Fonts & sizes` (`#sfont` subtitle font, `#sub-size` subtitle scale), `Badge & tear` (`#design-badge-washed` vintage washed look switch, `#design-notches` independent tear notch switch), and `Margins & labels` (`Left margin text` without `NO.` prefix, `Right margin text`, `Top-right (Doors)`, `Top-left badge`, `Pass badge text`).
+  - `Backs`: switch toggle + always-visible unified Border & Stamp colour panel (`card-back-logo-wrap` disabled/greyed out via `.is-disabled` when toggled off).
+  - `Themes`: crumbs `Selection` (`Use photo accent` switch inside selection), `Single Color` (`#single-theme-select` + `Color options`), and `Gradient` (`#ct_grad`, `#grad-mode` (`linear`, `radial`, `diagonal`, `wave`, `top`, `bottom`), interactive `#grad-slider-bar` draggable multi-stop bar, spread & angle dial).
+  - `Hardware`: crumbs `Border Hardware` (`#corner-hw` default `"none"` + `#punch`) and `Photo Hardware` (`photoMounts`); distress marks removed.
+  - `Stamps`: crumbs `Main Stamp`, `Style & Presets`, `Extra Stamps` (dynamic multi-stamp editor with shape/fill/scale/angle/colour customization per stamp), and `NFC Logo` (`nfc` fixed chip+N-wave badge replacing Wi-Fi fan arcs, `ytmusic`, `spotify`, `applemusic`, `#nfc-scale`; serial number removed).
+- **Expanding Side Drawer & Per-Card Control Search (`#pv`)**: Converted `#pv` into a right-docked expanding side drawer (`#pv-expand` expands/collapses drawer width) with `#pv-ctrl-search` control search inside `#pv-editor` and full per-card override support across `Details & NFC`, `Photo & Text`, `Theme & Paper`, `Borders & HW`, and `Stamps`.
+- **5-Tab Single Card Editor (`#pv-editor`, `js/card-styles.mjs`, `js/svg-engine.js`)**: Organized `#pv` into `#pv-tabs` (`Details`, `Photo & text`, `Theme & wear`, `Border`, `Stamps`) with per-card overrides for every card-level visual option (`doors`, `side`, `stampYear`, `stamp2`, `nfc`, `nfcWithYt`, `nfcScale`, `serials`, `punchHole`, `vcBadge`, plus theme, border, wear, mounts, and FX) and sticky per-card reset controls.
+- **Clearer Card Reset & Thumbnail Photo Remove (`#reset-all-cards`, `.cv-remove-btn`)**: Added `#reset-all-cards` alongside `#surprise-all` (showing customized card count when active and resetting all random/per-card styles cleanly), and replaced card row text remove buttons with a compact `18px` red circular white-cross badge (`.cv-remove-btn`) pinned to the top-right corner of `.cv-wrap` only when a photo is loaded.
