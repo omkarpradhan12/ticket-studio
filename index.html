@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Concert-Ticket NFC Card Studio</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10i">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=phase10l">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Covered+By+Your+Grace&family=Dancing+Script:wght@700&family=Great+Vibes&family=Oswald:wght@700&family=Permanent+Marker&family=Reenie+Beanie&family=Rock+Salt&family=Space+Mono:wght@700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/tokens.css?v=phase10i">
-<link rel="stylesheet" href="css/app.css?v=phase10i">
+<link rel="stylesheet" href="css/tokens.css?v=phase10l">
+<link rel="stylesheet" href="css/app.css?v=phase10l">
 </head>
 <body>
 <header class="topbar">
@@ -82,21 +82,21 @@
       <div class="card-search-slot ctrl-search-slot">
         <label class="sr-only" for="ctrl-search">Find a setting or control</label>
         <span class="search-slot-icon" data-icon="search"></span>
-        <input id="ctrl-search" type="search" placeholder="Find a control… (e.g. bleed, font, nfc, stamp, claw)" autocomplete="off" spellcheck="false">
+        <input id="ctrl-search" type="search" placeholder="Find a control… (e.g. bleed, scuff, spotify, wash, extra)" autocomplete="off" spellcheck="false">
         <button class="g icon-only card-search-clear" id="ctrl-search-clear" type="button" aria-label="Clear control search" data-tooltip="Clear search" hidden><span data-icon="close"></span></button>
       </div>
       <div id="ctrl-search-results" class="ctrl-search-results" hidden aria-label="Matching controls"></div>
     </div>
 
     <div class="studio-tabs" id="studio-tabs" role="tablist" aria-label="Studio settings categories">
-      <button class="studio-tab" type="button" role="tab" id="tab-btn-cards" data-tab="cards" aria-selected="true" aria-controls="tab-panel-cards">Cards</button>
-      <button class="studio-tab" type="button" role="tab" id="tab-btn-page" data-tab="page" aria-selected="false" aria-controls="tab-panel-page">Page &amp; backs</button>
-      <button class="studio-tab" type="button" role="tab" id="tab-btn-theme" data-tab="theme" aria-selected="false" aria-controls="tab-panel-theme">Theme</button>
+      <button class="studio-tab" type="button" role="tab" id="tab-btn-page" data-tab="page" aria-selected="true" aria-controls="tab-panel-page">Page</button>
+      <button class="studio-tab" type="button" role="tab" id="tab-btn-paper" data-tab="paper" aria-selected="false" aria-controls="tab-panel-paper">Paper</button>
+      <button class="studio-tab" type="button" role="tab" id="tab-btn-text" data-tab="text" aria-selected="false" aria-controls="tab-panel-text">Text</button>
+      <button class="studio-tab" type="button" role="tab" id="tab-btn-backs" data-tab="backs" aria-selected="false" aria-controls="tab-panel-backs">Backs</button>
+      <button class="studio-tab" type="button" role="tab" id="tab-btn-themes" data-tab="themes" aria-selected="false" aria-controls="tab-panel-themes">Themes</button>
       <button class="studio-tab" type="button" role="tab" id="tab-btn-borders" data-tab="borders" aria-selected="false" aria-controls="tab-panel-borders">Borders</button>
+      <button class="studio-tab" type="button" role="tab" id="tab-btn-hardware" data-tab="hardware" aria-selected="false" aria-controls="tab-panel-hardware">Hardware</button>
       <button class="studio-tab" type="button" role="tab" id="tab-btn-stamps" data-tab="stamps" aria-selected="false" aria-controls="tab-panel-stamps">Stamps</button>
-      <button class="studio-tab" type="button" role="tab" id="tab-btn-photo" data-tab="photo" aria-selected="false" aria-controls="tab-panel-photo">Photo &amp; text</button>
-      <button class="studio-tab" type="button" role="tab" id="tab-btn-wear" data-tab="wear" aria-selected="false" aria-controls="tab-panel-wear">Wear &amp; FX</button>
-      <button class="studio-tab" type="button" role="tab" id="tab-btn-ticket" data-tab="ticket" aria-selected="false" aria-controls="tab-panel-ticket">Ticket &amp; NFC</button>
     </div>
 
     <div class="status-bar">
@@ -104,39 +104,14 @@
       <span id="sv"></span>
     </div>
 
-    <!-- TAB: CARDS -->
-    <section class="studio-tab-panel" id="tab-panel-cards" role="tabpanel" aria-labelledby="tab-btn-cards" data-tab-panel="cards">
-      <div class="cards-header">
-        <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
-        <div class="cards-header-actions">
-          <div class="surprise-group">
-            <button class="g" id="surprise-all" type="button"><span data-icon="surprise"></span> Surprise me</button>
-            <button class="g icon-only" id="surprise-tune" type="button" aria-label="Surprise me options" aria-expanded="false" aria-controls="surprise-dialog" data-tooltip="Surprise me options"><span data-icon="sliders"></span></button>
-          </div>
-          <button class="g" id="reset-all-cards" type="button" title="Reset custom & random styling across cards"><span data-icon="reset"></span> Reset cards</button>
-          <label class="chk" data-keywords="drag pan move photo crop"><input type="checkbox" id="drag"> Drag photos on sheet</label>
-        </div>
-      </div>
-      <div class="card-search-bar">
-        <div class="card-search-slot">
-          <label class="sr-only" for="card-search">Search cards</label>
-          <span class="search-slot-icon" data-icon="search"></span>
-          <input id="card-search" type="search" placeholder="Search title, genre, origin, year…" autocomplete="off" spellcheck="false" aria-describedby="card-search-count">
-          <button class="g icon-only card-search-clear" id="card-search-clear" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><span data-icon="close"></span></button>
-        </div>
-        <output class="card-search-count" id="card-search-count" for="card-search" aria-live="polite" hidden></output>
-      </div>
-      <div id="rows"></div>
-    </section>
-
-    <!-- TAB: PAGE & BACKS -->
-    <section class="studio-tab-panel" id="tab-panel-page" role="tabpanel" aria-labelledby="tab-btn-page" data-tab-panel="page" hidden>
+    <!-- TAB 1: PAGE -->
+    <section class="studio-tab-panel" id="tab-panel-page" role="tabpanel" aria-labelledby="tab-btn-page" data-tab-panel="page">
       <div class="ctrl-grid">
-        <label class="fld" data-keywords="total cards count number">
-          <span class="lbl-row"><span>Total cards</span><span id="pg" class="hint"></span></span>
+        <label class="fld" data-keywords="number cards count total">
+          <span class="lbl-row"><span>Number of cards</span><span id="pg" class="hint"></span></span>
           <input type="number" id="count" min="1" max="300" value="9">
         </label>
-        <label class="fld" data-keywords="paper sheet a4 letter">
+        <label class="fld" data-keywords="paper sheet a4 letter size">
           <span>Paper size</span>
           <select id="paper" data-live>
             <option value="a4">A4 (210 × 297 mm)</option>
@@ -184,500 +159,766 @@
             <option value="3">3 mm</option>
             <option value="5">5 mm</option>
           </select>
-          <span class="hint">Sets the corner radius in cutter output; square uses no rounding.</span>
         </label>
         <div class="page-options full">
-          <label class="chk" data-keywords="crop trim cut marks"><input type="checkbox" id="marks" checked> Crop marks</label>
-          <label class="chk" data-keywords="bleed margin 3mm"><input type="checkbox" id="bleed" checked> 3 mm bleed</label>
-          <label class="chk" data-keywords="card back duplex mirrored reverse"><input type="checkbox" id="card-back"> Card backs (mirrored next page)</label>
-          <div class="ctrl-grid full card-back-opts" id="card-back-logo-wrap" hidden>
-            <label class="fld" data-keywords="card back logo colour color">
-              <span>Back logo colour</span>
-              <select id="card-back-logo-mode">
-                <option value="theme">Back border colour</option>
-                <option value="ink">Theme text</option>
-                <option value="frame">Theme frame</option>
-                <option value="mute">Theme muted</option>
-                <option value="stamp">Stamp ink colour</option>
-                <option value="custom">Custom hex</option>
-              </select>
-            </label>
-            <label class="fld" id="card-back-logo-color-wrap" hidden data-keywords="card back custom logo hex colour">
-              <span>Custom logo colour</span>
-              <input type="color" id="card-back-logo-color" value="#1b1a19" data-live aria-label="Card back logo custom colour">
-            </label>
-          </div>
-          <label class="chk" data-keywords="registration alignment plotter marks"><input type="checkbox" id="regmarks"> Registration marks</label>
-          <label class="chk" data-keywords="cut template guide poke me"><input type="checkbox" id="tpl" checked> Cut template page</label>
-          <span class="hint full">Plotter registration marks add alignment targets for cutting.</span>
+          <label class="switch-row" data-keywords="crop trim cut marks">
+            <input type="checkbox" role="switch" class="switch-input" id="marks" checked>
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Crop marks</span>
+          </label>
+          <label class="switch-row" data-keywords="bleed margin edge">
+            <input type="checkbox" role="switch" class="switch-input" id="bleed" checked>
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Bleed</span>
+          </label>
+          <label class="fld full" id="bleed-mm-wrap" data-keywords="bleed slider width mm margin">
+            <span class="lbl-row"><span>Bleed size</span><output id="bleed-mm-val" for="bleed-mm">3.0 mm</output></span>
+            <input type="range" id="bleed-mm" min="0.5" max="6" step="0.5" value="3" data-live>
+          </label>
+          <label class="switch-row" data-keywords="registration alignment plotter marks">
+            <input type="checkbox" role="switch" class="switch-input" id="regmarks">
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Registration marks</span>
+          </label>
+          <label class="switch-row" data-keywords="cut template guide poke me">
+            <input type="checkbox" role="switch" class="switch-input" id="tpl" checked>
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Cut template page</span>
+          </label>
         </div>
       </div>
     </section>
 
-    <!-- TAB: THEME & COLOURS -->
-    <section class="studio-tab-panel" id="tab-panel-theme" role="tabpanel" aria-labelledby="tab-btn-theme" data-tab-panel="theme" hidden>
-      <div class="ctrl-grid">
-        <div class="fld full" data-keywords="theme style palette preset studio">
-          <span class="lbl-row">
-            <label for="theme-trigger">Theme</label>
-            <a class="manage-themes" href="theme-studio.html">Manage themes</a>
-          </span>
-          <div class="theme-nav">
-            <button class="g" type="button" id="prev-style" aria-label="Previous theme" data-tooltip="Previous theme"><span data-icon="previous"></span></button>
-            <select id="style" class="sr-only" tabindex="-1" aria-hidden="true"></select>
-            <div class="theme-dropdown" id="theme-dropdown">
-              <button class="theme-trigger" id="theme-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="theme-menu">
-                <span class="theme-thumb" id="theme-trigger-thumb" aria-hidden="true"></span>
-                <span class="theme-trigger-text">
-                  <span class="theme-trigger-label" id="theme-trigger-label">Cream</span>
-                  <span class="theme-trigger-cat" id="theme-trigger-cat">Light · Classic &amp; Paper</span>
-                </span>
-                <span class="disclosure-icon" data-icon="chevron"></span>
-              </button>
-              <div class="theme-menu" id="theme-menu" role="listbox" aria-label="Choose theme" hidden>
-                <div class="theme-menu-search">
-                  <input type="search" id="theme-filter" placeholder="Filter themes…" aria-label="Filter themes">
-                </div>
-                <div class="theme-menu-list" id="theme-menu-list"></div>
-              </div>
-            </div>
-            <button class="g" type="button" id="next-style" aria-label="Next theme" data-tooltip="Next theme"><span data-icon="next"></span></button>
+    <!-- TAB 2: PAPER -->
+    <section class="studio-tab-panel" id="tab-panel-paper" role="tabpanel" aria-labelledby="tab-btn-paper" data-tab-panel="paper" hidden>
+      <div class="crumb-bar" data-crumb-bar="paper">
+        <span class="crumb-trail">Paper <span class="crumb-sep" aria-hidden="true">&gt;</span> <strong data-crumb-active-label="paper">Surface &amp; scuffs</strong></span>
+        <div class="crumb-pills" role="tablist" aria-label="Paper sections">
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="paper" data-crumb="surface" aria-selected="true">Surface</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="paper" data-crumb="finish" aria-selected="false">Photo finish</button>
+        </div>
+      </div>
+      <div class="crumb-panel" data-crumb-panel="paper:surface" data-crumb-label="Surface">
+        <div class="ctrl-grid">
+          <label class="fld" data-keywords="paper grain texture noise">
+            <span class="lbl-row"><span>Grain</span><output id="tgr-val" for="tgr">15%</output></span>
+            <input type="range" id="tgr" min="0" max="100" value="15" data-live>
+          </label>
+          <label class="fld" data-keywords="edge vignette wear vintage">
+            <span class="lbl-row"><span>Vignette</span><output id="tew-val" for="tew">0%</output></span>
+            <input type="range" id="tew" min="0" max="100" value="0" data-live>
+          </label>
+          <label class="fld" data-keywords="surface scuffs scratch">
+            <span class="lbl-row"><span>Scuffs</span><output id="tsc-val" for="tsc">0%</output></span>
+            <input type="range" id="tsc" min="0" max="100" value="0" data-live>
+          </label>
+          <label class="fld" data-keywords="scuff rotation angle tilt">
+            <span class="lbl-row"><span>Scuff rotation</span><output id="tsc-rot-val" for="tsc-rot">0°</output></span>
+            <input type="range" id="tsc-rot" min="-180" max="180" step="5" value="0" data-live>
+          </label>
+        </div>
+      </div>
+      <div class="crumb-panel" data-crumb-panel="paper:finish" data-crumb-label="Photo finish" hidden>
+        <div class="ctrl-grid">
+          <label class="fld full" data-keywords="photo filter colour bw monochrome sepia">
+            <span>Photo filter</span>
+            <select id="design-filter">
+              <option value="0">Full colour</option>
+              <option value="1">Black &amp; white</option>
+              <option value="2">Sepia</option>
+            </select>
+          </label>
+          <div class="look-options full">
+            <label class="switch-row" data-keywords="halftone dots print photo">
+              <input type="checkbox" role="switch" class="switch-input" id="design-halftone">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Halftone photo</span>
+            </label>
           </div>
         </div>
-        <fieldset class="quick-colours full" data-keywords="quick colours color background ink text accent tape">
-          <legend id="quick-colours-legend">Quick colours</legend>
-          <div class="swatch-row">
-            <label class="swatch-control"><span>Paper</span><input type="color" id="ct_bg" aria-label="Paper colour" data-ct></label>
-            <label class="swatch-control"><span>Text</span><input type="color" id="ct_ink" aria-label="Text colour" data-ct></label>
-            <label class="swatch-control"><span>Accent</span><input type="color" id="ct_acc" aria-label="Accent colour" data-ct></label>
-            <label class="swatch-control"><span>Tape</span><input type="color" id="ct_tape" aria-label="Tape colour" data-ct></label>
-          </div>
-          <div class="quick-colours-footer">
-            <label class="chk photo-accent"><input type="checkbox" id="ct_pa" data-ct> Use photo accent</label>
-            <button class="g sm" type="button" id="ct_reset" disabled>Reset colours</button>
-          </div>
-          <p class="hint colour-map">Edits the active theme live · Paper = background · Text = lettering · Accent = borders and badges · Tape = mounts</p>
-        </fieldset>
-        <div class="gctl full" id="gctl" data-keywords="gradient angle dial spread rotation spotlight">
-          <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
-            <i id="needle"></i><b></b>
-          </div>
-          <div class="gtxt">
-            <div class="lbl-row"><span>Gradient angle <output id="gav">180°</output></span><button class="g sm" type="button" id="grad-angle-reset" aria-label="Reset gradient angle to 180 degrees" disabled>Reset 180°</button></div>
-            <label class="fld">
-              <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
-              <input type="range" id="gspread" min="10" max="100" value="32">
+      </div>
+    </section>
+
+    <!-- TAB 3: TEXT -->
+    <section class="studio-tab-panel" id="tab-panel-text" role="tabpanel" aria-labelledby="tab-btn-text" data-tab-panel="text" hidden>
+      <div class="crumb-bar" data-crumb-bar="text">
+        <span class="crumb-trail">Text <span class="crumb-sep" aria-hidden="true">&gt;</span> <strong data-crumb-active-label="text">Fonts &amp; sizes</strong></span>
+        <div class="crumb-pills" role="tablist" aria-label="Text sections">
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="text" data-crumb="fonts" aria-selected="true">Fonts &amp; sizes</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="text" data-crumb="badge" aria-selected="false">Badge &amp; tear</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="text" data-crumb="margins" aria-selected="false">Margins &amp; labels</button>
+        </div>
+      </div>
+      <div class="crumb-panel" data-crumb-panel="text:fonts" data-crumb-label="Fonts &amp; sizes">
+        <div class="ctrl-grid">
+          <label class="fld" data-keywords="title font typography lettering pirata playfair mont">
+            <span>Title font</span>
+            <select id="tfont" data-live>
+              <option value="theme">Default (Theme / Pirata One)</option>
+              <option value="scrawl">Scraggly Handwriting (Reenie Beanie)</option>
+              <option value="rough">Rough Scrawl (Rock Salt)</option>
+              <option value="script">Handwriting (Caveat / Script)</option>
+              <option value="calligraphy">Calligraphy (Great Vibes)</option>
+              <option value="brush">Brush Script (Dancing Script)</option>
+              <option value="marker">Sharpie Marker (Permanent Marker)</option>
+              <option value="pirata">Pirata One (Gothic)</option>
+              <option value="playfair">Playfair Display (Editorial)</option>
+              <option value="georgia">Georgia Serif (Classic)</option>
+              <option value="mont">Montserrat (Modern Sans)</option>
+              <option value="trebuchet">Trebuchet MS (Retro Sans)</option>
+              <option value="bebas">Bebas Neue (Condensed)</option>
+              <option value="impact">Oswald / Impact (Poster)</option>
+              <option value="type">Special Elite (Typewriter)</option>
+              <option value="courier">Courier (Mono)</option>
+              <option value="consolas">Space Mono / Consolas (Tech)</option>
+            </select>
+          </label>
+          <label class="fld" data-keywords="card title font size scale">
+            <span class="lbl-row"><span>Title size</span><output id="title-size-value" for="title-size">85%</output></span>
+            <input type="range" id="title-size" min="70" max="100" step="1" value="85" data-live aria-valuetext="85%">
+          </label>
+          <label class="fld" data-keywords="subtitle font typography genre place">
+            <span>Subtitle font</span>
+            <select id="sfont" data-live></select>
+          </label>
+          <label class="fld" data-keywords="subtitle size scale genre place">
+            <span class="lbl-row"><span>Subtitle size</span><output id="sub-size-val" for="sub-size">100%</output></span>
+            <input type="range" id="sub-size" min="65" max="135" step="5" value="100" data-live>
+          </label>
+          <div class="look-options full">
+            <label class="switch-row" data-keywords="centre center align title subtitle genre">
+              <input type="checkbox" role="switch" class="switch-input" id="design-center">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Centre title &amp; subtitle</span>
             </label>
-            <div class="hint" id="gradient-hint">Only available with gradient themes.</div>
           </div>
-          <div class="grad-stops-block" id="grad-stops-block" hidden data-keywords="gradient stops colours">
+        </div>
+      </div>
+      <div class="crumb-panel" data-crumb-panel="text:badge" data-crumb-label="Badge &amp; tear" hidden>
+        <div class="ctrl-grid">
+          <label class="fld" data-keywords="year badge solid pill outline est">
+            <span>Year badge</span>
+            <select id="design-badge">
+              <option value="0">Solid</option>
+              <option value="1">Pill</option>
+              <option value="2">Outline</option>
+            </select>
+          </label>
+          <label class="fld" data-keywords="tear line perforation dashed dotted solid">
+            <span>Tear line</span>
+            <select id="design-tear">
+              <option value="0">Dashed</option>
+              <option value="1">Dotted</option>
+              <option value="2">Solid line</option>
+            </select>
+          </label>
+          <div class="look-options full">
+            <label class="switch-row" data-keywords="year badge washed faded vintage look">
+              <input type="checkbox" role="switch" class="switch-input" id="design-badge-washed">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Washed year badge</span>
+            </label>
+            <label class="switch-row" data-keywords="tear line notches cutout punch">
+              <input type="checkbox" role="switch" class="switch-input" id="design-notches" checked>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Tear line notches</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="crumb-panel" data-crumb-panel="text:margins" data-crumb-label="Margins &amp; labels" hidden>
+        <div class="ctrl-grid">
+          <label class="fld" data-keywords="left margin text vertical code year">
+            <span>Left margin text</span>
+            <input type="text" id="gleft" placeholder="Auto (Year-Code)">
+          </label>
+          <label class="fld" data-keywords="right margin text vertical side">
+            <span>Right margin text</span>
+            <input type="text" id="gside" placeholder="Right margin text" value="Dope-Amine">
+          </label>
+          <label class="fld" data-keywords="doors text top right">
+            <span>Top-right (Doors) text</span>
+            <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
+          </label>
+          <label class="fld" data-keywords="admit one top left badge">
+            <span>Top-left badge text</span>
+            <input type="text" id="gadmit" placeholder="★ ADMIT ONE" value="★ ADMIT ONE">
+          </label>
+          <label class="fld full" data-keywords="audio album pass label text">
+            <span>Pass badge text</span>
+            <input type="text" id="gpass" placeholder="Auto (AUDIO PASS / ALBUM PASS)">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: BACKS -->
+    <section class="studio-tab-panel" id="tab-panel-backs" role="tabpanel" aria-labelledby="tab-btn-backs" data-tab-panel="backs" hidden>
+      <div class="ctrl-grid">
+        <div class="full">
+          <label class="switch-row" data-keywords="card back duplex mirrored reverse enable">
+            <input type="checkbox" role="switch" class="switch-input" id="card-back">
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Print mirrored card backs</span>
+          </label>
+        </div>
+        <div class="ctrl-grid full card-back-opts" id="card-back-logo-wrap">
+          <label class="fld full" data-keywords="card back border stamp colour color single uniform">
+            <span>Border &amp; stamp colour (applied as one colour)</span>
+            <select id="card-back-logo-mode">
+              <option value="theme">Theme accent (border &amp; stamp)</option>
+              <option value="ink">Theme text (border &amp; stamp)</option>
+              <option value="frame">Theme frame (border &amp; stamp)</option>
+              <option value="mute">Theme muted (border &amp; stamp)</option>
+              <option value="stamp">Front stamp ink (border &amp; stamp)</option>
+              <option value="custom">Custom hex (border &amp; stamp)</option>
+            </select>
+          </label>
+          <label class="fld full" id="card-back-logo-color-wrap" hidden data-keywords="card back custom border stamp hex colour">
+            <span>Custom border &amp; stamp colour</span>
+            <input type="color" id="card-back-logo-color" value="#1b1a19" data-live aria-label="Card back border and stamp colour">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: THEMES -->
+    <section class="studio-tab-panel" id="tab-panel-themes" role="tabpanel" aria-labelledby="tab-btn-themes" data-tab-panel="themes" hidden>
+      <div class="crumb-bar" data-crumb-bar="themes">
+        <span class="crumb-trail">Themes <span class="crumb-sep" aria-hidden="true">&gt;</span> <strong data-crumb-active-label="themes">Theme Selection</strong></span>
+        <div class="crumb-pills" role="tablist" aria-label="Theme layers">
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="themes" data-crumb="selection" aria-selected="true">Selection</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="themes" data-crumb="single" aria-selected="false">Single Color</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="themes" data-crumb="gradient" aria-selected="false">Gradient</button>
+        </div>
+      </div>
+
+      <!-- CRUMB 1: THEME SELECTION -->
+      <div class="crumb-panel" data-crumb-panel="themes:selection" data-crumb-label="Theme Selection">
+        <div class="ctrl-grid">
+          <div class="fld full" data-keywords="theme style palette preset studio selection">
+            <span class="lbl-row">
+              <label for="theme-trigger">Active theme</label>
+              <a class="manage-themes" href="theme-studio.html">Manage themes</a>
+            </span>
+            <div class="theme-nav">
+              <button class="g" type="button" id="prev-style" aria-label="Previous theme" data-tooltip="Previous theme"><span data-icon="previous"></span></button>
+              <select id="style" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+              <div class="theme-dropdown" id="theme-dropdown">
+                <button class="theme-trigger" id="theme-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="theme-menu">
+                  <span class="theme-thumb" id="theme-trigger-thumb" aria-hidden="true"></span>
+                  <span class="theme-trigger-text">
+                    <span class="theme-trigger-label" id="theme-trigger-label">Cream</span>
+                    <span class="theme-trigger-cat" id="theme-trigger-cat">Light · Classic &amp; Paper</span>
+                  </span>
+                  <span class="disclosure-icon" data-icon="chevron"></span>
+                </button>
+                <div class="theme-menu" id="theme-menu" role="listbox" aria-label="Choose theme" hidden>
+                  <div class="theme-menu-search">
+                    <input type="search" id="theme-filter" placeholder="Filter themes…" aria-label="Filter themes">
+                  </div>
+                  <div class="theme-menu-list" id="theme-menu-list"></div>
+                </div>
+              </div>
+              <button class="g" type="button" id="next-style" aria-label="Next theme" data-tooltip="Next theme"><span data-icon="next"></span></button>
+            </div>
+          </div>
+          <div class="full">
+            <label class="switch-row photo-accent" data-keywords="photo accent automatic sampled color">
+              <input type="checkbox" role="switch" class="switch-input" id="ct_pa" data-ct>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Use photo accent</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRUMB 2: SINGLE COLOR -->
+      <div class="crumb-panel" data-crumb-panel="themes:single" data-crumb-label="Single Color" hidden>
+        <div class="ctrl-grid">
+          <label class="fld full" data-keywords="single color solid theme light dark preset">
+            <span>Single-colour preset</span>
+            <select id="single-theme-select"></select>
+          </label>
+          <fieldset class="quick-colours full" data-keywords="color options paper background ink text accent tape">
+            <legend id="quick-colours-legend">Color options</legend>
+            <div class="swatch-row">
+              <label class="swatch-control"><span>Paper</span><input type="color" id="ct_bg" aria-label="Paper colour" data-ct></label>
+              <label class="swatch-control"><span>Text</span><input type="color" id="ct_ink" aria-label="Text colour" data-ct></label>
+              <label class="swatch-control"><span>Accent</span><input type="color" id="ct_acc" aria-label="Accent colour" data-ct></label>
+              <label class="swatch-control"><span>Tape</span><input type="color" id="ct_tape" aria-label="Tape colour" data-ct></label>
+            </div>
+            <div class="quick-colours-footer">
+              <button class="g sm" type="button" id="ct_reset" disabled>Reset colours</button>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+
+      <!-- CRUMB 3: GRADIENT THEMES -->
+      <div class="crumb-panel" data-crumb-panel="themes:gradient" data-crumb-label="Gradient" hidden>
+        <div class="ctrl-grid">
+          <label class="fld full" data-keywords="gradient theme preset aurora cyberpunk pearl">
+            <span>Gradient theme preset</span>
+            <select id="grad-theme-select"></select>
+          </label>
+          <div class="full">
+            <label class="switch-row" data-keywords="enable gradient background toggle">
+              <input type="checkbox" role="switch" class="switch-input" id="ct_grad">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Enable gradient background</span>
+            </label>
+          </div>
+          <label class="fld full" data-keywords="gradient mode radial diagonal wave top bottom linear">
+            <span>Gradient style</span>
+            <select id="grad-mode">
+              <option value="">Preset default</option>
+              <option value="linear">Linear</option>
+              <option value="radial">Radial</option>
+              <option value="diagonal">Diagonal</option>
+              <option value="wave">Wave aurora</option>
+              <option value="top">Top glow</option>
+              <option value="bottom">Bottom glow</option>
+            </select>
+          </label>
+          <div class="grad-slider-wrap full" id="grad-stops-block" data-keywords="gradient slider bar stops colours positions">
             <div class="lbl-row">
-              <span>Gradient colours</span>
+              <span>Gradient bar</span>
               <div class="grad-stops-actions">
-                <button class="g sm" type="button" id="grad-stop-add" title="Add gradient colour">+ Colour</button>
-                <button class="g sm" type="button" id="grad-stop-remove" title="Remove last gradient colour">− Remove</button>
+                <button class="g sm" type="button" id="grad-stop-add" title="Add gradient stop">+ Stop</button>
+                <button class="g sm" type="button" id="grad-stop-remove" title="Remove last gradient stop">− Stop</button>
               </div>
             </div>
+            <div class="grad-bar-track" id="grad-slider-bar" role="group" aria-label="Interactive gradient stops slider"></div>
             <div class="swatch-row grad-stops-row" id="grad-stops-row"></div>
           </div>
+          <div class="gctl full" id="gctl" data-keywords="gradient angle dial spread rotation spotlight">
+            <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Gradient angle" aria-valuemin="0" aria-valuemax="359" aria-valuenow="180">
+              <i id="needle"></i><b></b>
+            </div>
+            <div class="gtxt">
+              <div class="lbl-row"><span>Angle <output id="gav">180°</output></span><button class="g sm" type="button" id="grad-angle-reset" aria-label="Reset gradient angle to 180 degrees" disabled>Reset 180°</button></div>
+              <label class="fld">
+                <span class="lbl-row"><span>Spread</span><output id="gsv">32%</output></span>
+                <input type="range" id="gspread" min="10" max="100" value="32">
+              </label>
+              <div class="hint" id="gradient-hint">Drag stops on the bar or dial to shape the gradient.</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB: BORDERS -->
+    <!-- TAB 6: BORDERS -->
     <section class="studio-tab-panel" id="tab-panel-borders" role="tabpanel" aria-labelledby="tab-btn-borders" data-tab-panel="borders" hidden>
-      <div class="ctrl-grid">
-        <div class="border-picker-block full" data-keywords="border style frame double dashed lattice keyfret">
-          <div class="lbl-row">
-            <span>Border style</span>
-            <span class="hint" id="border-style-active">Double</span>
-          </div>
-          <div id="border-picker" class="border-picker" role="radiogroup" aria-label="Border style"></div>
-          <label class="fld" data-keywords="border ink wear distress">
-            <span>Border ink wear</span>
-            <input type="range" id="bwear" min="0" max="100" value="35">
-          </label>
-          <details class="border-customise" id="border-customise" open>
-            <summary>
-              <span>Customise</span>
-              <span class="border-customise-meta" id="border-customise-meta"></span>
-              <span class="disclosure-icon" data-icon="chevron"></span>
-            </summary>
-            <div class="border-customise-body">
-              <p class="hint border-print-note" id="border-print-note" hidden></p>
-              <p class="hint" id="border-none-note" hidden>No border is drawn for None. Use Crop marks or Bleed in Page &amp; backs for cut guides.</p>
-              <div class="ctrl-grid" id="border-controls-grid">
-                <label class="fld" data-border-group="width" data-keywords="border line width thickness">
-                  <span class="lbl-row"><span>Line width</span><output id="bd-width-val" for="bd-width">1.5</output></span>
-                  <input type="range" id="bd-width" min="0.5" max="5" step="0.1" value="1.5">
-                </label>
-                <label class="fld" data-border-group="inset" data-keywords="border inset margin">
-                  <span class="lbl-row"><span>Inset</span><output id="bd-inset-val" for="bd-inset">2.5</output></span>
-                  <input type="range" id="bd-inset" min="1.5" max="10" step="0.5" value="2.5">
-                </label>
-                <label class="fld" data-border-group="opacity" data-keywords="border opacity alpha">
-                  <span class="lbl-row"><span>Opacity</span><output id="bd-opacity-val" for="bd-opacity">100%</output></span>
-                  <input type="range" id="bd-opacity" min="10" max="100" step="5" value="100">
-                </label>
-                <label class="fld" data-border-group="lineGap" data-keywords="border line gap double">
-                  <span class="lbl-row"><span>Line gap</span><output id="bd-linegap-val" for="bd-linegap">3.3</output></span>
-                  <input type="range" id="bd-linegap" min="1.5" max="8" step="0.2" value="3.3">
-                </label>
-                <label class="fld" data-border-group="color" data-keywords="border colour color mode">
-                  <span>Border colour</span>
-                  <select id="bd-color-mode">
-                    <option value="accent">Theme accent</option>
-                    <option value="ink">Theme text</option>
-                    <option value="frame">Theme frame</option>
-                    <option value="mute">Theme muted</option>
-                    <option value="custom">Custom hex</option>
-                  </select>
-                </label>
-                <label class="fld" data-border-group="customColor" hidden data-keywords="border custom hex colour">
-                  <span>Custom colour</span>
-                  <input type="color" id="bd-color" value="#ff5a36" aria-label="Border custom colour">
-                </label>
-                <label class="fld" data-border-group="pattern" data-keywords="border pattern solid dashed dotted">
-                  <span>Line pattern</span>
-                  <select id="bd-pattern">
-                    <option value="solid">Solid</option>
-                    <option value="dashed">Dashed</option>
-                    <option value="dotted">Dotted</option>
-                    <option value="dashdot">Dash-dot</option>
-                  </select>
-                </label>
-                <label class="fld" data-border-group="dash" hidden data-keywords="border dash length">
-                  <span class="lbl-row"><span>Dash length</span><output id="bd-dash-val" for="bd-dash">4</output></span>
-                  <input type="range" id="bd-dash" min="1" max="16" step="0.5" value="4">
-                </label>
-                <label class="fld" data-border-group="dashGap" hidden data-keywords="border dash gap">
-                  <span class="lbl-row"><span>Dash gap</span><output id="bd-gap-val" for="bd-gap">2.5</output></span>
-                  <input type="range" id="bd-gap" min="1" max="16" step="0.5" value="2.5">
-                </label>
-                <label class="fld" data-border-group="corner" data-keywords="border corner style rounded notched chamfered">
-                  <span>Corner style</span>
-                  <select id="bd-corner">
-                    <option value="square">Square</option>
-                    <option value="rounded">Rounded</option>
-                    <option value="notched">Notched</option>
-                    <option value="chamfered">Chamfered</option>
-                  </select>
-                </label>
-                <label class="fld" data-border-group="cornerSize" hidden data-keywords="border corner size">
-                  <span class="lbl-row"><span>Corner size</span><output id="bd-corner-size-val" for="bd-corner-size">9</output></span>
-                  <input type="range" id="bd-corner-size" min="2" max="18" step="0.5" value="9">
-                </label>
-                <label class="fld" data-border-group="ornament" data-keywords="border corner ornament diamond star cross">
-                  <span>Corner ornament</span>
-                  <select id="bd-ornament">
-                    <option value="none">None</option>
-                    <option value="diamond">Diamond</option>
-                    <option value="dot">Dot</option>
-                    <option value="star">Star</option>
-                    <option value="cross">Cross</option>
-                    <option value="bracket">Corner tick</option>
-                  </select>
-                </label>
-                <label class="fld" data-border-group="ornamentSize" hidden data-keywords="border ornament size">
-                  <span class="lbl-row"><span>Ornament size</span><output id="bd-ornament-size-val" for="bd-ornament-size">5</output></span>
-                  <input type="range" id="bd-ornament-size" min="2" max="10" step="0.5" value="5">
-                </label>
-                <label class="fld" data-border-group="wear" data-keywords="border wear distress">
-                  <span class="lbl-row"><span>Border wear</span><output id="bd-wear-val" for="bd-wear">35%</output></span>
-                  <input type="range" id="bd-wear" min="0" max="100" step="1" value="35">
-                </label>
-                <label class="fld" data-border-group="glow" data-keywords="border glow neon">
-                  <span class="lbl-row"><span>Glow amount</span><output id="bd-glow-val" for="bd-glow">0%</output></span>
-                  <input type="range" id="bd-glow" min="0" max="100" step="5" value="0">
-                </label>
-                <div class="border-inner-block full" data-border-group="inner" data-keywords="second inner border frame">
-                  <label class="chk"><input type="checkbox" id="bd-inner"> Add second inner border</label>
-                  <div class="ctrl-grid border-inner-fields" id="bd-inner-fields" hidden>
-                    <label class="fld">
-                      <span class="lbl-row"><span>Inner width</span><output id="bd-inner-width-val" for="bd-inner-width">0.7</output></span>
-                      <input type="range" id="bd-inner-width" min="0.4" max="3" step="0.1" value="0.7">
-                    </label>
-                    <label class="fld">
-                      <span class="lbl-row"><span>Inner gap</span><output id="bd-inner-gap-val" for="bd-inner-gap">3.0</output></span>
-                      <input type="range" id="bd-inner-gap" min="1.5" max="10" step="0.5" value="3">
-                    </label>
-                    <label class="fld">
-                      <span>Inner colour</span>
-                      <select id="bd-inner-color-mode">
-                        <option value="accent">Theme accent</option>
-                        <option value="ink">Theme text</option>
-                        <option value="frame">Theme frame</option>
-                        <option value="mute">Theme muted</option>
-                        <option value="custom">Custom hex</option>
-                      </select>
-                    </label>
-                    <label class="fld" id="bd-inner-color-wrap" hidden>
-                      <span>Inner hex</span>
-                      <input type="color" id="bd-inner-color" value="#ff5a36" aria-label="Inner border custom colour">
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div class="border-actions-bar">
-                <button class="g sm" type="button" id="bd-apply-selected">Apply to selected card</button>
-                <button class="g sm" type="button" id="bd-apply-all">Apply to all cards</button>
-                <button class="g sm" type="button" id="bd-reset-style">Reset defaults</button>
-              </div>
-              <fieldset class="border-presets-box" data-keywords="border preset save">
-                <legend>Border presets</legend>
-                <div class="border-preset-save">
-                  <input type="text" id="bd-preset-name" maxlength="48" placeholder="Preset name…" aria-label="New border preset name">
-                  <button class="g sm" type="button" id="bd-preset-save">Save preset</button>
-                </div>
-                <div class="border-preset-apply">
-                  <select id="bd-preset-select" aria-label="Saved border presets">
-                    <option value="">Saved presets…</option>
-                  </select>
-                  <button class="g sm" type="button" id="bd-preset-apply" disabled>Apply to sheet</button>
-                  <button class="g sm" type="button" id="bd-preset-apply-card" disabled>Apply to card</button>
-                  <button class="danger sm" type="button" id="bd-preset-delete" disabled aria-label="Delete selected border preset" data-tooltip="Delete preset"><span data-icon="delete"></span></button>
-                </div>
-              </fieldset>
+      <div class="crumb-bar" data-crumb-bar="borders">
+        <span class="crumb-trail">Borders <span class="crumb-sep" aria-hidden="true">&gt;</span> <strong data-crumb-active-label="borders">Style</strong></span>
+        <div class="crumb-pills" role="tablist" aria-label="Border sections">
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="borders" data-crumb="style" aria-selected="true">Style</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="borders" data-crumb="tune" aria-selected="false">Frame &amp; Corners</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="borders" data-crumb="presets" aria-selected="false">Presets</button>
+        </div>
+      </div>
+
+      <div class="crumb-panel" data-crumb-panel="borders:style" data-crumb-label="Style">
+        <div class="ctrl-grid">
+          <div class="border-picker-block full" data-keywords="border style frame double dashed lattice keyfret">
+            <div class="lbl-row">
+              <span>Border style</span>
+              <span class="hint" id="border-style-active">Double</span>
             </div>
-          </details>
+            <div id="border-picker" class="border-picker" role="radiogroup" aria-label="Border style"></div>
+            <label class="fld" data-keywords="border ink wear">
+              <span>Border ink wear</span>
+              <input type="range" id="bwear" min="0" max="100" value="35">
+            </label>
+            <p class="hint border-print-note" id="border-print-note" hidden></p>
+            <p class="hint" id="border-none-note" hidden>No border is drawn for None. Use Crop marks or Bleed in Page for cut guides.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="crumb-panel" data-crumb-panel="borders:tune" data-crumb-label="Frame &amp; Corners" hidden>
+        <div class="ctrl-grid" id="border-controls-grid">
+          <div class="lbl-row full">
+            <span>Customise</span>
+            <span class="border-customise-meta" id="border-customise-meta"></span>
+          </div>
+          <label class="fld" data-border-group="width" data-keywords="border line width thickness">
+            <span class="lbl-row"><span>Line width</span><output id="bd-width-val" for="bd-width">1.5</output></span>
+            <input type="range" id="bd-width" min="0.5" max="5" step="0.1" value="1.5">
+          </label>
+          <label class="fld" data-border-group="inset" data-keywords="border inset margin">
+            <span class="lbl-row"><span>Inset</span><output id="bd-inset-val" for="bd-inset">2.5</output></span>
+            <input type="range" id="bd-inset" min="1.5" max="10" step="0.5" value="2.5">
+          </label>
+          <label class="fld" data-border-group="opacity" data-keywords="border opacity alpha">
+            <span class="lbl-row"><span>Opacity</span><output id="bd-opacity-val" for="bd-opacity">100%</output></span>
+            <input type="range" id="bd-opacity" min="10" max="100" step="5" value="100">
+          </label>
+          <label class="fld" data-border-group="lineGap" data-keywords="border line gap double">
+            <span class="lbl-row"><span>Line gap</span><output id="bd-linegap-val" for="bd-linegap">3.3</output></span>
+            <input type="range" id="bd-linegap" min="1.5" max="8" step="0.2" value="3.3">
+          </label>
+          <label class="fld" data-border-group="color" data-keywords="border colour color mode">
+            <span>Border colour</span>
+            <select id="bd-color-mode">
+              <option value="accent">Theme accent</option>
+              <option value="ink">Theme text</option>
+              <option value="frame">Theme frame</option>
+              <option value="mute">Theme muted</option>
+              <option value="custom">Custom hex</option>
+            </select>
+          </label>
+          <label class="fld" data-border-group="customColor" hidden data-keywords="border custom hex colour">
+            <span>Custom colour</span>
+            <input type="color" id="bd-color" value="#ff5a36" aria-label="Border custom colour">
+          </label>
+          <label class="fld" data-border-group="pattern" data-keywords="border pattern solid dashed dotted">
+            <span>Line pattern</span>
+            <select id="bd-pattern">
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+              <option value="dashdot">Dash-dot</option>
+            </select>
+          </label>
+          <label class="fld" data-border-group="dash" hidden data-keywords="border dash length">
+            <span class="lbl-row"><span>Dash length</span><output id="bd-dash-val" for="bd-dash">4</output></span>
+            <input type="range" id="bd-dash" min="1" max="16" step="0.5" value="4">
+          </label>
+          <label class="fld" data-border-group="dashGap" hidden data-keywords="border dash gap">
+            <span class="lbl-row"><span>Dash gap</span><output id="bd-gap-val" for="bd-gap">2.5</output></span>
+            <input type="range" id="bd-gap" min="1" max="16" step="0.5" value="2.5">
+          </label>
+          <label class="fld" data-border-group="corner" data-keywords="border corner style rounded notched chamfered">
+            <span>Corner style</span>
+            <select id="bd-corner">
+              <option value="square">Square</option>
+              <option value="rounded">Rounded</option>
+              <option value="notched">Notched</option>
+              <option value="chamfered">Chamfered</option>
+            </select>
+          </label>
+          <label class="fld" data-border-group="cornerSize" hidden data-keywords="border corner size">
+            <span class="lbl-row"><span>Corner size</span><output id="bd-corner-size-val" for="bd-corner-size">9</output></span>
+            <input type="range" id="bd-corner-size" min="2" max="18" step="0.5" value="9">
+          </label>
+          <label class="fld" data-border-group="ornament" data-keywords="border corner ornament diamond star cross">
+            <span>Corner ornament</span>
+            <select id="bd-ornament">
+              <option value="none">None</option>
+              <option value="diamond">Diamond</option>
+              <option value="dot">Dot</option>
+              <option value="star">Star</option>
+              <option value="cross">Cross</option>
+              <option value="bracket">Corner tick</option>
+            </select>
+          </label>
+          <label class="fld" data-border-group="ornamentSize" hidden data-keywords="border ornament size">
+            <span class="lbl-row"><span>Ornament size</span><output id="bd-ornament-size-val" for="bd-ornament-size">5</output></span>
+            <input type="range" id="bd-ornament-size" min="2" max="10" step="0.5" value="5">
+          </label>
+          <label class="fld" data-border-group="wear" data-keywords="border wear">
+            <span class="lbl-row"><span>Border wear</span><output id="bd-wear-val" for="bd-wear">35%</output></span>
+            <input type="range" id="bd-wear" min="0" max="100" step="1" value="35">
+          </label>
+          <label class="fld" data-border-group="glow" data-keywords="border glow neon">
+            <span class="lbl-row"><span>Glow amount</span><output id="bd-glow-val" for="bd-glow">0%</output></span>
+            <input type="range" id="bd-glow" min="0" max="100" step="5" value="0">
+          </label>
+          <div class="border-inner-block full" data-border-group="inner" data-keywords="second inner border frame">
+            <label class="switch-row">
+              <input type="checkbox" role="switch" class="switch-input" id="bd-inner">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Add second inner border</span>
+            </label>
+            <div class="ctrl-grid border-inner-fields" id="bd-inner-fields" hidden>
+              <label class="fld">
+                <span class="lbl-row"><span>Inner width</span><output id="bd-inner-width-val" for="bd-inner-width">0.7</output></span>
+                <input type="range" id="bd-inner-width" min="0.4" max="3" step="0.1" value="0.7">
+              </label>
+              <label class="fld">
+                <span class="lbl-row"><span>Inner gap</span><output id="bd-inner-gap-val" for="bd-inner-gap">3.0</output></span>
+                <input type="range" id="bd-inner-gap" min="1.5" max="10" step="0.5" value="3">
+              </label>
+              <label class="fld">
+                <span>Inner colour</span>
+                <select id="bd-inner-color-mode">
+                  <option value="accent">Theme accent</option>
+                  <option value="ink">Theme text</option>
+                  <option value="frame">Theme frame</option>
+                  <option value="mute">Theme muted</option>
+                  <option value="custom">Custom hex</option>
+                </select>
+              </label>
+              <label class="fld" id="bd-inner-color-wrap" hidden>
+                <span>Inner hex</span>
+                <input type="color" id="bd-inner-color" value="#ff5a36" aria-label="Inner border custom colour">
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="crumb-panel" data-crumb-panel="borders:presets" data-crumb-label="Presets" hidden>
+        <div class="ctrl-grid">
+          <div class="border-actions-bar full">
+            <button class="g sm" type="button" id="bd-apply-selected">Apply to selected card</button>
+            <button class="g sm" type="button" id="bd-apply-all">Apply to all cards</button>
+            <button class="g sm" type="button" id="bd-reset-style">Reset defaults</button>
+          </div>
+          <fieldset class="border-presets-box full" data-keywords="border preset save">
+            <legend>Border presets</legend>
+            <div class="border-preset-save">
+              <input type="text" id="bd-preset-name" maxlength="48" placeholder="Preset name…" aria-label="New border preset name">
+              <button class="g sm" type="button" id="bd-preset-save">Save preset</button>
+            </div>
+            <div class="border-preset-apply">
+              <select id="bd-preset-select" aria-label="Saved border presets">
+                <option value="">Saved presets…</option>
+              </select>
+              <button class="g sm" type="button" id="bd-preset-apply" disabled>Apply to sheet</button>
+              <button class="g sm" type="button" id="bd-preset-apply-card" disabled>Apply to card</button>
+              <button class="danger sm" type="button" id="bd-preset-delete" disabled aria-label="Delete selected border preset" data-tooltip="Delete preset"><span data-icon="delete"></span></button>
+            </div>
+          </fieldset>
         </div>
       </div>
     </section>
 
-    <!-- TAB: STAMPS -->
+    <!-- TAB 7: HARDWARE -->
+    <section class="studio-tab-panel" id="tab-panel-hardware" role="tabpanel" aria-labelledby="tab-btn-hardware" data-tab-panel="hardware" hidden>
+      <div class="crumb-bar" data-crumb-bar="hardware">
+        <span class="crumb-trail">Hardware <span class="crumb-sep" aria-hidden="true">&gt;</span> <strong data-crumb-active-label="hardware">Border Hardware</strong></span>
+        <div class="crumb-pills" role="tablist" aria-label="Hardware sections">
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="hardware" data-crumb="border" aria-selected="true">Border Hardware</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="hardware" data-crumb="photo" aria-selected="false">Photo Hardware</button>
+        </div>
+      </div>
+
+      <div class="crumb-panel" data-crumb-panel="hardware:border" data-crumb-label="Border Hardware">
+        <div class="ctrl-grid">
+          <label class="fld full" data-keywords="corner hardware bolts pins staples rivets none border">
+            <span>Corner hardware</span>
+            <select id="corner-hw">
+              <option value="none" selected>None (Clean corners)</option>
+              <option value="bolts">Bolts</option>
+              <option value="pins">Push pins</option>
+              <option value="staples">Corner staples</option>
+              <option value="rivets">Eyelet rivets</option>
+            </select>
+          </label>
+          <div class="full">
+            <label class="switch-row" data-keywords="punch hole guide cutter hardware">
+              <input type="checkbox" role="switch" class="switch-input" id="punch" data-live>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Punch hole guide (4 mm)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="crumb-panel" data-crumb-panel="hardware:photo" data-crumb-label="Photo Hardware" hidden>
+        <div class="ctrl-grid">
+          <fieldset class="mount-fields full" data-keywords="photo mounts hardware tape pins corners washi brads paperclip staples wax seal">
+            <legend>Photo mounts — choose up to 2</legend>
+            <label class="chk"><input type="checkbox" data-quick-mount value="0" checked> Tape</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="1"> Pins</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="2"> Corners</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="4"> Washi tape</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="5"> Brads</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="6"> Paperclip</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="7"> Staples</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="8"> Wax seal</label>
+            <label class="chk"><input type="checkbox" data-quick-mount value="3"> None</label>
+            <span class="hint full" id="quick-mount-status">Active mounts: Tape</span>
+          </fieldset>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 8: STAMPS -->
     <section class="studio-tab-panel" id="tab-panel-stamps" role="tabpanel" aria-labelledby="tab-btn-stamps" data-tab-panel="stamps" hidden>
-      <div class="ctrl-grid">
-        <label class="fld" data-keywords="primary stamp text label">
-          <span>Primary stamp text</span>
-          <input type="text" id="gstamp" placeholder="Stamp text" value="Soul Fuel">
-        </label>
-        <label class="fld" data-keywords="stamp year">
-          <span>Stamp year</span>
-          <input type="text" id="gsyear" placeholder="Stamp year" value="2026">
-        </label>
-        <label class="fld full" data-keywords="second secondary stamp vip">
-          <span>Second stamp (optional)</span>
-          <input type="text" id="gs2" placeholder="e.g. VIP" data-live>
-        </label>
-        <div class="border-picker-block stamp-picker-block full" data-keywords="stamp shape logo seal wax vinyl spotify yt">
-          <div class="lbl-row">
-            <span>Stamp shape</span>
-            <span class="hint" id="stamp-shape-active">Round</span>
-          </div>
-          <div id="stamp-picker" class="border-picker stamp-picker" role="radiogroup" aria-label="Stamp shape"></div>
-          <details class="border-customise stamp-customise" id="stamp-customise" open>
-            <summary>
-              <span>Customise</span>
-              <span class="border-customise-meta" id="stamp-customise-meta"></span>
-              <span class="disclosure-icon" data-icon="chevron"></span>
-            </summary>
-            <div class="border-customise-body">
-              <p class="hint" id="stamp-none-note" hidden>No stamp is drawn for None.</p>
-              <div class="ctrl-grid" id="stamp-controls-grid">
-                <label class="fld" data-keywords="stamp ink style outline tinted solid">
-                  <span>Ink style</span>
-                  <select id="st-fill-mode">
-                    <option value="outline">Outline</option>
-                    <option value="tinted">Tinted wash</option>
-                    <option value="solid">Solid badge</option>
-                  </select>
-                </label>
-                <label class="fld" data-keywords="stamp line pattern solid dashed dotted">
-                  <span>Line pattern</span>
-                  <select id="st-pattern">
-                    <option value="solid">Solid</option>
-                    <option value="dashed">Dashed</option>
-                    <option value="dotted">Dotted</option>
-                  </select>
-                </label>
-                <label class="fld" data-keywords="stamp stroke weight">
-                  <span class="lbl-row"><span>Stroke weight</span><output id="st-weight-val" for="st-weight">1.0×</output></span>
-                  <input type="range" id="st-weight" min="0.6" max="2" step="0.1" value="1">
-                </label>
-                <label class="fld" data-keywords="stamp ink opacity">
-                  <span class="lbl-row"><span>Ink opacity</span><output id="st-opacity-val" for="st-opacity">95%</output></span>
-                  <input type="range" id="st-opacity" min="35" max="100" step="5" value="95">
-                </label>
-                <label class="fld full" data-keywords="stamp ink wear distress">
-                  <span class="lbl-row"><span>Stamp ink wear</span><output id="st-wear-val" for="st-wear">35%</output></span>
-                  <input type="range" id="st-wear" min="0" max="100" step="1" value="35">
-                </label>
-                <div class="look-options full">
-                  <label class="chk" data-keywords="stamp inner frame"><input type="checkbox" id="st-inner-ring" checked> Show inner frame</label>
-                  <label class="chk" data-keywords="stamp show year"><input type="checkbox" id="st-show-year" checked> Show stamp year</label>
-                </div>
-              </div>
-              <div class="border-actions-bar">
-                <button class="g sm" type="button" id="st-apply-selected">Apply to card #1</button>
-                <button class="g sm" type="button" id="st-apply-all">Apply to all cards</button>
-                <button class="g sm" type="button" id="st-reset-style">Reset defaults</button>
-              </div>
-              <fieldset class="border-presets-box" data-keywords="stamp preset save">
-                <legend>Stamp presets</legend>
-                <div class="border-preset-save">
-                  <input type="text" id="st-preset-name" maxlength="48" placeholder="Preset name…" aria-label="New stamp preset name">
-                  <button class="g sm" type="button" id="st-preset-save">Save preset</button>
-                </div>
-                <div class="border-preset-apply">
-                  <select id="st-preset-select" aria-label="Saved stamp presets">
-                    <option value="">Saved presets…</option>
-                  </select>
-                  <button class="g sm" type="button" id="st-preset-apply" disabled>Apply to sheet</button>
-                  <button class="g sm" type="button" id="st-preset-apply-card" disabled>Apply to card</button>
-                  <button class="danger sm" type="button" id="st-preset-delete" disabled aria-label="Delete selected stamp preset" data-tooltip="Delete preset"><span data-icon="delete"></span></button>
-                </div>
-              </fieldset>
-            </div>
-          </details>
+      <div class="crumb-bar" data-crumb-bar="stamps">
+        <span class="crumb-trail">Stamps <span class="crumb-sep" aria-hidden="true">&gt;</span> <strong data-crumb-active-label="stamps">Main Stamp</strong></span>
+        <div class="crumb-pills" role="tablist" aria-label="Stamp layers">
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="stamps" data-crumb="main" aria-selected="true">Main Stamp</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="stamps" data-crumb="style" aria-selected="false">Style &amp; Presets</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="stamps" data-crumb="extra" aria-selected="false">Extra Stamps</button>
+          <button class="crumb-btn" type="button" role="tab" data-crumb-for="stamps" data-crumb="nfc" aria-selected="false">NFC Logo</button>
         </div>
-        <label class="fld full" data-keywords="stamp size scale">
-          <span class="lbl-row"><span>Stamp size</span><output id="ssv">100%</output></span>
-          <input type="range" id="ssize" min="50" max="250" step="25" value="100" list="sst">
-          <datalist id="sst"><option value="50"></option><option value="100"></option><option value="150"></option><option value="200"></option><option value="250"></option></datalist>
-        </label>
-        <label class="fld" data-keywords="stamp ink wear distress">
-          <span>Stamp wear</span>
-          <input type="range" id="wear" min="0" max="100" value="35">
-        </label>
-        <label class="swatch-control effect-ink" data-keywords="stamp ink colour color"><span>Stamp ink</span><input type="color" id="scol" value="#d9322f" data-live></label>
-        <label class="chk effect-accent" data-keywords="stamp accent colour"><input type="checkbox" id="sauto" checked data-live> Use accent colour</label>
       </div>
-    </section>
 
-    <!-- TAB: PHOTO & TEXT -->
-    <section class="studio-tab-panel" id="tab-panel-photo" role="tabpanel" aria-labelledby="tab-btn-photo" data-tab-panel="photo" hidden>
-      <div class="ctrl-grid">
-        <label class="fld" data-keywords="title font typography lettering pirata playfair mont">
-          <span>Title font</span>
-          <select id="tfont" data-live>
-            <option value="theme">Default (Theme / Pirata One)</option>
-            <option value="scrawl">Scraggly Handwriting (Reenie Beanie)</option>
-            <option value="rough">Rough Scrawl (Rock Salt)</option>
-            <option value="script">Handwriting (Caveat / Script)</option>
-            <option value="calligraphy">Calligraphy (Great Vibes)</option>
-            <option value="brush">Brush Script (Dancing Script)</option>
-            <option value="marker">Sharpie Marker (Permanent Marker)</option>
-            <option value="pirata">Pirata One (Gothic)</option>
-            <option value="playfair">Playfair Display (Editorial)</option>
-            <option value="georgia">Georgia Serif (Classic)</option>
-            <option value="mont">Montserrat (Modern Sans)</option>
-            <option value="trebuchet">Trebuchet MS (Retro Sans)</option>
-            <option value="bebas">Bebas Neue (Condensed)</option>
-            <option value="impact">Oswald / Impact (Poster)</option>
-            <option value="type">Special Elite (Typewriter)</option>
-            <option value="courier">Courier (Mono)</option>
-            <option value="consolas">Space Mono / Consolas (Tech)</option>
-          </select>
-        </label>
-        <label class="fld" data-keywords="card title font size scale">
-          <span class="lbl-row"><span>Card title size</span><output id="title-size-value" for="title-size">85%</output></span>
-          <input type="range" id="title-size" min="70" max="100" step="1" value="85" data-live aria-valuetext="85%">
-        </label>
-        <label class="fld" data-keywords="year badge solid pill outline">
-          <span>Year badge</span>
-          <select id="design-badge">
-            <option value="0">Solid</option><option value="1">Pill</option><option value="2">Outline</option>
-          </select>
-        </label>
-        <label class="fld" data-keywords="tear line perforation dashed dotted">
-          <span>Tear line</span>
-          <select id="design-tear">
-            <option value="0">Dashed</option><option value="1">Dotted</option><option value="2">Solid line</option>
-          </select>
-        </label>
-        <label class="fld" data-keywords="photo filter colour bw monochrome sepia">
-          <span>Photo filter</span>
-          <select id="design-filter">
-            <option value="0">Full colour</option><option value="1">Black &amp; white</option><option value="2">Sepia</option>
-          </select>
-        </label>
-        <div class="look-options full">
-          <label class="chk" data-keywords="centre center align title genre"><input type="checkbox" id="design-center"> Centre title and genre</label>
-          <label class="chk" data-keywords="halftone dots photo"><input type="checkbox" id="design-halftone"> Halftone photo</label>
-        </div>
-        <fieldset class="mount-fields full" data-keywords="photo mounts tape pins corners washi brads paperclip staples wax seal">
-          <legend>Photo mounts — choose up to 2</legend>
-          <label class="chk"><input type="checkbox" data-quick-mount value="0" checked> Tape</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="1"> Pins</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="2"> Corners</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="4"> Washi tape</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="5"> Brads</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="6"> Paperclip</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="7"> Staples</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="8"> Wax seal</label>
-          <label class="chk"><input type="checkbox" data-quick-mount value="3"> None</label>
-          <span class="hint full" id="quick-mount-status">Active mounts: Tape</span>
-        </fieldset>
-      </div>
-    </section>
-
-    <!-- TAB: WEAR & FX -->
-    <section class="studio-tab-panel" id="tab-panel-wear" role="tabpanel" aria-labelledby="tab-btn-wear" data-tab-panel="wear" hidden>
-      <div class="ctrl-grid">
-        <label class="fld" data-keywords="paper grain texture noise">
-          <span>Paper grain</span>
-          <input type="range" id="tgr" min="0" max="100" value="15" data-live>
-        </label>
-        <label class="fld" data-keywords="edge vignette wear vintage">
-          <span>Edge vignette wear</span>
-          <input type="range" id="tew" min="0" max="100" value="0" data-live>
-        </label>
-        <label class="fld" data-keywords="paper creases fold">
-          <span>Paper creases</span>
-          <input type="range" id="tcr" min="0" max="100" value="0" data-live>
-        </label>
-        <label class="fld" data-keywords="surface scuffs scratch">
-          <span>Surface scuffs</span>
-          <input type="range" id="tsc" min="0" max="100" value="0" data-live>
-        </label>
-        <label class="fld full" data-keywords="corner hardware bolts pins staples rivets clean">
-          <span>Corner hardware</span>
-          <select id="corner-hw">
-            <option value="bolts">Bolts (Default)</option>
-            <option value="pins">Push pins</option>
-            <option value="staples">Corner staples</option>
-            <option value="rivets">Eyelet rivets</option>
-            <option value="none">None (Clean corners)</option>
-          </select>
-        </label>
-        <fieldset class="fx-marks-group full" data-keywords="distress marks claw corner tear bullet hole blood spatter">
-          <legend>Fun distress marks</legend>
-          <div class="ctrl-grid fx-marks-grid">
-            <label class="chk"><input type="checkbox" id="fx-claw"> Claw marks</label>
-            <label class="chk"><input type="checkbox" id="fx-tear"> Corner tear</label>
-            <label class="chk"><input type="checkbox" id="fx-bullet"> Bullet hole</label>
-            <label class="chk"><input type="checkbox" id="fx-blood"> Blood spatter</label>
-          </div>
-        </fieldset>
-      </div>
-    </section>
-
-    <!-- TAB: TICKET & NFC -->
-    <section class="studio-tab-panel" id="tab-panel-ticket" role="tabpanel" aria-labelledby="tab-btn-ticket" data-tab-panel="ticket" hidden>
-      <div class="ctrl-grid">
-        <label class="fld" data-keywords="doors text top right">
-          <span>Doors text</span>
-          <input type="text" id="gdoors" placeholder="Doors text" value="Doors 7PM">
-        </label>
-        <label class="fld" data-keywords="side text margin right">
-          <span>Side text</span>
-          <input type="text" id="gside" placeholder="Side text" value="Dope-Amine">
-        </label>
-        <fieldset class="hardware-fields full" data-keywords="nfc yt music logo serial number punch hole">
-          <legend>Ticket details</legend>
-          <div class="hardware-toggle-row">
-            <label class="chk"><input type="checkbox" id="nfc" checked> NFC icon</label>
-            <label class="chk" id="nfc-yt-wrap"><input type="checkbox" id="nfc-yt" checked> With YT Music logo</label>
-            <label class="chk"><input type="checkbox" id="serial" data-live> Serial number</label>
-            <label class="chk"><input type="checkbox" id="punch" data-live> Punch hole</label>
-          </div>
-          <label class="fld full" id="nfc-scale-wrap">
-            <span class="lbl-row"><span>NFC logo size</span><output id="nfc-scale-val" for="nfc-scale">100%</output></span>
-            <input type="range" id="nfc-scale" min="50" max="200" step="10" value="100" data-live aria-valuetext="100%">
+      <!-- STAMPS CRUMB 1: MAIN STAMP -->
+      <div class="crumb-panel" data-crumb-panel="stamps:main" data-crumb-label="Main Stamp">
+        <div class="ctrl-grid">
+          <label class="fld" data-keywords="primary stamp text label">
+            <span>Primary stamp text</span>
+            <input type="text" id="gstamp" placeholder="Stamp text" value="Soul Fuel">
           </label>
-          <span class="hint">Punch hole is a printed guide; use a 4 mm punch.</span>
-        </fieldset>
+          <label class="fld" data-keywords="stamp year">
+            <span>Stamp year</span>
+            <input type="text" id="gsyear" placeholder="Stamp year" value="2026">
+          </label>
+          <div class="border-picker-block stamp-picker-block full" data-keywords="stamp shape logo seal wax vinyl spotify yt">
+            <div class="lbl-row">
+              <span>Stamp shape</span>
+              <span class="hint" id="stamp-shape-active">Round</span>
+            </div>
+            <div id="stamp-picker" class="border-picker stamp-picker" role="radiogroup" aria-label="Stamp shape"></div>
+          </div>
+          <label class="fld full" data-keywords="stamp size scale">
+            <span class="lbl-row"><span>Stamp size</span><output id="ssv">100%</output></span>
+            <input type="range" id="ssize" min="50" max="250" step="25" value="100" list="sst">
+            <datalist id="sst"><option value="50"></option><option value="100"></option><option value="150"></option><option value="200"></option><option value="250"></option></datalist>
+          </label>
+          <label class="fld" data-keywords="stamp ink wear">
+            <span>Stamp wear</span>
+            <input type="range" id="wear" min="0" max="100" value="35">
+          </label>
+          <label class="swatch-control effect-ink" data-keywords="stamp ink colour color"><span>Stamp ink</span><input type="color" id="scol" value="#d9322f" data-live></label>
+          <div class="full">
+            <label class="switch-row effect-accent" data-keywords="stamp accent colour">
+              <input type="checkbox" role="switch" class="switch-input" id="sauto" checked data-live>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Use card accent colour</span>
+            </label>
+          </div>
+        </div>
       </div>
+
+      <!-- STAMPS CRUMB 2: STYLE & PRESETS -->
+      <div class="crumb-panel" data-crumb-panel="stamps:style" data-crumb-label="Style &amp; Presets" hidden>
+        <div class="ctrl-grid">
+          <p class="hint full" id="stamp-none-note" hidden>No stamp is drawn for None.</p>
+          <div class="ctrl-grid full" id="stamp-controls-grid">
+            <label class="fld" data-keywords="stamp ink style outline tinted solid">
+              <span>Ink style</span>
+              <select id="st-fill-mode">
+                <option value="outline">Outline</option>
+                <option value="tinted">Tinted wash</option>
+                <option value="solid">Solid badge</option>
+              </select>
+            </label>
+            <label class="fld" data-keywords="stamp line pattern solid dashed dotted">
+              <span>Line pattern</span>
+              <select id="st-pattern">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </label>
+            <label class="fld" data-keywords="stamp stroke weight">
+              <span class="lbl-row"><span>Stroke weight</span><output id="st-weight-val" for="st-weight">1.0×</output></span>
+              <input type="range" id="st-weight" min="0.6" max="2" step="0.1" value="1">
+            </label>
+            <label class="fld" data-keywords="stamp ink opacity">
+              <span class="lbl-row"><span>Ink opacity</span><output id="st-opacity-val" for="st-opacity">95%</output></span>
+              <input type="range" id="st-opacity" min="35" max="100" step="5" value="95">
+            </label>
+            <label class="fld full" data-keywords="stamp ink wear">
+              <span class="lbl-row"><span>Stamp ink wear</span><output id="st-wear-val" for="st-wear">35%</output></span>
+              <input type="range" id="st-wear" min="0" max="100" step="1" value="35">
+            </label>
+            <div class="look-options full">
+              <label class="switch-row" data-keywords="stamp inner frame">
+                <input type="checkbox" role="switch" class="switch-input" id="st-inner-ring" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span class="switch-text">Show inner frame</span>
+              </label>
+              <label class="switch-row" data-keywords="stamp show year">
+                <input type="checkbox" role="switch" class="switch-input" id="st-show-year" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span class="switch-text">Show stamp year</span>
+              </label>
+            </div>
+          </div>
+          <div class="border-actions-bar full">
+            <button class="g sm" type="button" id="st-apply-selected">Apply to card #1</button>
+            <button class="g sm" type="button" id="st-apply-all">Apply to all cards</button>
+            <button class="g sm" type="button" id="st-reset-style">Reset defaults</button>
+          </div>
+          <fieldset class="border-presets-box full" data-keywords="stamp preset save">
+            <legend>Stamp presets <span class="hint" id="stamp-customise-meta"></span></legend>
+            <div class="border-preset-save">
+              <input type="text" id="st-preset-name" maxlength="48" placeholder="Preset name…" aria-label="New stamp preset name">
+              <button class="g sm" type="button" id="st-preset-save">Save preset</button>
+            </div>
+            <div class="border-preset-apply">
+              <select id="st-preset-select" aria-label="Saved stamp presets">
+                <option value="">Saved presets…</option>
+              </select>
+              <button class="g sm" type="button" id="st-preset-apply" disabled>Apply to sheet</button>
+              <button class="g sm" type="button" id="st-preset-apply-card" disabled>Apply to card</button>
+              <button class="danger sm" type="button" id="st-preset-delete" disabled aria-label="Delete selected stamp preset" data-tooltip="Delete preset"><span data-icon="delete"></span></button>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+
+      <!-- STAMPS CRUMB 3: EXTRA STAMPS -->
+      <div class="crumb-panel" data-crumb-panel="stamps:extra" data-crumb-label="Extra Stamps" hidden>
+        <div class="ctrl-grid">
+          <div class="lbl-row full" data-keywords="extra stamps vip custom shape add">
+            <span>Extra stamps (sheet-wide)</span>
+            <button class="g sm" type="button" id="extra-stamp-add">+ Add stamp</button>
+          </div>
+          <div class="extra-stamps-list full" id="extra-stamps-list"></div>
+        </div>
+      </div>
+
+      <!-- STAMPS CRUMB 4: NFC LOGO -->
+      <div class="crumb-panel" data-crumb-panel="stamps:nfc" data-crumb-label="NFC Logo" hidden>
+        <div class="ctrl-grid">
+          <div class="full">
+            <label class="switch-row" data-keywords="nfc icon toggle badge">
+              <input type="checkbox" role="switch" class="switch-input" id="nfc" checked>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Show NFC badge</span>
+            </label>
+          </div>
+          <div class="ctrl-grid full" id="nfc-controls-wrap">
+            <label class="fld full" data-keywords="nfc music logo platform spotify apple youtube contactless">
+              <span>NFC logo &amp; platform</span>
+              <select id="nfc-platform" data-live>
+                <option value="nfc">NFC contactless mark (no platform)</option>
+                <option value="ytmusic">YouTube Music + NFC</option>
+                <option value="spotify">Spotify + NFC</option>
+                <option value="applemusic">Apple Music + NFC</option>
+              </select>
+            </label>
+            <label class="fld full" id="nfc-scale-wrap" data-keywords="nfc logo size scale">
+              <span class="lbl-row"><span>NFC badge size</span><output id="nfc-scale-val" for="nfc-scale">100%</output></span>
+              <input type="range" id="nfc-scale" min="50" max="200" step="10" value="100" data-live aria-valuetext="100%">
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONSTANT CARDS VIEW (OUTSIDE TABS) -->
+    <section class="cards-constant-section" id="cards-section" aria-label="Cards list">
+      <div class="cards-header">
+        <h2>Cards (<span id="card-count-lbl">9</span>)</h2>
+        <div class="cards-header-actions">
+          <div class="surprise-group">
+            <button class="g" id="surprise-all" type="button"><span data-icon="surprise"></span> Surprise me</button>
+            <button class="g icon-only" id="surprise-tune" type="button" aria-label="Surprise me options" aria-expanded="false" aria-controls="surprise-dialog" data-tooltip="Surprise me options"><span data-icon="sliders"></span></button>
+          </div>
+          <button class="g" id="reset-all-cards" type="button" title="Reset custom & random styling across cards"><span data-icon="reset"></span> Reset cards</button>
+        </div>
+      </div>
+      <div class="card-search-bar">
+        <div class="card-search-slot">
+          <label class="sr-only" for="card-search">Search cards</label>
+          <span class="search-slot-icon" data-icon="search"></span>
+          <input id="card-search" type="search" placeholder="Search title, genre, origin, year…" autocomplete="off" spellcheck="false" aria-describedby="card-search-count">
+          <button class="g icon-only card-search-clear" id="card-search-clear" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><span data-icon="close"></span></button>
+        </div>
+        <output class="card-search-count" id="card-search-count" for="card-search" aria-live="polite" hidden></output>
+      </div>
+      <div id="rows"></div>
     </section>
   </div>
 
@@ -694,7 +935,11 @@
       <button class="g" type="button" id="duplicate-page"><span data-icon="duplicate"></span> Duplicate</button>
       <button class="danger sm" type="button" id="delete-page" disabled aria-label="Delete active page"><span data-icon="delete"></span> Delete page</button>
       <button class="g" type="button" id="move-stamps" aria-pressed="false"><span data-icon="move"></span> Move stamps</button>
-      <label class="chk snap-toggle" id="stamp-snap-wrap" hidden><input type="checkbox" id="stamp-snap" checked> Snap</label>
+      <label class="switch-row snap-toggle" id="stamp-snap-wrap" hidden>
+        <input type="checkbox" role="switch" class="switch-input" id="stamp-snap" checked>
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="switch-text">Snap</span>
+      </label>
       <button class="g sm" type="button" id="reset-all-stamps" hidden>Reset all stamps</button>
       <div class="zoom-controls" aria-label="Preview zoom">
         <button class="g" type="button" id="zoom-out" aria-label="Zoom out" data-tooltip="Zoom out"><span data-icon="minus"></span></button>
@@ -750,13 +995,13 @@
   <fieldset class="surprise-scope">
     <legend>What to randomise</legend>
     <div class="surprise-scope-list">
-      <label class="chk"><input type="checkbox" id="sp-colors" checked> Colours &amp; theme</label>
-      <label class="chk surprise-sub"><input type="checkbox" id="sp-keep-theme"> Keep my theme, only vary the details</label>
-      <label class="chk"><input type="checkbox" id="sp-border" checked> Border style &amp; frame</label>
-      <label class="chk"><input type="checkbox" id="sp-stamps"> Stamps (shape, ink &amp; safe position)</label>
-      <label class="chk surprise-sub"><input type="checkbox" id="sp-keep-moved"> Keep manually moved stamp positions</label>
-      <label class="chk"><input type="checkbox" id="sp-wear" checked> Wear, texture &amp; photo mounts</label>
-      <label class="chk"><input type="checkbox" id="sp-font"> Title font &amp; alignment</label>
+      <label class="switch-row"><input type="checkbox" role="switch" class="switch-input" id="sp-colors" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Colours &amp; theme</span></label>
+      <label class="switch-row surprise-sub"><input type="checkbox" role="switch" class="switch-input" id="sp-keep-theme"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Keep my theme, only vary the details</span></label>
+      <label class="switch-row"><input type="checkbox" role="switch" class="switch-input" id="sp-border" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Border style &amp; frame</span></label>
+      <label class="switch-row"><input type="checkbox" role="switch" class="switch-input" id="sp-stamps"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Stamps (shape, ink &amp; safe position)</span></label>
+      <label class="switch-row surprise-sub"><input type="checkbox" role="switch" class="switch-input" id="sp-keep-moved"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Keep manually moved stamp positions</span></label>
+      <label class="switch-row"><input type="checkbox" role="switch" class="switch-input" id="sp-wear" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Wear, texture &amp; photo mounts</span></label>
+      <label class="switch-row"><input type="checkbox" role="switch" class="switch-input" id="sp-font"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Title font &amp; alignment</span></label>
     </div>
   </fieldset>
   <div class="surprise-strength">
@@ -783,7 +1028,7 @@
   </form>
   <p class="svg-code-intro">Copy standalone vector SVG code for each rendered page.</p>
   <div class="svg-code-toolbar">
-    <label class="chk"><input type="checkbox" id="svg-code-fonts" checked> Embed font CSS (<code>@font-face</code>)</label>
+    <label class="switch-row"><input type="checkbox" role="switch" class="switch-input" id="svg-code-fonts" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Embed font CSS (<code>@font-face</code>)</span></label>
     <span class="hint" id="svg-code-summary"></span>
   </div>
   <div id="svg-code-list" class="svg-code-list"></div>
@@ -799,9 +1044,9 @@
   <button class="g sm" id="undo-toast-action" type="button">Undo</button>
 </div>
 
-<!-- CARD PREVIEW MODAL -->
-<div id="pv" hidden role="dialog" aria-modal="true" aria-label="Card preview and quick editor">
-  <div class="pvbox">
+<!-- EXPANDING SINGLE-CARD SIDE DRAWER -->
+<div id="pv" class="pv-drawer" hidden role="dialog" aria-modal="true" aria-label="Card preview and single card fine tuning drawer">
+  <div class="pvbox" id="pv-drawer-panel">
     <div class="pvbar">
       <button class="g" id="pvp" type="button" aria-label="Previous card" data-tooltip="Previous card"><span data-icon="previous"></span></button>
       <span id="pvt" class="preview-title"></span>
@@ -809,31 +1054,42 @@
       <span class="preview-spacer" aria-hidden="true"></span>
       <button class="g sm" id="pv-drag-photo" type="button" aria-pressed="false" data-tooltip="Drag or scroll/pinch photo inside card"><span data-icon="move"></span> Drag photo</button>
       <button class="g sm" id="pv-move-stamps" type="button" aria-pressed="false" data-tooltip="Drag or rotate stamp inside card"><span data-icon="move"></span> Move stamps</button>
-      <button class="g" id="pve" type="button">Jump to sidebar</button>
+      <button class="g sm" id="pv-expand" type="button" aria-expanded="false" data-tooltip="Expand / collapse drawer width">Expand</button>
+      <button class="g" id="pve" type="button">Jump to card</button>
       <button class="g" id="pvpng" type="button">PNG</button>
       <button class="g" id="pvsvg" type="button">SVG</button>
-      <button id="pvx" type="button" aria-label="Close preview" data-tooltip="Close preview"><span data-icon="close"></span></button>
+      <button id="pvx" type="button" aria-label="Close drawer" data-tooltip="Close drawer"><span data-icon="close"></span></button>
     </div>
     <div class="pv-body">
       <div id="pvi" aria-label="Card preview"></div>
       <div class="pv-editor" id="pv-editor" aria-label="Edit selected card">
+        <div class="ctrl-search-wrap pv-search-wrap">
+          <div class="card-search-slot ctrl-search-slot">
+            <label class="sr-only" for="pv-ctrl-search">Find a card control</label>
+            <span class="search-slot-icon" data-icon="search"></span>
+            <input id="pv-ctrl-search" type="search" placeholder="Search card controls… (e.g. scuff, spotify, wash, border, font)" autocomplete="off" spellcheck="false">
+            <button class="g icon-only card-search-clear" id="pv-ctrl-search-clear" type="button" aria-label="Clear card control search" data-tooltip="Clear search" hidden><span data-icon="close"></span></button>
+          </div>
+          <div id="pv-ctrl-search-results" class="ctrl-search-results" hidden aria-label="Matching card controls"></div>
+        </div>
+
         <div class="studio-tabs pv-tabs" id="pv-tabs" role="tablist" aria-label="Single card sections">
-          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-details" data-pv-tab="details" aria-selected="true" aria-controls="pv-panel-details">Details</button>
-          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-photo" data-pv-tab="photo" aria-selected="false" aria-controls="pv-panel-photo">Photo &amp; text</button>
-          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-theme" data-pv-tab="theme" aria-selected="false" aria-controls="pv-panel-theme">Theme &amp; wear</button>
-          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-border" data-pv-tab="border" aria-selected="false" aria-controls="pv-panel-border">Border</button>
+          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-details" data-pv-tab="details" aria-selected="true" aria-controls="pv-panel-details">Details &amp; NFC</button>
+          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-text" data-pv-tab="text" aria-selected="false" aria-controls="pv-panel-text">Photo &amp; Text</button>
+          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-theme" data-pv-tab="theme" aria-selected="false" aria-controls="pv-panel-theme">Theme &amp; Paper</button>
+          <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-border" data-pv-tab="border" aria-selected="false" aria-controls="pv-panel-border">Borders &amp; HW</button>
           <button class="studio-tab" type="button" role="tab" id="pv-tab-btn-stamp" data-pv-tab="stamp" aria-selected="false" aria-controls="pv-panel-stamp">Stamps</button>
         </div>
 
-        <!-- PV TAB 1: DETAILS & TICKET -->
+        <!-- PV TAB 1: DETAILS & NFC -->
         <div class="pv-tab-panel" id="pv-panel-details" role="tabpanel" aria-labelledby="pv-tab-btn-details" data-pv-panel="details">
           <div class="pv-ed-group">
             <div class="pv-ed-grid">
-              <label class="fld w"><span id="pv-title-label">Artist / band name</span><input type="text" id="pv-title" placeholder="Artist / band name"></label>
-              <label class="fld pv-band-fld"><span>Genre</span><input type="text" id="pv-genre" placeholder="Genre"></label>
-              <label class="fld pv-band-fld"><span>Origin / place</span><input type="text" id="pv-loc" placeholder="Place"></label>
-              <label class="fld pv-band-fld"><span>Year</span><input type="text" id="pv-year" placeholder="Year"></label>
-              <label class="fld pv-band-fld"><span>Code</span><input type="text" id="pv-code" placeholder="Abbr"></label>
+              <label class="fld w" data-keywords="name artist band"><span id="pv-title-label">Artist / band name</span><input type="text" id="pv-title" placeholder="Artist / band name"></label>
+              <label class="fld pv-band-fld" data-keywords="genre"><span>Genre</span><input type="text" id="pv-genre" placeholder="Genre"></label>
+              <label class="fld pv-band-fld" data-keywords="place origin"><span>Origin / place</span><input type="text" id="pv-loc" placeholder="Place"></label>
+              <label class="fld pv-band-fld" data-keywords="year"><span>Year</span><input type="text" id="pv-year" placeholder="Year"></label>
+              <label class="fld pv-band-fld" data-keywords="code abbr"><span>Code</span><input type="text" id="pv-code" placeholder="Abbr"></label>
               <label class="fld pv-vc-fld" hidden><span>Job title</span><input type="text" id="pv-role" placeholder="Job title"></label>
               <label class="fld pv-vc-fld" hidden><span>Company</span><input type="text" id="pv-company" placeholder="Company"></label>
               <label class="fld pv-vc-fld" hidden><span>Phone</span><input type="text" id="pv-phone" placeholder="Phone"></label>
@@ -845,12 +1101,15 @@
           </div>
           <div class="pv-ed-group">
             <div class="pv-ed-subheader">
-              <span>Ticket &amp; NFC details</span>
+              <span>Margins, labels &amp; NFC</span>
               <button class="g sm" id="pv-ticket-reset" type="button" hidden>Sheet defaults</button>
             </div>
             <div class="pv-ed-grid">
-              <label class="fld pv-band-fld"><span>Doors text</span><input type="text" id="pv-doors" placeholder="Same as sheet"></label>
-              <label class="fld pv-band-fld"><span>Side text</span><input type="text" id="pv-side" placeholder="Same as sheet"></label>
+              <label class="fld pv-band-fld" data-keywords="left margin text code"><span>Left margin text</span><input type="text" id="pv-left-margin" placeholder="Same as sheet"></label>
+              <label class="fld pv-band-fld" data-keywords="right margin side text"><span>Right margin text</span><input type="text" id="pv-side" placeholder="Same as sheet"></label>
+              <label class="fld pv-band-fld" data-keywords="doors top right text"><span>Top-right (Doors)</span><input type="text" id="pv-doors" placeholder="Same as sheet"></label>
+              <label class="fld pv-band-fld" data-keywords="admit one top left text"><span>Top-left badge</span><input type="text" id="pv-admit" placeholder="Same as sheet"></label>
+              <label class="fld pv-band-fld w" data-keywords="pass audio album label"><span>Pass badge text</span><input type="text" id="pv-pass" placeholder="Same as sheet"></label>
               <label class="fld pv-vc-fld w" hidden>
                 <span>Visiting badge</span>
                 <select id="pv-vc-badge">
@@ -861,7 +1120,7 @@
                   <option value="none">None</option>
                 </select>
               </label>
-              <label class="fld">
+              <label class="fld" data-keywords="nfc icon toggle visibility">
                 <span>NFC icon</span>
                 <select id="pv-nfc">
                   <option value="">Same as sheet</option>
@@ -869,40 +1128,26 @@
                   <option value="0">Hide</option>
                 </select>
               </label>
-              <label class="fld">
-                <span>YT Music logo</span>
-                <select id="pv-nfc-yt">
+              <label class="fld" data-keywords="nfc logo spotify apple youtube music platform">
+                <span>NFC platform</span>
+                <select id="pv-nfc-platform">
                   <option value="">Same as sheet</option>
-                  <option value="1">Show</option>
-                  <option value="0">Hide</option>
-                </select>
-              </label>
-              <label class="fld pv-band-fld">
-                <span>Serial number</span>
-                <select id="pv-serial">
-                  <option value="">Same as sheet</option>
-                  <option value="1">Show</option>
-                  <option value="0">Hide</option>
-                </select>
-              </label>
-              <label class="fld pv-band-fld">
-                <span>Punch hole</span>
-                <select id="pv-punch">
-                  <option value="">Same as sheet</option>
-                  <option value="1">Show</option>
-                  <option value="0">Hide</option>
+                  <option value="nfc">NFC contactless</option>
+                  <option value="ytmusic">YouTube Music + NFC</option>
+                  <option value="spotify">Spotify + NFC</option>
+                  <option value="applemusic">Apple Music + NFC</option>
                 </select>
               </label>
             </div>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="nfc logo size scale">
               <span class="lbl-row"><span>NFC logo size</span><output id="pv-nfc-scale-val" for="pv-nfc-scale">100%</output></span>
               <input type="range" id="pv-nfc-scale" min="50" max="200" step="10" value="100">
             </label>
           </div>
         </div>
 
-        <!-- PV TAB 2: PHOTO & TYPOGRAPHY -->
-        <div class="pv-tab-panel" id="pv-panel-photo" role="tabpanel" aria-labelledby="pv-tab-btn-photo" data-pv-panel="photo" hidden>
+        <!-- PV TAB 2: PHOTO & TEXT -->
+        <div class="pv-tab-panel" id="pv-panel-text" role="tabpanel" aria-labelledby="pv-tab-btn-text" data-pv-panel="text" hidden>
           <div class="pv-ed-group">
             <div class="pv-ed-row">
               <button class="g sm" id="pv-photo-btn" type="button"><span data-icon="upload"></span> Photo…</button>
@@ -910,21 +1155,21 @@
               <button class="g sm" id="pv-crop-reset" type="button">Reset crop</button>
               <label class="pv-accent-pick"><input type="color" id="pv-accent" aria-label="Card accent colour"><span>Accent</span></label>
             </div>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="photo zoom">
               <span class="lbl-row"><span>Photo zoom</span><output id="pv-zm-val" for="pv-zm">100%</output></span>
               <input type="range" id="pv-zm" min="100" max="300" step="1" value="100">
             </label>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="photo horizontal x pan">
               <span class="lbl-row"><span>Photo horizontal</span><output id="pv-px-val" for="pv-px">0</output></span>
               <input type="range" id="pv-px" min="-100" max="100" step="1" value="0">
             </label>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="photo vertical y pan">
               <span class="lbl-row"><span>Photo vertical</span><output id="pv-py-val" for="pv-py">0</output></span>
               <input type="range" id="pv-py" min="-100" max="100" step="1" value="0">
             </label>
-            <fieldset class="pv-sub-fields">
+            <fieldset class="pv-sub-fields" data-keywords="photo hardware mounts tape pins corners">
               <legend>
-                <span>Photo mounts (max 2)</span>
+                <span>Photo hardware (max 2)</span>
                 <button class="g sm" id="pv-mounts-reset" type="button" hidden>Sheet default</button>
               </legend>
               <div class="pv-check-grid">
@@ -942,12 +1187,13 @@
           </div>
           <div class="pv-ed-group">
             <div class="pv-ed-subheader">
-              <span>Typography &amp; photo look</span>
+              <span>Typography, badge &amp; tear</span>
               <button class="g sm" id="pv-look-reset" type="button" hidden>Sheet defaults</button>
             </div>
             <div class="pv-ed-grid">
-              <label class="fld w"><span>Title font</span><select id="pv-title-font"></select></label>
-              <label class="fld">
+              <label class="fld" data-keywords="title font"><span>Title font</span><select id="pv-title-font"></select></label>
+              <label class="fld" data-keywords="subtitle font"><span>Subtitle font</span><select id="pv-sub-font"></select></label>
+              <label class="fld" data-keywords="title alignment centre">
                 <span>Title alignment</span>
                 <select id="pv-center-title">
                   <option value="">Same as sheet</option>
@@ -955,24 +1201,7 @@
                   <option value="0">Left-aligned</option>
                 </select>
               </label>
-              <label class="fld">
-                <span>Photo filter</span>
-                <select id="pv-photo-filter">
-                  <option value="">Same as sheet</option>
-                  <option value="0">Full colour</option>
-                  <option value="1">Black &amp; white</option>
-                  <option value="2">Sepia</option>
-                </select>
-              </label>
-              <label class="fld">
-                <span>Halftone photo</span>
-                <select id="pv-halftone">
-                  <option value="">Same as sheet</option>
-                  <option value="1">On</option>
-                  <option value="0">Off</option>
-                </select>
-              </label>
-              <label class="fld pv-band-fld">
+              <label class="fld pv-band-fld" data-keywords="year badge style">
                 <span>Year badge</span>
                 <select id="pv-year-badge">
                   <option value="">Same as sheet</option>
@@ -981,7 +1210,15 @@
                   <option value="2">Outline</option>
                 </select>
               </label>
-              <label class="fld pv-band-fld">
+              <label class="fld pv-band-fld" data-keywords="washed year badge look">
+                <span>Washed year badge</span>
+                <select id="pv-badge-washed">
+                  <option value="">Same as sheet</option>
+                  <option value="1">Washed</option>
+                  <option value="0">Crisp</option>
+                </select>
+              </label>
+              <label class="fld pv-band-fld" data-keywords="tear line style">
                 <span>Tear line</span>
                 <select id="pv-tear-style">
                   <option value="">Same as sheet</option>
@@ -990,32 +1227,73 @@
                   <option value="2">Solid line</option>
                 </select>
               </label>
+              <label class="fld pv-band-fld" data-keywords="tear notches toggle">
+                <span>Tear notches</span>
+                <select id="pv-tear-notches">
+                  <option value="">Same as sheet</option>
+                  <option value="1">On</option>
+                  <option value="0">Off</option>
+                </select>
+              </label>
+              <label class="fld" data-keywords="photo filter bw sepia">
+                <span>Photo filter</span>
+                <select id="pv-photo-filter">
+                  <option value="">Same as sheet</option>
+                  <option value="0">Full colour</option>
+                  <option value="1">Black &amp; white</option>
+                  <option value="2">Sepia</option>
+                </select>
+              </label>
+              <label class="fld" data-keywords="halftone photo dots">
+                <span>Halftone photo</span>
+                <select id="pv-halftone">
+                  <option value="">Same as sheet</option>
+                  <option value="1">On</option>
+                  <option value="0">Off</option>
+                </select>
+              </label>
             </div>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="title size">
               <span class="lbl-row"><span>Title size</span><output id="pv-title-scale-val" for="pv-title-scale">85%</output></span>
               <input type="range" id="pv-title-scale" min="70" max="100" step="1" value="85">
+            </label>
+            <label class="pv-slider-fld" data-keywords="subtitle size">
+              <span class="lbl-row"><span>Subtitle size</span><output id="pv-sub-scale-val" for="pv-sub-scale">100%</output></span>
+              <input type="range" id="pv-sub-scale" min="65" max="135" step="5" value="100">
             </label>
           </div>
         </div>
 
-        <!-- PV TAB 3: THEME, PALETTE & WEAR -->
+        <!-- PV TAB 3: THEME & PAPER -->
         <div class="pv-tab-panel" id="pv-panel-theme" role="tabpanel" aria-labelledby="pv-tab-btn-theme" data-pv-panel="theme" hidden>
           <div class="pv-ed-group">
             <div class="pv-ed-subheader">
-              <span>Theme &amp; palette</span>
+              <span>Theme, colours &amp; gradient</span>
               <button class="g sm" id="pv-pal-reset" type="button" hidden>Reset palette</button>
             </div>
             <div class="pv-ed-grid">
-              <label class="fld w"><span>Card theme</span><select id="pv-theme"></select></label>
-              <label class="fld"><span>Paper colour</span><input type="color" id="pv-pal-bg" value="#f2eadb" aria-label="Card paper colour"></label>
-              <label class="fld"><span>Text colour</span><input type="color" id="pv-pal-ink" value="#1b1a19" aria-label="Card text colour"></label>
-              <label class="fld"><span>Mount tape colour</span><input type="color" id="pv-pal-tape" value="#d8b46b" aria-label="Card tape colour"></label>
+              <label class="fld w" data-keywords="card theme"><span>Card theme</span><select id="pv-theme"></select></label>
+              <label class="fld" data-keywords="paper background colour"><span>Paper colour</span><input type="color" id="pv-pal-bg" value="#f2eadb" aria-label="Card paper colour"></label>
+              <label class="fld" data-keywords="text ink colour"><span>Text colour</span><input type="color" id="pv-pal-ink" value="#1b1a19" aria-label="Card text colour"></label>
+              <label class="fld" data-keywords="mount tape colour"><span>Mount tape colour</span><input type="color" id="pv-pal-tape" value="#d8b46b" aria-label="Card tape colour"></label>
+              <label class="fld" data-keywords="gradient mode radial diagonal wave top bottom">
+                <span>Gradient style</span>
+                <select id="pv-grad-mode">
+                  <option value="">Same as theme</option>
+                  <option value="linear">Linear</option>
+                  <option value="radial">Radial</option>
+                  <option value="diagonal">Diagonal</option>
+                  <option value="wave">Wave aurora</option>
+                  <option value="top">Top glow</option>
+                  <option value="bottom">Bottom glow</option>
+                </select>
+              </label>
             </div>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="gradient angle">
               <span class="lbl-row"><span>Gradient angle</span><output id="pv-grad-angle-val" for="pv-grad-angle">180°</output></span>
               <input type="range" id="pv-grad-angle" min="0" max="359" step="5" value="180">
             </label>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="gradient spread">
               <span class="lbl-row"><span>Gradient spread</span><output id="pv-grad-spread-val" for="pv-grad-spread">32%</output></span>
               <input type="range" id="pv-grad-spread" min="10" max="100" step="2" value="32">
             </label>
@@ -1025,47 +1303,35 @@
               <span>Paper wear</span>
               <button class="g sm" id="pv-wear-reset" type="button" hidden>Sheet defaults</button>
             </div>
-            <label class="pv-slider-fld">
-              <span class="lbl-row"><span>Paper grain</span><output id="pv-grain-val" for="pv-grain">15%</output></span>
+            <label class="pv-slider-fld" data-keywords="grain paper texture">
+              <span class="lbl-row"><span>Grain</span><output id="pv-grain-val" for="pv-grain">15%</output></span>
               <input type="range" id="pv-grain" min="0" max="100" step="1" value="15">
             </label>
-            <label class="pv-slider-fld">
-              <span class="lbl-row"><span>Edge vignette wear</span><output id="pv-edge-wear-val" for="pv-edge-wear">0%</output></span>
+            <label class="pv-slider-fld" data-keywords="vignette edge wear">
+              <span class="lbl-row"><span>Vignette</span><output id="pv-edge-wear-val" for="pv-edge-wear">0%</output></span>
               <input type="range" id="pv-edge-wear" min="0" max="100" step="1" value="0">
             </label>
-            <label class="pv-slider-fld">
-              <span class="lbl-row"><span>Paper creases</span><output id="pv-creases-val" for="pv-creases">0%</output></span>
-              <input type="range" id="pv-creases" min="0" max="100" step="1" value="0">
-            </label>
-            <label class="pv-slider-fld">
-              <span class="lbl-row"><span>Surface scuffs</span><output id="pv-scuffs-val" for="pv-scuffs">0%</output></span>
+            <label class="pv-slider-fld" data-keywords="scuffs scratch wear">
+              <span class="lbl-row"><span>Scuffs</span><output id="pv-scuffs-val" for="pv-scuffs">0%</output></span>
               <input type="range" id="pv-scuffs" min="0" max="100" step="1" value="0">
             </label>
-            <fieldset class="pv-sub-fields">
-              <legend>
-                <span>Distress marks</span>
-                <button class="g sm" id="pv-fx-reset" type="button" hidden>Sheet default</button>
-              </legend>
-              <div class="pv-check-grid">
-                <label class="chk"><input type="checkbox" id="pv-fx-claw"> Claw marks</label>
-                <label class="chk"><input type="checkbox" id="pv-fx-tear"> Corner tear</label>
-                <label class="chk"><input type="checkbox" id="pv-fx-bullet"> Bullet hole</label>
-                <label class="chk"><input type="checkbox" id="pv-fx-blood"> Blood spatter</label>
-              </div>
-            </fieldset>
+            <label class="pv-slider-fld" data-keywords="scuff rotation angle">
+              <span class="lbl-row"><span>Scuff rotation</span><output id="pv-scuff-rot-val" for="pv-scuff-rot">0°</output></span>
+              <input type="range" id="pv-scuff-rot" min="-180" max="180" step="5" value="0">
+            </label>
           </div>
         </div>
 
-        <!-- PV TAB 4: BORDER & CORNER HARDWARE -->
+        <!-- PV TAB 4: BORDERS & HARDWARE -->
         <div class="pv-tab-panel" id="pv-panel-border" role="tabpanel" aria-labelledby="pv-tab-btn-border" data-pv-panel="border" hidden>
           <div class="pv-ed-group" id="pv-border-hardware-group">
             <div class="pv-ed-subheader">
-              <span>Border &amp; frame</span>
+              <span>Border &amp; hardware</span>
               <button class="g sm" id="pv-border-reset" type="button" hidden>Use sheet border</button>
             </div>
             <div class="pv-ed-grid">
-              <label class="fld w"><span>Border style</span><select id="pv-border-style"></select></label>
-              <label class="fld" data-pv-border-group="color">
+              <label class="fld w" data-keywords="border style"><span>Border style</span><select id="pv-border-style"></select></label>
+              <label class="fld" data-pv-border-group="color" data-keywords="border colour mode">
                 <span>Border colour</span>
                 <select id="pv-border-color-mode">
                   <option value="accent">Theme accent</option>
@@ -1075,11 +1341,11 @@
                   <option value="custom">Custom hex</option>
                 </select>
               </label>
-              <label class="fld" data-pv-border-group="customColor" hidden>
+              <label class="fld" data-pv-border-group="customColor" hidden data-keywords="border custom hex">
                 <span>Custom hex</span>
                 <input type="color" id="pv-border-color" value="#ff5a36" aria-label="Card border custom colour">
               </label>
-              <label class="fld" data-pv-border-group="pattern">
+              <label class="fld" data-pv-border-group="pattern" data-keywords="border pattern solid dashed dotted">
                 <span>Line pattern</span>
                 <select id="pv-border-pattern">
                   <option value="solid">Solid</option>
@@ -1088,7 +1354,7 @@
                   <option value="dashdot">Dash-dot</option>
                 </select>
               </label>
-              <label class="fld" data-pv-border-group="corner">
+              <label class="fld" data-pv-border-group="corner" data-keywords="border corner style">
                 <span>Corner style</span>
                 <select id="pv-border-corner">
                   <option value="square">Square</option>
@@ -1097,7 +1363,7 @@
                   <option value="chamfered">Chamfered</option>
                 </select>
               </label>
-              <label class="fld" data-pv-border-group="ornament">
+              <label class="fld" data-pv-border-group="ornament" data-keywords="border corner ornament">
                 <span>Corner ornament</span>
                 <select id="pv-border-ornament">
                   <option value="none">None</option>
@@ -1110,42 +1376,54 @@
               </label>
             </div>
             <p class="hint" id="pv-border-none-note" hidden>No border drawn for None on this card.</p>
-            <label class="pv-slider-fld" data-pv-border-group="width">
+            <label class="pv-slider-fld" data-pv-border-group="width" data-keywords="border width">
               <span class="lbl-row"><span>Border width</span><output id="pv-border-width-val" for="pv-border-width">1.5</output></span>
               <input type="range" id="pv-border-width" min="0.5" max="5" step="0.1" value="1.5">
             </label>
-            <label class="pv-slider-fld" data-pv-border-group="inset">
+            <label class="pv-slider-fld" data-pv-border-group="inset" data-keywords="border inset">
               <span class="lbl-row"><span>Border inset</span><output id="pv-border-inset-val" for="pv-border-inset">2.5</output></span>
               <input type="range" id="pv-border-inset" min="1.5" max="10" step="0.5" value="2.5">
             </label>
-            <label class="pv-slider-fld" data-pv-border-group="opacity">
+            <label class="pv-slider-fld" data-pv-border-group="opacity" data-keywords="border opacity">
               <span class="lbl-row"><span>Border opacity</span><output id="pv-border-opacity-val" for="pv-border-opacity">100%</output></span>
               <input type="range" id="pv-border-opacity" min="10" max="100" step="5" value="100">
             </label>
-            <label class="pv-slider-fld" data-pv-border-group="cornerSize" hidden>
+            <label class="pv-slider-fld" data-pv-border-group="cornerSize" hidden data-keywords="border corner size">
               <span class="lbl-row"><span>Corner size</span><output id="pv-border-corner-size-val" for="pv-border-corner-size">9</output></span>
               <input type="range" id="pv-border-corner-size" min="2" max="18" step="0.5" value="9">
             </label>
-            <label class="pv-slider-fld" data-pv-border-group="wear">
+            <label class="pv-slider-fld" data-pv-border-group="wear" data-keywords="border wear">
               <span class="lbl-row"><span>Border wear</span><output id="pv-border-wear-val" for="pv-border-wear">35%</output></span>
               <input type="range" id="pv-border-wear" min="0" max="100" step="1" value="35">
             </label>
-            <label class="pv-slider-fld" data-pv-border-group="glow">
+            <label class="pv-slider-fld" data-pv-border-group="glow" data-keywords="border glow">
               <span class="lbl-row"><span>Border glow</span><output id="pv-border-glow-val" for="pv-border-glow">0%</output></span>
               <input type="range" id="pv-border-glow" min="0" max="100" step="5" value="0">
             </label>
-            <label class="chk" data-pv-border-group="inner"><input type="checkbox" id="pv-border-inner"> Add second inner border</label>
+            <label class="switch-row" data-pv-border-group="inner" data-keywords="second inner border">
+              <input type="checkbox" role="switch" class="switch-input" id="pv-border-inner">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Add second inner border</span>
+            </label>
             <div class="pv-ed-divider" aria-hidden="true"></div>
             <div class="pv-ed-grid">
-              <label class="fld w">
-                <span>Corner hardware</span>
+              <label class="fld" data-keywords="corner hardware border bolts pins staples rivets">
+                <span>Border hardware</span>
                 <select id="pv-hardware">
                   <option value="">Same as sheet</option>
-                  <option value="bolts">Bolts (Default)</option>
+                  <option value="none">None (Clean corners)</option>
+                  <option value="bolts">Bolts</option>
                   <option value="pins">Push pins</option>
                   <option value="staples">Corner staples</option>
                   <option value="rivets">Eyelet rivets</option>
-                  <option value="none">None (Clean corners)</option>
+                </select>
+              </label>
+              <label class="fld pv-band-fld" data-keywords="punch hole guide">
+                <span>Punch hole</span>
+                <select id="pv-punch">
+                  <option value="">Same as sheet</option>
+                  <option value="1">Show</option>
+                  <option value="0">Hide</option>
                 </select>
               </label>
             </div>
@@ -1156,15 +1434,14 @@
         <div class="pv-tab-panel" id="pv-panel-stamp" role="tabpanel" aria-labelledby="pv-tab-btn-stamp" data-pv-panel="stamp" hidden>
           <div class="pv-ed-group">
             <div class="pv-ed-subheader">
-              <span>Stamps &amp; ink</span>
+              <span>Main stamp &amp; ink</span>
               <button class="g sm" id="pv-stamp-style-reset" type="button" hidden>Sheet defaults</button>
             </div>
             <div class="pv-ed-grid">
-              <label class="fld w"><span>Stamp shape</span><select id="pv-stamp"></select></label>
-              <label class="fld"><span>Stamp text</span><input type="text" id="pv-stx" placeholder="Same as sheet"></label>
-              <label class="fld"><span>Stamp year</span><input type="text" id="pv-stamp-year" placeholder="Same as sheet"></label>
-              <label class="fld w"><span>Second stamp</span><input type="text" id="pv-stamp2" placeholder="Same as sheet (e.g. VIP)"></label>
-              <label class="fld">
+              <label class="fld w" data-keywords="stamp shape"><span>Stamp shape</span><select id="pv-stamp"></select></label>
+              <label class="fld" data-keywords="stamp text"><span>Stamp text</span><input type="text" id="pv-stx" placeholder="Same as sheet"></label>
+              <label class="fld" data-keywords="stamp year"><span>Stamp year</span><input type="text" id="pv-stamp-year" placeholder="Same as sheet"></label>
+              <label class="fld" data-keywords="stamp colour mode accent">
                 <span>Stamp colour mode</span>
                 <select id="pv-stamp-auto">
                   <option value="">Same as sheet</option>
@@ -1172,8 +1449,8 @@
                   <option value="0">Custom ink</option>
                 </select>
               </label>
-              <label class="fld" id="pv-stamp-color-wrap"><span>Custom ink</span><input type="color" id="pv-stamp-color" value="#d9322f" aria-label="Card stamp ink colour"></label>
-              <label class="fld">
+              <label class="fld" id="pv-stamp-color-wrap" data-keywords="stamp custom hex colour"><span>Custom ink</span><input type="color" id="pv-stamp-color" value="#d9322f" aria-label="Card stamp ink colour"></label>
+              <label class="fld" data-keywords="stamp ink fill style">
                 <span>Ink style</span>
                 <select id="pv-stamp-fill">
                   <option value="">Same as sheet</option>
@@ -1182,7 +1459,7 @@
                   <option value="solid">Solid badge</option>
                 </select>
               </label>
-              <label class="fld">
+              <label class="fld" data-keywords="stamp pattern">
                 <span>Line pattern</span>
                 <select id="pv-stamp-pattern">
                   <option value="">Same as sheet</option>
@@ -1191,7 +1468,7 @@
                   <option value="dotted">Dotted</option>
                 </select>
               </label>
-              <label class="fld">
+              <label class="fld" data-keywords="stamp inner frame">
                 <span>Inner frame</span>
                 <select id="pv-stamp-inner-ring">
                   <option value="">Same as sheet</option>
@@ -1199,7 +1476,7 @@
                   <option value="0">Hide</option>
                 </select>
               </label>
-              <label class="fld">
+              <label class="fld" data-keywords="stamp show year">
                 <span>Show stamp year</span>
                 <select id="pv-stamp-show-year">
                   <option value="">Same as sheet</option>
@@ -1208,18 +1485,25 @@
                 </select>
               </label>
             </div>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="stamp wear">
               <span class="lbl-row"><span>Stamp wear</span><output id="pv-stamp-wear-val" for="pv-stamp-wear">35%</output></span>
               <input type="range" id="pv-stamp-wear" min="0" max="100" step="1" value="35">
             </label>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="stamp angle rotation">
               <span class="lbl-row"><span>Stamp angle</span><output id="pv-srot-val" for="pv-srot">0°</output></span>
               <input type="range" id="pv-srot" min="-180" max="180" step="5" value="0">
             </label>
-            <label class="pv-slider-fld">
+            <label class="pv-slider-fld" data-keywords="stamp scale size">
               <span class="lbl-row"><span>Stamp scale</span><output id="pv-sscale-val" for="pv-sscale">100%</output></span>
               <input type="range" id="pv-sscale" min="40" max="250" step="5" value="100">
             </label>
+          </div>
+          <div class="pv-ed-group" data-keywords="extra stamps vip custom shape add">
+            <div class="pv-ed-subheader">
+              <span>Extra stamps (this card)</span>
+              <button class="g sm" id="pv-extra-stamp-add" type="button">+ Add stamp</button>
+            </div>
+            <div class="extra-stamps-list" id="pv-extra-stamps-list"></div>
           </div>
         </div>
 
@@ -1236,6 +1520,6 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=phase10i"></script>
+<script type="module" src="js/app.js?v=phase10l"></script>
 </body>
 </html>

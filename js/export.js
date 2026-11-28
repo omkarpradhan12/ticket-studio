@@ -1,7 +1,7 @@
 // Vector SVG, 300 DPI PNG, 300 DPI Raster PDF, Cutter SVG & JSON Export Helpers
-import { FONTCSS } from "./fonts.js?v=phase10i";
-import { hslToHex } from "./image-utils.js?v=phase10i";
-import { abbr } from "./svg-engine.js?v=phase10i";
+import { FONTCSS } from "./fonts.js?v=phase10j";
+import { hslToHex } from "./image-utils.js?v=phase10j";
+import { abbr } from "./svg-engine.js?v=phase10j";
 
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -144,22 +144,38 @@ export function exportProjectJson(settings, cards, count) {
       if (Array.isArray(c.photoMounts) && c.photoMounts.length) r.photoMounts = c.photoMounts;
       if (c.titleFont) r.titleFont = c.titleFont;
       if (c.titleScale !== undefined) r.titleScale = c.titleScale;
+      if (c.subFont) r.subFont = c.subFont;
+      if (c.subScale !== undefined) r.subScale = c.subScale;
       if (c.centerTitle !== undefined) r.centerTitle = Boolean(c.centerTitle);
       if (c.yearBadge !== undefined) r.yearBadge = c.yearBadge;
+      if (c.yearBadgeWashed !== undefined) r.yearBadgeWashed = Boolean(c.yearBadgeWashed);
       if (c.tearStyle !== undefined) r.tearStyle = c.tearStyle;
+      if (c.tearNotches !== undefined) r.tearNotches = Boolean(c.tearNotches);
+      if (c.doors !== undefined) r.doors = c.doors;
+      if (c.side !== undefined) r.side = c.side;
+      if (c.leftMargin !== undefined) r.leftMargin = c.leftMargin;
+      if (c.admitText !== undefined) r.admitText = c.admitText;
+      if (c.passText !== undefined) r.passText = c.passText;
+      if (c.stampYear !== undefined) r.stampYear = c.stampYear;
+      if (c.stamp2 !== undefined) r.stamp2 = c.stamp2;
+      if (Array.isArray(c.extraStamps) && c.extraStamps.length) r.extraStamps = c.extraStamps;
+      if (c.nfc !== undefined) r.nfc = Boolean(c.nfc);
+      if (c.nfcStyle) r.nfcStyle = c.nfcStyle;
+      if (c.nfcScale !== undefined) r.nfcScale = c.nfcScale;
+      if (c.punchHole !== undefined) r.punchHole = Boolean(c.punchHole);
+      if (c.vcBadge) r.vcBadge = c.vcBadge;
       if (c.grain !== undefined) r.grain = c.grain;
       if (c.edgeWear !== undefined) r.edgeWear = c.edgeWear;
-      if (c.creases !== undefined) r.creases = c.creases;
       if (c.scuffs !== undefined) r.scuffs = c.scuffs;
+      if (c.scuffRotation !== undefined) r.scuffRotation = c.scuffRotation;
       if (c.photoFilter !== undefined) r.photoFilter = c.photoFilter;
       if (c.halftone !== undefined) r.halftone = Boolean(c.halftone);
+      if (c.gradMode) r.gradMode = c.gradMode;
+      if (Array.isArray(c.gradStops) && c.gradStops.length >= 2) r.gradStops = c.gradStops;
+      if (Array.isArray(c.gradStopOffsets) && c.gradStopOffsets.length >= 2) r.gradStopOffsets = c.gradStopOffsets;
       if (c.gradientAngle !== undefined) r.gradientAngle = c.gradientAngle;
       if (c.gradientSpread !== undefined) r.gradientSpread = c.gradientSpread;
       if (c.cornerHardware) r.cornerHardware = c.cornerHardware;
-      if (c.fxClaw !== undefined) r.fxClaw = Boolean(c.fxClaw);
-      if (c.fxTear !== undefined) r.fxTear = Boolean(c.fxTear);
-      if (c.fxBullet !== undefined) r.fxBullet = Boolean(c.fxBullet);
-      if (c.fxBlood !== undefined) r.fxBlood = Boolean(c.fxBlood);
       if (c.locked) r.locked = true;
       return r;
     })

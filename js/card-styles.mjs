@@ -1,6 +1,6 @@
 // Per-card optional style override schema, sanitization & WCAG contrast helpers
-import { sanitizeBorderPatch } from "./borders.mjs?v=phase10i";
-import { sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase10i";
+import { sanitizeBorderPatch } from "./borders.mjs?v=phase10j";
+import { sanitizeExtraStamps, sanitizeStampOverride, sanitizeStampStyle } from "./stamps.mjs?v=phase10j";
 
 export const MAX_CARDS_LIMIT = 300;
 
@@ -20,30 +20,37 @@ export const CARD_STYLE_OVERRIDE_KEYS = Object.freeze([
   "photoMounts",
   "titleFont",
   "titleScale",
+  "subFont",
+  "subScale",
   "centerTitle",
   "yearBadge",
+  "yearBadgeWashed",
   "tearStyle",
+  "tearNotches",
   "grain",
   "edgeWear",
-  "creases",
   "scuffs",
+  "scuffRotation",
   "photoFilter",
   "halftone",
+  "gradMode",
+  "gradStops",
+  "gradStopOffsets",
   "gradientAngle",
   "gradientSpread",
   "cornerHardware",
-  "fxClaw",
-  "fxTear",
-  "fxBullet",
-  "fxBlood",
   "doors",
   "side",
+  "leftMargin",
+  "admitText",
+  "passText",
   "stampYear",
   "stamp2",
+  "extraStamps",
   "nfc",
+  "nfcStyle",
   "nfcWithYt",
   "nfcScale",
-  "serials",
   "punchHole",
   "vcBadge"
 ]);
@@ -64,30 +71,37 @@ export const SURPRISE_MANAGED_STYLE_KEYS = Object.freeze([
   "photoMounts",
   "titleFont",
   "titleScale",
+  "subFont",
+  "subScale",
   "centerTitle",
   "yearBadge",
+  "yearBadgeWashed",
   "tearStyle",
+  "tearNotches",
   "grain",
   "edgeWear",
-  "creases",
   "scuffs",
+  "scuffRotation",
   "photoFilter",
   "halftone",
+  "gradMode",
+  "gradStops",
+  "gradStopOffsets",
   "gradientAngle",
   "gradientSpread",
   "cornerHardware",
-  "fxClaw",
-  "fxTear",
-  "fxBullet",
-  "fxBlood",
   "doors",
   "side",
+  "leftMargin",
+  "admitText",
+  "passText",
   "stampYear",
   "stamp2",
+  "extraStamps",
   "nfc",
+  "nfcStyle",
   "nfcWithYt",
   "nfcScale",
-  "serials",
   "punchHole",
   "vcBadge"
 ]);
@@ -253,22 +267,44 @@ export function sanitizeCardStyleOverrides(raw, validThemes = null, validStamps 
   if (raw.titleScale !== undefined && Number.isFinite(Number(raw.titleScale))) {
     out.titleScale = Number(Math.max(0.7, Math.min(1, Number(raw.titleScale))).toFixed(2));
   }
+  if (typeof raw.subFont === "string" && FONT_KEYS.includes(raw.subFont)) {
+    out.subFont = raw.subFont;
+  }
+  if (raw.subScale !== undefined && Number.isFinite(Number(raw.subScale))) {
+    out.subScale = Number(Math.max(0.65, Math.min(1.35, Number(raw.subScale))).toFixed(2));
+  }
   if (raw.centerTitle !== undefined) out.centerTitle = Boolean(raw.centerTitle);
   if (raw.yearBadge !== undefined && Number.isFinite(Number(raw.yearBadge))) {
     out.yearBadge = clampInt(raw.yearBadge, 0, 2, 0);
   }
+  if (raw.yearBadgeWashed !== undefined) out.yearBadgeWashed = Boolean(raw.yearBadgeWashed);
   if (raw.tearStyle !== undefined && Number.isFinite(Number(raw.tearStyle))) {
     out.tearStyle = clampInt(raw.tearStyle, 0, 2, 0);
   }
-  for (const wearKey of ["grain", "edgeWear", "creases", "scuffs"]) {
+  if (raw.tearNotches !== undefined) out.tearNotches = Boolean(raw.tearNotches);
+  for (const wearKey of ["grain", "edgeWear", "scuffs"]) {
     if (raw[wearKey] !== undefined && Number.isFinite(Number(raw[wearKey]))) {
       out[wearKey] = clampInt(raw[wearKey], 0, 100, 0);
     }
+  }
+  if (raw.scuffRotation !== undefined && Number.isFinite(Number(raw.scuffRotation))) {
+    out.scuffRotation = clampInt(raw.scuffRotation, -180, 180, 0);
   }
   if (raw.photoFilter !== undefined && Number.isFinite(Number(raw.photoFilter))) {
     out.photoFilter = clampInt(raw.photoFilter, 0, 2, 0);
   }
   if (raw.halftone !== undefined) out.halftone = Boolean(raw.halftone);
+  if (typeof raw.gradMode === "string" && ["linear", "radial", "diagonal", "wave", "top", "bottom"].includes(raw.gradMode)) {
+    out.gradMode = raw.gradMode;
+  }
+  if (Array.isArray(raw.gradStops)) {
+    const stops = raw.gradStops.map(s => normalizeHex(s, "")).filter(Boolean).slice(0, 4);
+    if (stops.length >= 2) out.gradStops = stops;
+  }
+  if (Array.isArray(raw.gradStopOffsets)) {
+    const offsets = raw.gradStopOffsets.map(v => clampInt(v, 0, 100, 0)).slice(0, 4);
+    if (offsets.length >= 2) out.gradStopOffsets = offsets;
+  }
   if (raw.gradientAngle !== undefined && Number.isFinite(Number(raw.gradientAngle))) {
     out.gradientAngle = ((Math.round(Number(raw.gradientAngle)) % 360) + 360) % 360;
   }
@@ -278,15 +314,22 @@ export function sanitizeCardStyleOverrides(raw, validThemes = null, validStamps 
   if (typeof raw.cornerHardware === "string" && ["bolts", "pins", "staples", "rivets", "none"].includes(raw.cornerHardware.trim().toLowerCase())) {
     out.cornerHardware = raw.cornerHardware.trim().toLowerCase();
   }
-  for (const fxKey of ["fxClaw", "fxTear", "fxBullet", "fxBlood"]) {
-    if (raw[fxKey] !== undefined) out[fxKey] = Boolean(raw[fxKey]);
-  }
   if (raw.doors !== undefined) out.doors = String(raw.doors).slice(0, 48);
   if (raw.side !== undefined) out.side = String(raw.side).slice(0, 48);
+  if (raw.leftMargin !== undefined) out.leftMargin = String(raw.leftMargin).slice(0, 48);
+  if (raw.admitText !== undefined) out.admitText = String(raw.admitText).slice(0, 32);
+  if (raw.passText !== undefined) out.passText = String(raw.passText).slice(0, 32);
   if (raw.stampYear !== undefined) out.stampYear = String(raw.stampYear).slice(0, 16);
   if (raw.stamp2 !== undefined) out.stamp2 = String(raw.stamp2).slice(0, 32);
-  for (const boolKey of ["nfc", "nfcWithYt", "serials", "punchHole"]) {
+  if (Array.isArray(raw.extraStamps)) {
+    const xs = sanitizeExtraStamps(raw.extraStamps);
+    if (xs.length) out.extraStamps = xs;
+  }
+  for (const boolKey of ["nfc", "nfcWithYt", "punchHole"]) {
     if (raw[boolKey] !== undefined) out[boolKey] = Boolean(raw[boolKey]);
+  }
+  if (typeof raw.nfcStyle === "string" && ["nfc", "ytmusic", "spotify", "applemusic"].includes(raw.nfcStyle)) {
+    out.nfcStyle = raw.nfcStyle;
   }
   if (raw.nfcScale !== undefined && Number.isFinite(Number(raw.nfcScale))) {
     out.nfcScale = clampInt(raw.nfcScale, 50, 200, 100);
